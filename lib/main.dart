@@ -31,10 +31,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Compete Exercise App',
+      title: 'luckytang',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primaryColor: Color(0xFFF24E1E),
+        useMaterial3: true,
+        textTheme: ThemeData.light().textTheme.apply(
+          fontFamily: 'pretendard-regular',
+        ),
       ),
+
       home: _determineInitialScreen(), // 초기 화면을 결정합니다.
       onGenerateRoute: (settings) => _generateRoute(settings),
     );

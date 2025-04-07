@@ -23,16 +23,19 @@ class Header extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Alice',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20.0,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                    Image.asset(
+                      'assets/icons/app_icon.jpg',
+                      width: 50, // 원하는 크기로 조절 가능
+                      height: 50,
+                      fit: BoxFit.contain,
+                    ),
+                    Text("럭키탕", style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w900, fontSize: 22),),
+                    ]
                     ),
                     IconButton(
-                      icon: Icon(Icons.shopping_cart, color: Colors.black),
+                      icon: Icon(Icons.shopping_cart_outlined, color:Colors.black, size: 28,),
                       onPressed: () {
                         // 장바구니 화면으로 이동
                         Navigator.pushNamed(context, '/cart');

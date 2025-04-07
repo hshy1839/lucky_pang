@@ -11,7 +11,7 @@ class CartController {
   Future<List<Map<String, dynamic>>> fetchCartData(String userId, String token) async {
     try {
       final response = await http.get(
-        Uri.parse('http://172.30.50.104:7776/api/cart/$userId'),
+        Uri.parse('http://172.30.1.42:7778/api/cart/$userId'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -44,7 +44,7 @@ class CartController {
 
 
 
-  static const String apiUrl = 'http://172.30.50.104:7776/api/cart'; // 서버 주소
+  static const String apiUrl = 'http://172.30.1.42:7778/api/cart'; // 서버 주소
 
   // 장바구니에 상품 추가하는 함수
   static Future<http.Response> addToCart({
@@ -96,7 +96,7 @@ class CartController {
       final token = prefs.getString('token') ?? '';
       // DELETE 요청을 보내기 위한 headers 설정
       final response = await http.delete(
-        Uri.parse('http://172.30.50.104:7776/api/cart/delete/$cartId'),
+        Uri.parse('http://172.30.1.42:7778/api/cart/delete/$cartId'),
         headers: {
           'Authorization': 'Bearer $token', // JWT 토큰을 헤더에 추가
         },

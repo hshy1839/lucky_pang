@@ -30,9 +30,9 @@ class ProductDetailScreen extends StatelessWidget {
             Navigator.pop(context);
           },
         ),
-        title: Text('상품정보',
+        title: Text('제품상세',
             style: TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold)),
+                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
       ),
       body: Stack(
         children: [
@@ -42,7 +42,7 @@ class ProductDetailScreen extends StatelessWidget {
               children: [
                 SizedBox(
                   width: double.infinity, // 가로 너비를 무조건 최대로 설정
-                  height: 300, // 원하는 높이 설정
+                  height: 400, // 원하는 높이 설정
                   child: Image.network(
                     product['mainImageUrl'] ?? '',
                     fit: BoxFit.cover, // ✅ 컨테이너에 꽉 채우기 (일부 잘릴 수도 있음)
@@ -124,7 +124,7 @@ class ProductDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                Divider(),
+                Divider(color: Colors.grey[200],),
 
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -132,17 +132,18 @@ class ProductDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '상품 설명',
+                        '상품 정보',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 18,),
                       Text(
                         product['description'] ?? '상품 설명이 없습니다.',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500
                         ),
                       ),
                     ],

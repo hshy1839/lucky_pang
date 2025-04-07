@@ -36,7 +36,7 @@ class SignupController extends ChangeNotifier {
     }
 
     final response = await http.post(
-      Uri.parse('http://172.30.50.104:7776/api/users/signup'),
+      Uri.parse('http://172.30.1.42:7778/api/users/signup'),
       headers: <String, String>{
         'Content-Type': 'application/json; charset=UTF-8',
       },
@@ -45,7 +45,7 @@ class SignupController extends ChangeNotifier {
         'username': usernameController.text,
         'password': passwordController.text,
         'phoneNumber': phoneController.text,
-        'is_active': false,
+        'is_active': true,
       }),
     );
 

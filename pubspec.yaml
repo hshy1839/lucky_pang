@@ -65,6 +65,7 @@ flutter:
     - assets/icons/top.png
     - assets/icons/golf_cloth.png
     - assets/icons/wallet.png
+    - assets/icons/app_icon.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.shopping_mall_app"
+    namespace = "com.luckytang"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "25.1.8937393"
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.shopping_mall_app"
+        applicationId = "com.luckytang"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

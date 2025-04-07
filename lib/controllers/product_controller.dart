@@ -18,7 +18,7 @@ class ProductController {
       }
 
       final response = await http.get(
-        Uri.parse('http://172.30.50.104:7776/api/products/allProduct'),
+        Uri.parse('http://172.30.1.42:7778/api/products/allProduct'),
         headers: {
           'Authorization': 'Bearer $token', // Bearer 토큰 추가
         },
@@ -33,7 +33,7 @@ class ProductController {
 
         if (decodedResponse is Map<String, dynamic> && decodedResponse['products'] is List<dynamic>) {
           final List<dynamic> data = decodedResponse['products'];
-          const serverUrl = 'http://172.30.50.104:7776'; // 서버 URL 설정
+          const serverUrl = 'http://172.30.1.42:7778'; // 서버 URL 설정
 
           return data.reversed.map((item) {
             final originalDate = item['createdAt']?.toString() ?? '';
@@ -97,7 +97,7 @@ class ProductController {
 
       // 쿼리 파라미터 설정
       final url = Uri.parse(
-          'http://172.30.50.104:7776/api/products/allProduct/category?category=$category');
+          'http://172.30.1.42:7778/api/products/allProduct/category?category=$category');
 
       final response = await http.get(
         url,
@@ -111,7 +111,7 @@ class ProductController {
 
         if (decodedResponse is Map<String, dynamic> && decodedResponse['products'] is List<dynamic>) {
           final List<dynamic> data = decodedResponse['products'];
-          const serverUrl = 'http://172.30.50.104:7776';
+          const serverUrl = 'http://172.30.1.42:7778';
 
           return data.map((item) {
             final category = item['category'] != null && item['category'] is Map<String, dynamic>
@@ -168,7 +168,7 @@ class ProductController {
       }
 
       final response = await http.get(
-        Uri.parse('http://172.30.50.104:7776/api/products/Product/$productId'),
+        Uri.parse('http://172.30.1.42:7778/api/products/Product/$productId'),
         headers: {
           'Authorization': 'Bearer $token', // Bearer 토큰 추가
         },
@@ -177,7 +177,7 @@ class ProductController {
 
       if (response.statusCode == 200) {
         final decodedResponse = json.decode(response.body);
-        const serverUrl = 'http://172.30.50.104:7776';
+        const serverUrl = 'http://172.30.1.42:7778';
 
 
         final mainImageUrl = decodedResponse['product']['mainImage'] != null &&  decodedResponse['product']['mainImage'] is List<dynamic>

@@ -57,13 +57,13 @@ class Footer extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: selectedIndex == index ? Colors.black : Colors.grey, // 선택된 경우 검은색
+            color: selectedIndex == index ? Theme.of(context).primaryColor : Colors.grey, // 선택된 경우 검은색
           ),
           SizedBox(height: 4), // 아이콘과 텍스트 사이 간격
           Text(
             label,
             style: TextStyle(
-              color: selectedIndex == index ? Colors.black : Colors.grey,
+              color: selectedIndex == index ? Theme.of(context).primaryColor : Colors.grey,
               fontSize: 12, // 텍스트 크기
             ),
           ),

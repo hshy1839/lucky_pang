@@ -4,9 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class OrderScreenController {
   // 서버 주소
-  static const String orderApiUrl = 'http://172.30.50.104:7776/api/order';
-  static const String shippingApiUrl = 'http://172.30.50.104:7776/api/shipping';
-  static const String shippingInfoApiUrl = 'http://172.30.50.104:7776/api/shippinginfo';
+  static const String orderApiUrl = 'http://172.30.1.42:7778/api/order';
+  static const String shippingApiUrl = 'http://172.30.1.42:7778/api/shipping';
+  static const String shippingInfoApiUrl = 'http://172.30.1.42:7778/api/shippinginfo';
 
   // 주문 추가 함수
   static Future<http.Response> addToOrder({
@@ -82,7 +82,7 @@ class OrderScreenController {
 
   // controllers/order_screen_controller.dart
   static Future<http.Response> verifyCoupon(String code) async {
-    final url = Uri.parse('http://172.30.50.104:7776/api/verifyCoupon?code=$code');
+    final url = Uri.parse('http://172.30.1.42:7778/api/verifyCoupon?code=$code');
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? ''; // 토큰 불러오기
 
