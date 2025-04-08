@@ -1,3 +1,4 @@
+import 'package:attedance_app/views/luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import 'package:attedance_app/views/main_activity/account_screen.dart';
 import 'package:attedance_app/views/main_activity/cart_detail_screen.dart';
 import 'package:attedance_app/views/main_activity/order_screen.dart';
@@ -5,6 +6,7 @@ import 'package:attedance_app/views/main_activity/qna_create_screen.dart';
 import 'package:attedance_app/views/main_activity/qna_screen.dart';
 import 'package:attedance_app/views/main_activity/search_product_screen.dart';
 import 'package:attedance_app/views/main_activity/userinfo_detail_screen.dart';
+import 'package:attedance_app/views/shopping_screen/shopping_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -12,14 +14,11 @@ import 'package:flutter/services.dart';
 // 화면들 import
 import 'package:attedance_app/views/login_activity/login.dart';
 import 'package:attedance_app/views/login_activity/signup.dart';
-import 'package:attedance_app/views/main_activity/category_screen.dart';
 import 'package:attedance_app/views/main_activity/main_screen.dart';
 import 'package:attedance_app/views/main_activity/notice_screen.dart';
 import 'package:attedance_app/views/main_activity/profile_screen.dart';
 import 'package:attedance_app/views/main_activity/order_detail_screen.dart';
-import 'package:attedance_app/views/main_activity/userinfo_detail_screen.dart';
 import 'footer.dart';
-import 'package:attedance_app/shopping_screen/shopping_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -178,6 +177,7 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
     QnaScreen(),
     OrderDetailScreen(), // 로그인 화면을 추가하여 리디렉션 처리
     ProfileScreen(),
+    LuckyBoxPurchasePage(),
   ];
 
   void _onTabTapped(int index) {

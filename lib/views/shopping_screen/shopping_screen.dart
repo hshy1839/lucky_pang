@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../controllers/product_controller.dart';
-import '../views/product_activity/product_detail_screen.dart';
+import '../../views/product_activity/product_detail_screen.dart';
 
 class ShoppingScreen extends StatefulWidget {
   final String category;
