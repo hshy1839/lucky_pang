@@ -28,7 +28,12 @@ class Footer extends StatelessWidget {
             label: '1:1 문의',
             index: 1,
           ),
-
+          _buildFooterItem(
+            context,
+            icon: Icons.card_giftcard_outlined,
+            label: '럭키박스',
+            index: 5,
+          ),
           // 구매내역 탭
           _buildFooterItem(
             context,

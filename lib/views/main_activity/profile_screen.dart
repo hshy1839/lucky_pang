@@ -116,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '마이페이지',
+          'MY PAGE',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black,
@@ -125,7 +125,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
-        elevation: 0.5,
       ),
       body: Container(
         color: Colors.white,
