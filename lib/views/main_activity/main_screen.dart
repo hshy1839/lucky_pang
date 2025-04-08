@@ -111,7 +111,7 @@ class _MainScreenState extends State<MainScreen> {
             ClipRRect(
               borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
               child: Image.network(
-                product['mainImageUrl'] ?? 'assets/images/nike1.png',
+                product['mainImageUrl'] ?? 'assets/icons/app_icon.jpg',
                 height: 140,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -211,7 +211,13 @@ class _MainScreenState extends State<MainScreen> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
           ),
           TextButton(
-            onPressed: () => Navigator.pushNamed(context, '/boxProducts'),
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/shoppingscreen', // 👉 정의한 라우트 이름
+                arguments: title, // 👉 카테고리 이름 넘김
+              );
+            },
             child: Text(
               '모두 보기',
               style: TextStyle(
@@ -225,6 +231,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+
 
   Widget _buildCarousel(List<Map<String, String>> items, BuildContext context) {
     return Padding(

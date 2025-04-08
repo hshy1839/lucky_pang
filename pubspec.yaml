@@ -51,20 +51,6 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/nike1.png
-    - assets/images/nike2.png
-    - assets/images/nike3.png
-    - assets/images/image1.png
-    - assets/icons/cloth_man.png
-    - assets/icons/cloth_woman.png
-    - assets/icons/outer.png
-    - assets/icons/cap.png
-    - assets/icons/pants.png
-    - assets/icons/shoes.png
-    - assets/icons/bag.png
-    - assets/icons/top.png
-    - assets/icons/golf_cloth.png
-    - assets/icons/wallet.png
     - assets/icons/app_icon.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see

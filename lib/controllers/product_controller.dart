@@ -2,23 +2,98 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/material.dart';
-import 'package:carousel_slider/carousel_slider.dart';
-import '../../footer.dart';
-import '../../header.dart';
 
 class ProductController {
+  final String baseUrl = 'http://172.30.1.42:7778';
+
   Future<List<Map<String, String>>> fetchProducts() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
-      }
+      if (token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
-        Uri.parse('http://172.30.1.42:7778/api/products/allProduct'),
+        Uri.parse('$baseUrl/api/products/allProduct'),
+        headers: { 'Authorization': 'Bearer $token' },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+
+        if (decoded['products'] is List) {
+          final List<dynamic> data = decoded['products'];
+
+          return data.map<Map<String, String>>((item) {
+            final mainImageUrl = _getImageUrl(item['mainImage']);
+            final additionalImageUrls = _getImageList(item['additionalImages']);
+
+            return {
+              'id': item['_id']?.toString() ?? '',
+              'name': item['name']?.toString() ?? '',
+              'price': item['price']?.toString() ?? '',
+              'category': item['category']?.toString() ?? '',
+              'mainImageUrl': mainImageUrl,
+              'description': item['description']?.toString() ?? '',
+              'additionalImageUrls': additionalImageUrls.join(','),
+            };
+          }).toList();
+        }
+      }
+
+      print('API 오류: ${response.statusCode}, ${response.body}');
+      return [];
+    } catch (e) {
+      print('오류 발생: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, String>>> fetchProductsByCategory({required String category}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final url = Uri.parse('$baseUrl/api/products/allProduct/category?category=$category');
+
+      final response = await http.get(url, headers: {
+        'Authorization': 'Bearer $token',
+      });
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final List<dynamic> data = decoded['products'];
+
+        return data.map<Map<String, String>>((item) {
+          final mainImageUrl = _getImageUrl(item['mainImage']);
+          final additionalImageUrls = _getImageList(item['additionalImages']);
+
+          return {
+            'id': item['_id']?.toString() ?? '',
+            'name': item['name']?.toString() ?? '',
+            'price': item['price']?.toString() ?? '',
+            'category': item['category']?.toString() ?? '',
+            'mainImageUrl': mainImageUrl,
+            'description': item['description']?.toString() ?? '',
+            'additionalImageUrls': additionalImageUrls.join(','),
+          };
+        }).toList();
+      }
+
+      return [];
+    } catch (e) {
+      print('카테고리별 조회 오류: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getProductInfoById(String productId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/products/Product/$productId'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -26,180 +101,48 @@ class ProductController {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
+        final product = decoded['product'];
 
-        if (decoded is Map<String, dynamic> && decoded['products'] is List<dynamic>) {
-          final List<dynamic> data = decoded['products'];
-          const serverUrl = 'http://172.30.1.42:7778';
-
-          return data.reversed.map((item) {
-            final originalDate = item['createdAt']?.toString() ?? '';
-            final formattedDate = _formatDate(originalDate);
-
-            final mainImageUrl = item['mainImage'] != null && item['mainImage'] is List
-                ? (item['mainImage'] as List).isNotEmpty
-                ? '$serverUrl${item['mainImage'][0]}'
-                : ''
-                : '';
-
-            final additionalImageUrls = item['additionalImages'] != null && item['additionalImages'] is List
-                ? (item['additionalImages'] as List).map((image) => '$serverUrl$image').toList()
-                : [];
-
-            return {
-              'id': item['_id']?.toString() ?? '',
-              'name': item['name']?.toString() ?? '',
-              'price': item['price']?.toString() ?? '',
-              'category': item['category']?.toString() ?? '', // ✅ category 단일 필드
-              'mainImageUrl': mainImageUrl,
-              'description': item['description']?.toString() ?? '',
-              'additionalImageUrls': additionalImageUrls.join(','),
-              'created_at': formattedDate,
-            };
-          }).toList();
-        } else {
-          throw Exception('응답 데이터 형식이 올바르지 않습니다.');
-        }
-      } else {
-        print('API 호출 실패: ${response.statusCode}, ${response.body}');
-        return [];
-      }
-    } catch (error) {
-      print('상품 조회 중 오류 발생: $error');
-      return [];
-    }
-  }
-
-  Future<List<Map<String, String>>> fetchProductsByCategory({
-    required String category,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
+        return {
+          'id': product['_id'],
+          'name': product['name'],
+          'price': product['price']?.toString() ?? '',
+          'mainImageUrl': _getImageUrl(product['mainImage']),
+          'category': product['category']?.toString() ?? '',
+          'description': product['description'],
+          'sizeStock': product['sizeStock'] ?? {},
+        };
       }
 
-      // 쿼리 파라미터 설정
-      final url = Uri.parse(
-          'http://172.30.1.42:7778/api/products/allProduct/category?category=$category');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token', // Bearer 토큰 추가
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final decodedResponse = json.decode(response.body);
-
-        if (decodedResponse is Map<String, dynamic> && decodedResponse['products'] is List<dynamic>) {
-          final List<dynamic> data = decodedResponse['products'];
-          const serverUrl = 'http://172.30.1.42:7778';
-
-          return data.map((item) {
-            final category = item['category'] != null && item['category'] is Map<String, dynamic>
-                ? '${item['category']['main'] ?? ''} > ${item['category']['sub'] ?? ''}'
-                : '';
-
-            final additionalImageUrls = item['additionalImages'] != null && item['additionalImages'] is List<dynamic>
-                ? (item['additionalImages'] as List<dynamic>).map((image) => '$serverUrl$image').toList() // 서버 URL 추가
-                : [];  // 빈 배열 반환
-
-            return {
-              'id': item['_id']?.toString() ?? '',
-              'name': item['name']?.toString() ?? '',
-              'price': item['price']?.toString() ?? '',
-              'category': category,
-              'mainImageUrl': serverUrl + (item['mainImage']?[0] ?? ''),
-              'additionalImageUrls': additionalImageUrls.join(','), // 추가 이미지들을 ','로 구분하여 저장
-              'description': item['description']?.toString() ?? '',
-            };
-          }).toList();
-        } else {
-          throw Exception('응답 데이터 형식이 올바르지 않습니다.');
-        }
-      } else {
-        print('API 호출 실패: ${response.statusCode}, ${response.body}');
-        return [];
-      }
-    } catch (error) {
-      print('상품 조회 중 오류 발생: $error');
-      return [];
-    }
-  }
-
-
-
-
-  // 날짜 포맷 함수
-  String _formatDate(String originalDate) {
-    try {
-      final dateTime = DateTime.parse(originalDate);
-      return DateFormat('yyyy년 MM월 dd일').format(dateTime); // 원하는 형식으로 포맷팅
+      return {};
     } catch (e) {
-      return originalDate; // 날짜 형식이 잘못된 경우 원본 반환
+      print('상세 조회 오류: $e');
+      return {};
     }
   }
 
-  Future<Map<String, dynamic>> getProductInfoById(String productId) async {
+  String _formatDate(String date) {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? ''; // 저장된 토큰 불러오기
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
-      }
-
-      final response = await http.get(
-        Uri.parse('http://172.30.1.42:7778/api/products/Product/$productId'),
-        headers: {
-          'Authorization': 'Bearer $token', // Bearer 토큰 추가
-        },
-      );
-
-
-      if (response.statusCode == 200) {
-        final decodedResponse = json.decode(response.body);
-        const serverUrl = 'http://172.30.1.42:7778';
-
-
-        final mainImageUrl = decodedResponse['product']['mainImage'] != null &&  decodedResponse['product']['mainImage'] is List<dynamic>
-            ? ( decodedResponse['product']['mainImage'] as List<dynamic>).isNotEmpty
-            ? '$serverUrl${ decodedResponse['product']['mainImage'][0]}' // 서버 URL 추가
-            : ''  // 비어있으면 빈 문자열 반환
-            : '';  // mainImage가 null이거나 List가 아니면 빈 문자열 반환
-
-        final category = decodedResponse['product']['category'] != null && decodedResponse['product']['category'] is Map<String, dynamic>
-            ? '${decodedResponse['product']['category'] ?? ''}'
-            : '';
-
-        if (decodedResponse is Map<String, dynamic> &&
-            decodedResponse['product'] is Map<String, dynamic>) {
-          // 서버에서 제공하는 제품 데이터를 포함한 Map 반환
-          return {
-            'id': decodedResponse['product']['_id'], // _id를 id로 매핑
-            'name': decodedResponse['product']['name']?.toString() ?? '',
-            'price': decodedResponse['product']['price']?.toString() ?? '',
-            'mainImageUrl':mainImageUrl,
-            'category':category,
-            'description': decodedResponse['product']['description']?.toString() ?? '',
-            'sizeStock': decodedResponse['product']['sizeStock'] ?? {}, // 사이즈 스탁 추가
-          };
-        } else {
-          return {}; // 예상과 다른 응답 데이터일 경우 빈 Map 반환
-        }
-      } else {
-        print('API 호출 실패: ${response.statusCode}, ${response.body}');
-        return {}; // 실패 시 빈 Map 반환
-      }
-    } catch (error) {
-      print('제품 이미지 조회 중 오류 발생: $error');
-      return {}; // 오류 발생 시 빈 Map 반환
+      final dt = DateTime.parse(date);
+      return DateFormat('yyyy년 MM월 dd일').format(dt);
+    } catch (_) {
+      return date;
     }
   }
 
+  String _getImageUrl(dynamic image) {
+    if (image is List && image.isNotEmpty) {
+      return '$baseUrl${image[0]}';
+    } else if (image is String) {
+      return '$baseUrl$image';
+    }
+    return '';
+  }
+
+  List<String> _getImageList(dynamic images) {
+    if (images is List) {
+      return images.map((img) => '$baseUrl$img').toList().cast<String>();
+    }
+    return [];
+  }
 }
-
-
