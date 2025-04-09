@@ -49,6 +49,9 @@ flutter:
 
   assets:
     - assets/icons/app_icon.jpg
+    - assets/icons/google_icon.png
+    - assets/icons/kakao_icon.png
+    - assets/icons/apple_icon.png
     - assets/terms/terms.txt
     - assets/terms/privacy.txt
 
