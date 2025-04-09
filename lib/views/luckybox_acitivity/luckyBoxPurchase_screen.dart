@@ -25,8 +25,11 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('럭키박스 구매'),
+        backgroundColor: Colors.white,
+        title: Text('럭키박스 구매',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
         centerTitle: true,
 
       ),
@@ -75,7 +78,8 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                 ],
               ),
               SizedBox(height: 20),
-              Text('포인트 사용 : $pointsUsed P'),
+              Text('포인트 사용 : $pointsUsed P',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),),
               Row(
                 children: [
                   Expanded(
@@ -131,7 +135,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
               SizedBox(height: 10),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
+                  backgroundColor: Theme.of(context).primaryColor,
                   minimumSize: Size(double.infinity, 50),
                 ),
                 onPressed: () {
@@ -147,25 +151,62 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   }
 
   Widget boxSelector(String price) {
+    final isSelected = selectedBox == price;
+
     return ChoiceChip(
-      label: Text('${int.parse(price).toStringAsFixed(0)}원 박스'),
-      selected: selectedBox == price,
+      label: Text(
+        '${int.parse(price).toStringAsFixed(0)}원 박스',
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.black, // ✅ 선택 여부에 따라 색상 변경
+        ),
+      ),
+      selected: isSelected,
       onSelected: (_) => setState(() => selectedBox = price),
+      selectedColor: Theme.of(context).primaryColor, // ✅ 선택된 배경색
+      backgroundColor: Colors.white, // ✅ 선택 안됐을 때 배경
     );
   }
+
+
 
   Widget quickButton(String label, int change) {
     return ElevatedButton(
       onPressed: () => changeQuantity(change),
-      child: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        padding: EdgeInsets.zero, // ✅ 내부 여백 제거
+        minimumSize: Size(40, 40), // ✅ 버튼 최소 사이즈 지정 (정사각형 느낌)
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4), // 필요하면 모서리 둥글기 조절
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: Colors.white),
+      ),
     );
   }
 
+
   Widget paymentOption(String method) {
+    final isSelected = paymentMethod == method;
+
     return ChoiceChip(
-      label: Text(method),
-      selected: paymentMethod == method,
+      label: Text(
+        method,
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.black, // 선택 여부에 따라 텍스트 색상
+        ),
+      ),
+      selected: isSelected,
       onSelected: (_) => setState(() => paymentMethod = method),
+      backgroundColor: Colors.white, // ✅ 선택되지 않았을 때 배경 흰색
+      selectedColor: Theme.of(context).primaryColor, // ✅ 선택 시 배경색
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: Colors.grey.shade400), // 테두리 추가(선택사항)
+        borderRadius: BorderRadius.circular(8),
+      ),
     );
   }
+
 }

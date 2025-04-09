@@ -120,12 +120,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings, color: Colors.black), // 톱니바퀴 아이콘
+            onPressed: () {
+              Navigator.pushNamed(context, '/setting'); // 설정 페이지로 이동
+            },
+          ),
+        ],
       ),
+
       body: Container(
         color: Colors.white,
         child: ListView(
@@ -202,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // 공지사항, 약관 및 정책
             ListTile(
-              title: Text('공지사항', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              title: Text('내 포인트 내역', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
               leading: Icon(Icons.notifications, color: Colors.grey), // 공지사항 아이콘
               trailing: Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.grey),
               onTap: () {
@@ -211,7 +220,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Divider(color: Colors.grey[300], thickness: 1.0),
             ListTile(
-              title: Text('1:1 문의', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              title: Text('배송지 관리', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
               leading: Icon(Icons.back_hand_outlined, color: Colors.grey), // 문의 아이콘
               trailing: Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.grey),
               onTap: () {
@@ -220,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Divider(color: Colors.grey[300], thickness: 1.0),
             ListTile(
-              title: Text('개인정보 수정', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              title: Text('친구 초대하기', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
               leading: Icon(Icons.person_outline, color: Colors.grey), // 개인정보 수정 아이콘
               trailing: Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.grey),
               onTap: () {
@@ -229,7 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Divider(color: Colors.grey[300], thickness: 1.0),
             ListTile(
-              title: Text('결제 계좌 정보', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              title: Text('선물코드 입력', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
               leading: Icon(Icons.call, color: Colors.grey), // 고객센터 아이콘
               trailing: Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.grey),
               onTap: () {
@@ -239,7 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Divider(color: Colors.grey[300], thickness: 1.0),
             ListTile(
-              title: Text('로그아웃', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+              title: Text('쿠폰코드 입력', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
               leading: Icon(Icons.logout, color: Colors.grey),
               trailing: Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.grey),
               onTap: () => _controller.logout(context), // 로그아웃 함수 호출

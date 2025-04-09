@@ -6,6 +6,9 @@ import 'package:attedance_app/views/main_activity/qna_create_screen.dart';
 import 'package:attedance_app/views/main_activity/qna_screen.dart';
 import 'package:attedance_app/views/main_activity/search_product_screen.dart';
 import 'package:attedance_app/views/main_activity/userinfo_detail_screen.dart';
+import 'package:attedance_app/views/setting_activity/privacy_screen.dart';
+import 'package:attedance_app/views/setting_activity/setting_screen.dart';
+import 'package:attedance_app/views/setting_activity/terms_screen.dart';
 import 'package:attedance_app/views/shopping_screen/shopping_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -84,7 +87,13 @@ class MyApp extends StatelessWidget {
         );
 
 
+      case '/setting':
+        return MaterialPageRoute(builder: (_) => SettingScreen());
+      case '/terms':
+        return MaterialPageRoute(builder: (_) => TermsOfServicePage());
 
+      case '/privacy':
+        return MaterialPageRoute(builder: (_) => PrivacyScreen());
       case '/cart':
         return MaterialPageRoute(builder: (_) => CartDetailScreen());
       case '/orderdetail':

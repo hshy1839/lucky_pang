@@ -50,7 +50,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
       appBar: AppBar(
         title: Text(
           widget.category,
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
         ),
         backgroundColor: Colors.white,
         leading: IconButton(
