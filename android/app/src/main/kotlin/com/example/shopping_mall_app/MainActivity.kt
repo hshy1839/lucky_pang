@@ -1,4 +1,4 @@
-package com.example.shopping_mall_app
+package com.luckytang
 
 import io.flutter.embedding.android.FlutterActivity
 

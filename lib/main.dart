@@ -1,3 +1,6 @@
+import 'package:attedance_app/views/login_activity/findEmail_screen.dart';
+import 'package:attedance_app/views/login_activity/findPassword_screen.dart';
+import 'package:attedance_app/views/login_activity/singup_agree_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import 'package:attedance_app/views/main_activity/account_screen.dart';
 import 'package:attedance_app/views/main_activity/cart_detail_screen.dart';
@@ -25,9 +28,17 @@ import 'footer.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
+
+  // 상태바 흰색 배경 + 검정 아이콘
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.white, // ✅ 상태바 배경을 흰색으로
+    statusBarIconBrightness: Brightness.dark, // ✅ 아이콘을 검정색으로
+    statusBarBrightness: Brightness.light, // iOS용
+  ));
+
   runApp(MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   @override
@@ -53,8 +64,14 @@ class MyApp extends StatelessWidget {
         return MaterialPageRoute(builder: (_) => MainScreen());
       case '/login':
         return MaterialPageRoute(builder: (_) => LoginScreen());
+      case '/findEmail':
+        return MaterialPageRoute(builder: (_) => FindEmailScreen());
+      case '/findPassword':
+        return MaterialPageRoute(builder: (_) => FindPasswordScreen());
       case '/signup':
         return MaterialPageRoute(builder: (_) => SignUpScreen());
+      case '/signupAgree':
+        return MaterialPageRoute(builder: (_) => SignupAgreeScreen());
       case '/notice':
         return MaterialPageRoute(builder: (_) => NoticeScreen());
       case '/qna':

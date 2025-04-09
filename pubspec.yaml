@@ -53,6 +53,8 @@ flutter:
     - assets/icons/kakao_icon.png
     - assets/icons/apple_icon.png
     - assets/terms/terms.txt
+    - assets/terms/signup_term_1.txt
+    - assets/terms/signup_term_2.txt
     - assets/terms/privacy.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see

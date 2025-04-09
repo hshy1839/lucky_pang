@@ -205,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text('|', style: TextStyle(color: Colors.grey[400])),
                   TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/signup');
+                      Navigator.pushNamed(context, '/signupAgree');
                     },
                     child: Text('회원가입', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                   ),

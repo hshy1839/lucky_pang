@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../views/main_activity/cart_detail_screen.dart';
 
 class CartController {
   // 장바구니 데이터 가져오기

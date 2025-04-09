@@ -65,6 +65,7 @@ class SignupController extends ChangeNotifier {
     }
   }
 
+
   @override
   void dispose() {
     nameController.dispose();
