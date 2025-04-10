@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/profile_screen_controller.dart';
 import '../../controllers/product_controller.dart';
-import '../main_activity/order_screen.dart';
+import '../main_activity/2order_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -479,7 +479,7 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => OrderScreen(
+                            builder: (context) => aOrderScreen(
                               productId: widget.productId,
                               sizes: selectedSizes,
                               totalAmount: totalAmount,

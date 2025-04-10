@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key});
@@ -11,7 +12,7 @@ class SettingScreen extends StatelessWidget {
 
         title: const Text(
           '설정',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -30,7 +31,19 @@ class SettingScreen extends StatelessWidget {
           _buildListTile(context, title: '이용약관', route: '/terms'),
           _divider(),
           _buildListTile(context, title: '개인정보처리방침', route: '/privacy'),
+
+        SizedBox(height: 20,),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(onPressed: () {}, child: Text('로그아웃', style: TextStyle(color: Colors.black))),
+              SizedBox(width: 20.w),
+              TextButton(onPressed: () {}, child: Text('회원탈퇴', style: TextStyle(color: Colors.black)))
+
+            ],
+          ),
         ],
+
       ),
     );
   }

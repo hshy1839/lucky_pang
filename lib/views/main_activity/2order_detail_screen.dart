@@ -3,12 +3,12 @@ import 'package:intl/intl.dart';
 import '../../controllers/profile_screen_controller.dart';
 import '../../controllers/product_controller.dart';
 
-class OrderDetailScreen extends StatefulWidget {
+class aOrderDetailScreen extends StatefulWidget {
   @override
-  _OrderDetailScreenState createState() => _OrderDetailScreenState();
+  _aOrderDetailScreenState createState() => _aOrderDetailScreenState();
 }
 
-class _OrderDetailScreenState extends State<OrderDetailScreen> {
+class _aOrderDetailScreenState extends State<aOrderDetailScreen> {
   final ProfileScreenController _controller = ProfileScreenController();
   final ProductController _productController = ProductController();
   bool isLoading = true;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../controllers/qna_controller.dart';
+import '../../../controllers/qna_controller.dart';
 
 class QnaDetailScreen extends StatefulWidget {
   final String questionId;

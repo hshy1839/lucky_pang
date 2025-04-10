@@ -24,15 +24,15 @@ class Footer extends StatelessWidget {
 
           _buildFooterItem(
             context,
-            icon: Icons.back_hand_outlined,
-            label: '1:1 문의',
+            icon: Icons.bar_chart,
+            label: '실시간 랭킹',
             index: 1,
           ),
           _buildFooterItem(
             context,
             icon: Icons.card_giftcard_outlined,
             label: '럭키박스',
-            index: 5,
+            index: 4,
           ),
           // 구매내역 탭
           _buildFooterItem(

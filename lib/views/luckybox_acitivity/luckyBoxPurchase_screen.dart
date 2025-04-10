@@ -60,7 +60,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Wrap(
-                    spacing: 8,
+                    spacing: 1,
                     children: [
                       quickButton('+5', 5),
                       quickButton('+10', 10),

@@ -1,14 +1,23 @@
+import 'package:attedance_app/routes/app_routes.dart';
 import 'package:attedance_app/views/login_activity/findEmail_screen.dart';
 import 'package:attedance_app/views/login_activity/findPassword_screen.dart';
 import 'package:attedance_app/views/login_activity/singup_agree_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxPurchase_screen.dart';
+import 'package:attedance_app/views/luckybox_acitivity/ranking_activity/ranking_screen.dart';
 import 'package:attedance_app/views/main_activity/account_screen.dart';
 import 'package:attedance_app/views/main_activity/cart_detail_screen.dart';
-import 'package:attedance_app/views/main_activity/order_screen.dart';
-import 'package:attedance_app/views/main_activity/qna_create_screen.dart';
-import 'package:attedance_app/views/main_activity/qna_screen.dart';
+import 'package:attedance_app/views/main_activity/2order_screen.dart';
+import 'package:attedance_app/views/setting_activity/QnA_activity/qna_create_screen.dart';
+import 'package:attedance_app/views/setting_activity/QnA_activity/qna_screen.dart';
 import 'package:attedance_app/views/main_activity/search_product_screen.dart';
 import 'package:attedance_app/views/main_activity/userinfo_detail_screen.dart';
+import 'package:attedance_app/views/profile_activity/coupon_code_screen.dart';
+import 'package:attedance_app/views/profile_activity/friends_recommand_screen.dart';
+import 'package:attedance_app/views/profile_activity/gift_code_screen.dart';
+import 'package:attedance_app/views/profile_activity/pointInfo_screen.dart';
+import 'package:attedance_app/views/profile_activity/shipping_activity/shipping_create_screen.dart';
+import 'package:attedance_app/views/profile_activity/shipping_activity/shipping_info_screen.dart';
+import 'package:attedance_app/views/setting_activity/faq_screen.dart';
 import 'package:attedance_app/views/setting_activity/privacy_screen.dart';
 import 'package:attedance_app/views/setting_activity/setting_screen.dart';
 import 'package:attedance_app/views/setting_activity/terms_screen.dart';
@@ -21,17 +30,18 @@ import 'package:flutter/services.dart';
 import 'package:attedance_app/views/login_activity/login.dart';
 import 'package:attedance_app/views/login_activity/signup.dart';
 import 'package:attedance_app/views/main_activity/main_screen.dart';
-import 'package:attedance_app/views/main_activity/notice_screen.dart';
-import 'package:attedance_app/views/main_activity/profile_screen.dart';
-import 'package:attedance_app/views/main_activity/order_detail_screen.dart';
+import 'package:attedance_app/views/setting_activity/notice_activity/notice_screen.dart';
+import 'package:attedance_app/views/profile_activity/profile_screen.dart';
+import 'package:attedance_app/views/main_activity/2order_detail_screen.dart';
 import 'footer.dart';
+import 'views/order_activity/order_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 상태바 흰색 배경 + 검정 아이콘
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-    statusBarColor: Colors.white, // ✅ 상태바 배경을 흰색으로
+    statusBarColor: Colors.transparent, // ✅ 상태바 배경을 흰색으로
     statusBarIconBrightness: Brightness.dark, // ✅ 아이콘을 검정색으로
     statusBarBrightness: Brightness.light, // iOS용
   ));
@@ -46,114 +56,35 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'luckytang',
       theme: ThemeData(
-        primaryColor: Color(0xFFF24E1E),
-        useMaterial3: true,
-        textTheme: ThemeData.light().textTheme.apply(
+        primaryColor: const Color(0xFFF24E1E),
+        useMaterial3: true, // Material3 사용하는 경우도 대응
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          // ✅ AppBar 배경색 고정
+          elevation: 0,
+          // ✅ 그림자 제거
+          centerTitle: true,
+          surfaceTintColor: Colors.white,
+          // ✅ Material 3 대응
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        textTheme: ThemeData
+            .light()
+            .textTheme
+            .apply(
           fontFamily: 'pretendard-regular',
         ),
       ),
-
-      home: _determineInitialScreen(), // 초기 화면을 결정합니다.
-      onGenerateRoute: (settings) => _generateRoute(settings),
+      home: _determineInitialScreen(),
+      routes: AppRoutes.routes,
     );
   }
 
-  Route<dynamic> _generateRoute(RouteSettings settings) {
-    switch (settings.name) {
-      case '/':
-        return MaterialPageRoute(builder: (_) => MainScreen());
-      case '/login':
-        return MaterialPageRoute(builder: (_) => LoginScreen());
-      case '/findEmail':
-        return MaterialPageRoute(builder: (_) => FindEmailScreen());
-      case '/findPassword':
-        return MaterialPageRoute(builder: (_) => FindPasswordScreen());
-      case '/signup':
-        return MaterialPageRoute(builder: (_) => SignUpScreen());
-      case '/signupAgree':
-        return MaterialPageRoute(builder: (_) => SignupAgreeScreen());
-      case '/notice':
-        return MaterialPageRoute(builder: (_) => NoticeScreen());
-      case '/qna':
-        return MaterialPageRoute(builder: (_) => QnaScreen());
-      case '/accountInfo':
-        return MaterialPageRoute(builder: (_) => AccountScreen());
-      case '/qnaCreate':
-        return MaterialPageRoute(builder: (_) => QnaCreateScreen());
-      case '/userinfo':
-        return MaterialPageRoute(builder: (_) => UserDetailScreen());
-      case '/searchProduct':
-        final args = settings.arguments as Map<String, String>?; // arguments 받기
-        print("검색어 전달 확인: ${args?['query']}"); // 검색어 로그 출력
-        return MaterialPageRoute(
-          builder: (context) => SearchProductScreen(
-            searchQuery: args?['query'] ?? '', // 검색어 전달
-          ),
-        );
-
-      case '/shoppingscreen':
-        return MaterialPageRoute(
-          builder: (context) {
-            // 전달된 arguments에서 카테고리 이름 가져오기
-            final category = settings.arguments as String? ?? '카테고리 없음';
-
-            // 카테고리 이름 출력
-
-            return ShoppingScreen(category: category); // 전달받은 카테고리를 ShoppingScreen으로 전달
-          },
-        );
-
-
-      case '/setting':
-        return MaterialPageRoute(builder: (_) => SettingScreen());
-      case '/terms':
-        return MaterialPageRoute(builder: (_) => TermsOfServicePage());
-
-      case '/privacy':
-        return MaterialPageRoute(builder: (_) => PrivacyScreen());
-      case '/cart':
-        return MaterialPageRoute(builder: (_) => CartDetailScreen());
-      case '/orderdetail':
-        return MaterialPageRoute(
-          builder: (context) => OrderDetailScreen(),
-        );
-
-      case '/order':
-        return MaterialPageRoute(
-          builder: (context) {
-            final arguments = settings.arguments as Map<String, dynamic>?;
-
-            if (arguments == null || arguments['items'] == null || arguments['items'].isEmpty) {
-              print('Error: Invalid arguments or items missing');
-              return Scaffold(
-                body: Center(
-                  child: Text('Invalid arguments passed to OrderScreen'),
-                ),
-              );
-            }
-
-            final firstItem = arguments['items'][0] as Map<String, dynamic>;
-            final productId = firstItem['productId'] ?? '';
-            final sizes = (firstItem['sizes'] as List<dynamic>)
-                .map((e) => e as Map<String, dynamic>)
-                .toList(); // 명시적으로 변환
-            final totalAmount = firstItem['totalPrice'] ?? 0;
-
-
-            return OrderScreen(
-              productId: productId,
-              sizes: sizes,
-              totalAmount: totalAmount,
-            );
-          },
-        );
-
-
-
-      default:
-        return MaterialPageRoute(builder: (_) => MainScreenWithFooter());
-    }
-  }
 
   Widget _determineInitialScreen() {
     return FutureBuilder<Widget>(
@@ -195,16 +126,7 @@ class MainScreenWithFooter extends StatefulWidget {
 
 class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
   int _currentIndex = 0;
-
   final PageController _pageController = PageController();
-
-  final List<Widget> _pages = [
-    MainScreen(),
-    QnaScreen(),
-    OrderDetailScreen(), // 로그인 화면을 추가하여 리디렉션 처리
-    ProfileScreen(),
-    LuckyBoxPurchasePage(),
-  ];
 
   void _onTabTapped(int index) {
     setState(() {
@@ -219,8 +141,22 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
     super.dispose();
   }
 
+  Future<void> _refresh() async {
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
+    // ✅ 여기서 pages 리스트를 빌드 타이밍에 생성
+    final List<Widget> pages = [
+      MainScreen(),
+      RankingScreen(),
+      OrderScreen(pageController: _pageController,
+        onTabChanged: _onTabTapped,),
+      ProfileScreen(),
+      LuckyBoxPurchasePage(),
+    ];
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -232,16 +168,12 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
               _currentIndex = index;
             });
           },
-          children: _pages,
+          children: pages,
         ),
       ),
-      bottomNavigationBar: Footer(onTabTapped: _onTabTapped, selectedIndex: _currentIndex),
+      bottomNavigationBar:
+      Footer(onTabTapped: _onTabTapped, selectedIndex: _currentIndex),
     );
   }
-
-  Future<void> _refresh() async {
-    setState(() {
-      // 필요한 상태를 업데이트합니다.
-    });
-  }
 }
+

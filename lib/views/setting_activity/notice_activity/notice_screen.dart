@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../controllers/notice_screen_controller.dart';
+import '../../../controllers/notice_screen_controller.dart';
 import 'notice_detail_screen.dart';
 
 class NoticeScreen extends StatefulWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../controllers/qna_controller.dart'; // QnaController 경로에 맞게 수정
+import '../../../controllers/qna_controller.dart'; // QnaController 경로에 맞게 수정
 
 class QnaCreateScreen extends StatefulWidget {
   @override

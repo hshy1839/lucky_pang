@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import '../../controllers/order_screen_controller.dart'; // OrderScreenController를 import
 import '../../controllers/product_controller.dart';
 
-class OrderScreen extends StatefulWidget {
+class aOrderScreen extends StatefulWidget {
   final String productId;
   final List<Map<String, dynamic>> sizes;
   final int totalAmount;
 
-  const OrderScreen({
+  const aOrderScreen({
     Key? key,
     required this.productId,
     required this.sizes,
@@ -17,10 +17,10 @@ class OrderScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _OrderScreenState createState() => _OrderScreenState();
+  _aOrderScreenState createState() => _aOrderScreenState();
 }
 
-class _OrderScreenState extends State<OrderScreen> {
+class _aOrderScreenState extends State<aOrderScreen> {
   Map<String, dynamic>? productInfo;
   bool isLoading = true;
   String? address; // 배송지 정보

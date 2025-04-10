@@ -1,8 +1,8 @@
-import 'package:attedance_app/views/main_activity/qna_detail_screen.dart';
+import 'package:attedance_app/views/setting_activity/QnA_activity/qna_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // 날짜 포맷용
-import '../../controllers/qna_controller.dart'; // QnaController 경로에 맞게 수정
-import 'notice_detail_screen.dart';
+import '../../../controllers/qna_controller.dart'; // QnaController 경로에 맞게 수정
+import '../notice_activity/notice_detail_screen.dart';
 
 class QnaScreen extends StatefulWidget {
   @override
