@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-class SignUpScreen extends StatefulWidget {
+import '../../controllers/login/signup_controller.dart';
+
+class SignUpScreen extends StatelessWidget {
   const SignUpScreen({super.key});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
-}
-
-class _SignUpScreenState extends State<SignUpScreen> {
-  final TextEditingController nicknameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
-  final TextEditingController recommendCodeController = TextEditingController();
-
-  bool eventAgree = false;
-
-  @override
   Widget build(BuildContext context) {
+    final signupController = Provider.of<SignupController>(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -28,47 +20,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 36),
-              _buildInputWithButton('닉네임 (2~8자)', nicknameController, '중복검사'),
-              const SizedBox(height: 36),
-              _buildInputWithButton('이메일', emailController, '중복검사'),
-              const SizedBox(height: 36),
-              _buildTextField('비밀번호 (8~16자, 영문, 숫자, 특수문자 포함)', passwordController, obscureText: true),
-              const SizedBox(height: 36),
-              _buildTextField('비밀번호 확인', confirmPasswordController, obscureText: true),
-              const SizedBox(height: 36),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text('휴대폰 인증', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
+              _buildInputWithButton(
+                context,
+                '닉네임 (2~8자)',
+                signupController.nicknameController,
+                '중복검사',
+                    () => signupController.checkNicknameDuplicate(context),
               ),
-              const SizedBox(height: 30),
-              _buildInputWithButton('추천인코드 입력', recommendCodeController, '코드확인'),
+
+              const SizedBox(height: 36),
+              _buildInputWithButton(
+                context,
+                '이메일',
+                signupController.emailController,
+                '중복검사',
+                    () => signupController.checkEmailDuplicate(context),
+              ),
+              const SizedBox(height: 36),
+              _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
+              const SizedBox(height: 36),
+              _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
+              const SizedBox(height: 36),
+              _buildTextField('휴대폰 번호', signupController.phoneController),
+              const SizedBox(height: 36),
+              _buildInputWithButton(
+                context,
+                '추천인 코드',
+                signupController.referralCodeController,
+                '코드확인',
+                    () => signupController.checkReferralCode(context),
+              ),
               const SizedBox(height: 60),
               Row(
                 children: [
-                  Checkbox(
-                    value: eventAgree,
-                    onChanged: (value) => setState(() => eventAgree = value ?? false),
-                    activeColor: Theme.of(context).primaryColor,
-                    checkColor: Colors.white,
+                  Transform.scale(
+                    scale: 0.8,
+                    child: Checkbox(
+                      value: false,
+                      onChanged: (_) {},
+                      activeColor: Theme.of(context).primaryColor,
+                      checkColor: Colors.white,
+                    ),
                   ),
-                  const Text('이벤트 정보 받아보기 (선택)')
+                  const Text('이벤트 정보 받아보기 (선택)', style: TextStyle(fontSize: 12)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -81,7 +80,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () => signupController.submitData(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -97,7 +96,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildInputWithButton(String hint, TextEditingController controller, String buttonText) {
+  Widget _buildInputWithButton(BuildContext context, String hint, TextEditingController controller, String buttonText, VoidCallback onPressed) {
     return Row(
       children: [
         Expanded(
@@ -106,13 +105,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-              enabledBorder:  UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
               focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
             ),
           ),
         ),
         ElevatedButton(
-          onPressed: () {},
+          onPressed: onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).primaryColor,
             minimumSize: const Size(80, 36),
@@ -124,6 +123,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ],
     );
   }
+
 
   Widget _buildTextField(String hint, TextEditingController controller, {bool obscureText = false}) {
     return TextField(

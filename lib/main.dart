@@ -23,6 +23,7 @@ import 'package:attedance_app/views/setting_activity/setting_screen.dart';
 import 'package:attedance_app/views/setting_activity/terms_screen.dart';
 import 'package:attedance_app/views/shopping_screen/shopping_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 
@@ -33,20 +34,28 @@ import 'package:attedance_app/views/main_activity/main_screen.dart';
 import 'package:attedance_app/views/setting_activity/notice_activity/notice_screen.dart';
 import 'package:attedance_app/views/profile_activity/profile_screen.dart';
 import 'package:attedance_app/views/main_activity/2order_detail_screen.dart';
+import 'controllers/login/signup_controller.dart';
 import 'footer.dart';
 import 'views/order_activity/order_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 상태바 흰색 배경 + 검정 아이콘
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent, // ✅ 상태바 배경을 흰색으로
-    statusBarIconBrightness: Brightness.dark, // ✅ 아이콘을 검정색으로
-    statusBarBrightness: Brightness.light, // iOS용
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
   ));
 
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SignupController()),
+        // 필요한 Provider 더 추가 가능
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 

@@ -179,7 +179,7 @@ class _MainScreenState extends State<MainScreen> {
 
           // 5,000원 박스
           SliverToBoxAdapter(
-            child: SizedBox(height: 80),
+            child: SizedBox(height: 20),
           ),
           SliverToBoxAdapter(
             child: _buildCategoryHeader('5,000원 박스', context),

@@ -50,7 +50,7 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
       appBar: AppBar(
         title: Text(
           widget.category,
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.white,
         leading: IconButton(
@@ -75,9 +75,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         child: GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1,
+            crossAxisSpacing: 5,
+            mainAxisSpacing: 5,
+            childAspectRatio: 0.7,
           ),
           itemCount: filteredProducts.length,
           itemBuilder: (context, index) {
@@ -95,17 +95,17 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                 );
               },
               child: Card(
-                elevation: 2,
+                elevation: 5,
                 color: Colors.white, // 백그라운드 색상 흰색으로 설정
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: ClipRRect(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
                         child: Image.network(
                           product['mainImageUrl'] ?? '',
                           fit: BoxFit.cover,

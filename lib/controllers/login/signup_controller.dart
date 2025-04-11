@@ -2,62 +2,119 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../views/login_activity/login.dart';
+import '../userinfo_screen_controller.dart';
 
 class SignupController extends ChangeNotifier {
-  final nameController = TextEditingController();
-  final usernameController = TextEditingController();
+  final nicknameController = TextEditingController();
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+  final referralCodeController = TextEditingController();
   final phoneController = TextEditingController();
 
   String errorMessage = '';
 
-  Future<void> submitData(BuildContext context) async {
+  Future<void> checkNicknameDuplicate(BuildContext context) async {
+    final nickname = nicknameController.text.trim();
 
-    if (nameController.text.isEmpty ||
-        usernameController.text.isEmpty ||
+    if (nickname.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('닉네임을 입력해주세요.')));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('http://172.30.1.42:7778/api/users/check-duplicate'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'nickname': nickname}),
+    );
+
+    final data = jsonDecode(response.body);
+    final exists = data['exists'] == true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(exists ? '이미 사용 중인 닉네임입니다.' : '사용 가능한 닉네임입니다.')),
+    );
+  }
+
+  Future<void> checkEmailDuplicate(BuildContext context) async {
+    final email = emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('닉네임을 입력해주세요.')));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('http://172.30.1.42:7778/api/users/check-duplicate'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    final data = jsonDecode(response.body);
+    final exists = data['exists'] == true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(exists ? '이미 사용 중인 이메일입니다.' : '사용 가능한 이메일입니다.')),
+    );
+  }
+
+  Future<void> checkReferralCode(BuildContext context) async {
+    final referralCode = referralCodeController.text.trim();
+
+    if (referralCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('닉네임을 입력해주세요.')));
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('http://172.30.1.42:7778/api/users/check-referral'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'referralCode': referralCode}),
+    );
+
+    final data = jsonDecode(response.body);
+    final exists = data['exists'] == true;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(exists ? '사용 가능한 코드 입니다.' : '사용 불가능한 코드입니다.')),
+    );
+  }
+
+
+  Future<void> submitData(BuildContext context) async {
+    if (nicknameController.text.isEmpty ||
+        emailController.text.isEmpty ||
         passwordController.text.isEmpty ||
-        confirmPasswordController.text.isEmpty ||
-        phoneController.text.isEmpty)
-         {
+        confirmPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('칸을 모두 채워주세요'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('모든 항목을 입력해주세요'), backgroundColor: Colors.red),
       );
       return;
     }
-    // 비밀번호와 비밀번호 확인 비교
+
     if (passwordController.text != confirmPasswordController.text) {
-      errorMessage = '비밀번호와 비밀번호 확인이 일치하지 않습니다.';
-      notifyListeners();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('비밀번호가 일치하지 않습니다.'), backgroundColor: Colors.red),
+      );
       return;
     }
 
     final response = await http.post(
       Uri.parse('http://172.30.1.42:7778/api/users/signup'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, Object>{
-        'name': nameController.text,
-        'username': usernameController.text,
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({
+        'email': emailController.text,
+        'nickname': nicknameController.text,
         'password': passwordController.text,
         'phoneNumber': phoneController.text,
+        'referralCode': referralCodeController.text,
         'is_active': true,
       }),
     );
 
-    // 서버 응답 처리
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('회원가입 성공')),
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('회원가입 성공')));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
     } else {
       final responseData = jsonDecode(response.body);
       errorMessage = responseData['message'] ?? '회원가입 실패';
@@ -65,14 +122,15 @@ class SignupController extends ChangeNotifier {
     }
   }
 
-
   @override
   void dispose() {
-    nameController.dispose();
-    usernameController.dispose();
+    nicknameController.dispose();
+    emailController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     phoneController.dispose();
+    referralCodeController.dispose();
     super.dispose();
   }
 }
+

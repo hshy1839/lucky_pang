@@ -1,3 +1,4 @@
+import 'package:attedance_app/main.dart';
 import 'package:flutter/material.dart';
 import '../views/login_activity/login.dart';
 import '../views/login_activity/signup.dart';
@@ -29,6 +30,7 @@ import '../views/shopping_screen/shopping_screen.dart';
 
 class AppRoutes {
   static Map<String, WidgetBuilder> get routes => {
+    '/main': (_) => MainScreenWithFooter(),
     '/login': (_) => LoginScreen(),
     '/signup': (_) => SignUpScreen(),
     '/signupAgree': (_) => SignupAgreeScreen(),

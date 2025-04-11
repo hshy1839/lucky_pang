@@ -23,8 +23,8 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   Future<void> _loadUserData() async {
     await _userInfoController.fetchUserInfo(context);
     setState(() {
-      nameController.text = _userInfoController.name;
-      usernameController.text = _userInfoController.username;
+      nameController.text = _userInfoController.nickname;
+      usernameController.text = _userInfoController.email;
       phoneNumberController.text = _userInfoController.phoneNumber;
     });
   }

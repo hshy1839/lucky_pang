@@ -4,9 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 class UserInfoScreenController {
-  String name = "";
-  String username = "";
+  String nickname = "";
+  String email = "";
   String phoneNumber = "";
+  String referralCode = "";
+
+
 
   // 사용자 정보 가져오기
   Future<void> fetchUserInfo(BuildContext context) async {
@@ -33,9 +36,10 @@ class UserInfoScreenController {
 
         if (data['success'] == true && data['user'] != null) {
           final user = data['user'];
-          name = user['name'] ?? '';
-          username = user['username'] ?? ''; // username은 읽기 전용
+          nickname = user['nickname'] ?? '';
+          email = user['email'] ?? ''; // username은 읽기 전용
           phoneNumber = user['phoneNumber'] ?? '';
+          referralCode = user['referrelCode'] ?? '';
         } else {
           throw Exception('사용자 정보를 불러올 수 없습니다.');
         }
@@ -78,7 +82,7 @@ class UserInfoScreenController {
         final data = json.decode(response.body);
 
         if (data['success'] == true) {
-          name = updatedName;
+          nickname = updatedName;
           phoneNumber = updatedPhoneNumber;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('사용자 정보가 성공적으로 업데이트되었습니다.')),
