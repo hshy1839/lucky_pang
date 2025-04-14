@@ -53,7 +53,7 @@ class LoginController {
           TextButton(
             child: Text('확인', style: TextStyle(color: Colors.blueAccent)),
             onPressed: () {
-              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
             },
           ),
         ],

@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../controllers/login/signup_controller.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  bool eventOptIn = false; // ✅ 이벤트 정보 수신 여부
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +19,8 @@ class SignUpScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('회원가입', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text('회원가입',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
@@ -32,9 +39,8 @@ class SignUpScreen extends StatelessWidget {
                 '중복검사',
                     () => signupController.checkNicknameDuplicate(context),
                 errorText: signupController.nicknameError,
-                isButtonEnabled: !signupController.nicknameChecked, // ✅
+                isButtonEnabled: !signupController.nicknameChecked,
               ),
-
               const SizedBox(height: 36),
               _buildInputWithButton(
                 context,
@@ -43,12 +49,15 @@ class SignUpScreen extends StatelessWidget {
                 '중복검사',
                     () => signupController.checkEmailDuplicate(context),
                 errorText: signupController.emailError,
-                isButtonEnabled: !signupController.emailChecked, // ✅
+                isButtonEnabled: !signupController.emailChecked,
               ),
               const SizedBox(height: 36),
-              _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
+              _buildTextField('비밀번호', signupController.passwordController,
+                  obscureText: true),
               const SizedBox(height: 36),
-              _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
+              _buildTextField('비밀번호 확인',
+                  signupController.confirmPasswordController,
+                  obscureText: true),
               const SizedBox(height: 36),
               _buildTextField('휴대폰 번호', signupController.phoneController),
               const SizedBox(height: 36),
@@ -59,7 +68,7 @@ class SignUpScreen extends StatelessWidget {
                 '코드확인',
                     () => signupController.checkReferralCode(context),
                 errorText: signupController.referralCodeError,
-                isButtonEnabled: !signupController.referralCodeChecked, // ✅
+                isButtonEnabled: !signupController.referralCodeChecked,
               ),
               const SizedBox(height: 60),
               Row(
@@ -67,13 +76,19 @@ class SignUpScreen extends StatelessWidget {
                   Transform.scale(
                     scale: 0.8,
                     child: Checkbox(
-                      value: false,
-                      onChanged: (_) {},
+                      value: eventOptIn,
+                      onChanged: (value) {
+                        setState(() {
+                          eventOptIn = value ?? false;
+                        });
+                        signupController.eventAgree = value ?? false; // ✅ 동기화
+                      },
                       activeColor: Theme.of(context).primaryColor,
                       checkColor: Colors.white,
                     ),
                   ),
-                  const Text('이벤트 정보 받아보기 (선택)', style: TextStyle(fontSize: 12)),
+                  const Text('이벤트 정보 받아보기 (선택)',
+                      style: TextStyle(fontSize: 12)),
                 ],
               ),
               const SizedBox(height: 4),
@@ -89,9 +104,14 @@ class SignUpScreen extends StatelessWidget {
                   onPressed: () => signupController.submitData(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28)),
                   ),
-                  child: const Text('가입완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text('가입완료',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 20),
@@ -111,9 +131,8 @@ class SignUpScreen extends StatelessWidget {
         String? errorText,
         bool isButtonEnabled = true,
       }) {
-    final Color buttonColor = isButtonEnabled
-        ? Theme.of(context).primaryColor
-        : Colors.grey;
+    final Color buttonColor =
+    isButtonEnabled ? Theme.of(context).primaryColor : Colors.grey;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,9 +144,12 @@ class SignUpScreen extends StatelessWidget {
                 controller: controller,
                 decoration: InputDecoration(
                   hintText: hint,
-                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
+                  hintStyle:
+                  const TextStyle(color: Colors.grey, fontSize: 12),
+                  enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey[200]!)),
+                  focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey[200]!)),
                 ),
               ),
             ),
@@ -137,32 +159,36 @@ class SignUpScreen extends StatelessWidget {
                 backgroundColor: buttonColor,
                 minimumSize: const Size(80, 36),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
-              child: Text(buttonText, style: const TextStyle(color: Colors.white)),
+              child:
+              Text(buttonText, style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
         if (errorText != null && errorText.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4, left: 4),
-            child: Text(errorText, style: const TextStyle(color: Colors.red, fontSize: 12)),
+            child: Text(errorText,
+                style: const TextStyle(color: Colors.red, fontSize: 12)),
           ),
       ],
     );
   }
 
-
-
-  Widget _buildTextField(String hint, TextEditingController controller, {bool obscureText = false}) {
+  Widget _buildTextField(String hint, TextEditingController controller,
+      {bool obscureText = false}) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
-        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
+        enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey[200]!)),
+        focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.grey[200]!)),
       ),
     );
   }

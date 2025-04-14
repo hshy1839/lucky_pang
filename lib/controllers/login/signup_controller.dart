@@ -12,7 +12,7 @@ class SignupController extends ChangeNotifier {
   final phoneController = TextEditingController();
   final referralCodeController = TextEditingController();
 
-
+  bool eventAgree = false;
   String referralCodeError = '';
   bool referralCodeChecked = false;
 
@@ -115,7 +115,12 @@ class SignupController extends ChangeNotifier {
   }
 
 
-Future<void> submitData(BuildContext context) async {
+  Future<void> submitData(BuildContext context) async {
+    print('닉네임: ${nicknameController.text}, 닉네임확인여부: $nicknameChecked');
+    print('이메일: ${emailController.text}, 이메일확인여부: $emailChecked');
+    print('추천인코드: ${referralCodeController.text}, 코드확인여부: $referralCodeChecked');
+
+
     if (nicknameController.text.isEmpty ||
         emailController.text.isEmpty ||
         passwordController.text.isEmpty ||
@@ -126,6 +131,7 @@ Future<void> submitData(BuildContext context) async {
       return;
     }
 
+    // 닉네임, 이메일 중복확인 필수
     if (!nicknameChecked || !emailChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('닉네임과 이메일 중복확인을 완료해주세요.'), backgroundColor: Colors.red),
@@ -133,6 +139,15 @@ Future<void> submitData(BuildContext context) async {
       return;
     }
 
+    // 추천인 코드가 입력되어 있는데 중복검사를 안 한 경우
+    if (referralCodeController.text.isNotEmpty && !referralCodeChecked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('추천인 코드를 확인해주세요.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    // 비밀번호 확인
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.'), backgroundColor: Colors.red),
@@ -140,17 +155,25 @@ Future<void> submitData(BuildContext context) async {
       return;
     }
 
+    // 요청 데이터 구성
+    final body = {
+      'email': emailController.text.trim(),
+      'nickname': nicknameController.text.trim(),
+      'password': passwordController.text,
+      'phoneNumber': phoneController.text.trim(),
+      'is_active': true,
+      'eventAgree': eventAgree,
+    };
+
+    // 추천인 코드가 있고, 확인까지 완료되었을 경우에만 포함
+    if (referralCodeController.text.isNotEmpty && referralCodeChecked) {
+      body['referralCode'] = referralCodeController.text.trim();
+    }
+
     final response = await http.post(
-      Uri.parse('http://172.30.1.42:7778/api/users/signup'),
+      Uri.parse('http://172.30.1.22:7778/api/users/signup'),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
-      body: jsonEncode({
-        'email': emailController.text,
-        'nickname': nicknameController.text,
-        'password': passwordController.text,
-        'phoneNumber': phoneController.text,
-        'referralCode': referralCodeController.text,
-        'is_active': true,
-      }),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
@@ -162,6 +185,7 @@ Future<void> submitData(BuildContext context) async {
       notifyListeners();
     }
   }
+
 
   @override
   void dispose() {
