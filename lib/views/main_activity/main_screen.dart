@@ -3,6 +3,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../controllers/main_screen_controller.dart';
 import '../../controllers/notice_screen_controller.dart';
 import '../../footer.dart';
@@ -16,7 +17,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   List<Map<String, String>> products = [];
-  List<String> ads = [];
+  List<Map<String, dynamic>> ads = [];
 
   ScrollController _scrollController = ScrollController();
   bool _isHeaderVisible = true;
@@ -42,16 +43,19 @@ class _MainScreenState extends State<MainScreen> {
     return formatter.format(int.parse(price));
   }
 
+
   Future<void> _loadAds() async {
     try {
       MainScreenController controller = MainScreenController();
       List<Map<String, dynamic>> promotions = await controller.getPromotions();
+
       setState(() {
-        ads = promotions
-            .map((promotion) => promotion['promotionImageUrl'] ?? '')
-            .where((url) => url.isNotEmpty)
-            .toList()
-            .cast<String>(); // 🔥 이렇게!st<String>() 대신 toList()
+        ads = promotions.where((promotion) => promotion['promotionImageUrl'] != '')
+            .map((promotion) => {
+          'image': promotion['promotionImageUrl'] ?? '',
+          'link': promotion['link'] ?? '',
+        })
+            .toList();
       });
     } catch (e) {
       print('광고 로딩 오류: $e');
@@ -155,13 +159,25 @@ class _MainScreenState extends State<MainScreen> {
           SliverToBoxAdapter(
             child: ads.isNotEmpty
                 ? CarouselSlider(
-              items: ads.map((url) {
-                return Container(
-                  width: MediaQuery.of(context).size.width,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(url),
-                      fit: BoxFit.cover,
+              items: ads.map((ad) {
+                final imageUrl = ad['image']!;
+                final linkUrl = ad['link']!;
+
+                return GestureDetector(
+                  onTap: () async {
+                    if (await canLaunchUrl(Uri.parse(linkUrl))) {
+                      await launchUrl(Uri.parse(linkUrl), mode: LaunchMode.externalApplication);
+                    } else {
+                      print('링크 열기 실패: $linkUrl');
+                    }
+                  },
+                  child: Container(
+                    width: MediaQuery.of(context).size.width,
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: NetworkImage(imageUrl),
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 );

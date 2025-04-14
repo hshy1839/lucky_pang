@@ -105,6 +105,7 @@ class MainScreenController extends ChangeNotifier {
             return {
               'id': promotionMap['_id'] ?? '',
               'name': promotionMap['name']?.toString() ?? '',
+              'link': promotionMap['link']?.toString() ?? '',
               'promotionImageUrl': promotionImage != null && promotionImage.isNotEmpty
                   ? '$serverUrl${promotionImage[0]}'
                   : '', // 이미지 URL 생성
