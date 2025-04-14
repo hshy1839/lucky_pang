@@ -31,6 +31,8 @@ class SignUpScreen extends StatelessWidget {
                 signupController.nicknameController,
                 '중복검사',
                     () => signupController.checkNicknameDuplicate(context),
+                errorText: signupController.nicknameError,
+                isButtonEnabled: !signupController.nicknameChecked, // ✅
               ),
 
               const SizedBox(height: 36),
@@ -40,6 +42,8 @@ class SignUpScreen extends StatelessWidget {
                 signupController.emailController,
                 '중복검사',
                     () => signupController.checkEmailDuplicate(context),
+                errorText: signupController.emailError,
+                isButtonEnabled: !signupController.emailChecked, // ✅
               ),
               const SizedBox(height: 36),
               _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
@@ -54,6 +58,8 @@ class SignUpScreen extends StatelessWidget {
                 signupController.referralCodeController,
                 '코드확인',
                     () => signupController.checkReferralCode(context),
+                errorText: signupController.referralCodeError,
+                isButtonEnabled: !signupController.referralCodeChecked, // ✅
               ),
               const SizedBox(height: 60),
               Row(
@@ -96,33 +102,56 @@ class SignUpScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInputWithButton(BuildContext context, String hint, TextEditingController controller, String buttonText, VoidCallback onPressed) {
-    return Row(
+  Widget _buildInputWithButton(
+      BuildContext context,
+      String hint,
+      TextEditingController controller,
+      String buttonText,
+      VoidCallback onPressed, {
+        String? errorText,
+        bool isButtonEnabled = true,
+      }) {
+    final Color buttonColor = isButtonEnabled
+        ? Theme.of(context).primaryColor
+        : Colors.grey;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
+                ),
+              ),
             ),
-          ),
+            ElevatedButton(
+              onPressed: isButtonEnabled ? onPressed : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: buttonColor,
+                minimumSize: const Size(80, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text(buttonText, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
-        ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor,
-            minimumSize: const Size(80, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        if (errorText != null && errorText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(errorText, style: const TextStyle(color: Colors.red, fontSize: 12)),
           ),
-          child: Text(buttonText, style: const TextStyle(color: Colors.white)),
-        ),
       ],
     );
   }
+
 
 
   Widget _buildTextField(String hint, TextEditingController controller, {bool obscureText = false}) {

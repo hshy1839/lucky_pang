@@ -22,7 +22,7 @@ class MainScreenController extends ChangeNotifier {
     final token = prefs.getString('token');
     final currentDate = DateTime.utc(DateTime.now().year, DateTime.now().month, DateTime.now().day).toIso8601String();
 
-    final url = 'http://172.30.1.42:7778/api/users/noticeList/find';
+    final url = 'http://172.30.1.22:7778/api/users/noticeList/find';
     final headers = {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -82,7 +82,7 @@ class MainScreenController extends ChangeNotifier {
       }
 
       final response = await http.get(
-        Uri.parse('http://172.30.1.42:7778/api/promotion/read'),
+        Uri.parse('http://172.30.1.22:7778/api/promotion/read'),
         headers: {
           'Authorization': 'Bearer $token', // Bearer 토큰 추가
         },
@@ -95,7 +95,7 @@ class MainScreenController extends ChangeNotifier {
         if (decodedResponse is Map<String, dynamic> &&
             decodedResponse['promotions'] is List<dynamic>) {
           final promotions = decodedResponse['promotions'] as List<dynamic>;
-          const serverUrl = 'http://172.30.1.42:7778';
+          const serverUrl = 'http://172.30.1.22:7778';
 
           // 프로모션 리스트 처리
           return promotions.map((promotion) {

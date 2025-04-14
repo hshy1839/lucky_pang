@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class ProductController {
-  final String baseUrl = 'http://172.30.1.42:7778';
+  final String baseUrl = 'http://172.30.1.22:7778';
 
   Future<List<Map<String, String>>> fetchProducts() async {
     try {
