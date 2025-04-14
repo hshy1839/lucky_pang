@@ -1,11 +1,31 @@
-// ProfileScreen.dart 완전 이미지 동일 UI로 재작성
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../controllers/userinfo_screen_controller.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final UserInfoScreenController _controller = UserInfoScreenController();
+  String nickname = '불러오는 중...';
+
+  @override
+  void initState() {
+    super.initState();
+    loadUserInfo();
+  }
+
+  Future<void> loadUserInfo() async {
+    await _controller.fetchUserInfo(context);
+    setState(() {
+      nickname = _controller.nickname;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +37,6 @@ class ProfileScreen extends StatelessWidget {
         title: const Text('MY PAGE', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         centerTitle: true,
-
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.grey),
@@ -37,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
               CircleAvatar(
                 radius: 60.r,
                 backgroundColor: Colors.grey.shade300,
-                backgroundImage: AssetImage('assets/images/profile_placeholder.jpg'),
+                backgroundImage: const AssetImage('assets/images/profile_placeholder.jpg'),
               ),
               Positioned(
                 bottom: 0,
@@ -47,7 +66,7 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
           SizedBox(height: 20.h),
-          Text('와딩', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+          Text(nickname, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
           SizedBox(height: 8.h),
           Column(
             children: [
@@ -70,11 +89,11 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             child: ListView(
               children: [
-                _buildListItem('내 포인트 내역', onTap: () {Navigator.pushNamed(context, '/pointInfo');}),
-                _buildListItem('배송지 관리', onTap: () {Navigator.pushNamed(context, '/shippingInfo');}),
-                _buildListItem('친구 초대하기', onTap: () {Navigator.pushNamed(context, '/recommend');}),
-                _buildListItem('선물코드 입력', onTap: () {Navigator.pushNamed(context, '/giftCode');}),
-                _buildListItem('쿠폰코드 입력', onTap: () {Navigator.pushNamed(context, '/couponCode');}),
+                _buildListItem('내 포인트 내역', onTap: () => Navigator.pushNamed(context, '/pointInfo')),
+                _buildListItem('배송지 관리', onTap: () => Navigator.pushNamed(context, '/shippingInfo')),
+                _buildListItem('친구 초대하기', onTap: () => Navigator.pushNamed(context, '/recommend')),
+                _buildListItem('선물코드 입력', onTap: () => Navigator.pushNamed(context, '/giftCode')),
+                _buildListItem('쿠폰코드 입력', onTap: () => Navigator.pushNamed(context, '/couponCode')),
                 SizedBox(height: 16.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -82,15 +101,17 @@ class ProfileScreen extends StatelessWidget {
                     TextButton(
                       onPressed: () async {
                         final prefs = await SharedPreferences.getInstance();
-                        await prefs.remove('token');        // 토큰 삭제
-                        await prefs.remove('isLoggedIn');   // 로그인 상태 삭제
-
-                        // 로그인 화면으로 이동, 이전 페이지 스택 모두 제거
+                        await prefs.remove('token');
+                        await prefs.remove('isLoggedIn');
                         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
                       },
-                      child: Text('로그아웃', style: TextStyle(color: Colors.black)),
-                    ),  SizedBox(width: 20.w),
-                    TextButton(onPressed: () {}, child: Text('회원탈퇴', style: TextStyle(color: Colors.black)))
+                      child: const Text('로그아웃', style: TextStyle(color: Colors.black)),
+                    ),
+                    SizedBox(width: 20.w),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text('회원탈퇴', style: TextStyle(color: Colors.black)),
+                    ),
                   ],
                 ),
                 SizedBox(height: 100.h),
@@ -123,8 +144,8 @@ class ProfileScreen extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
           onTap: onTap,
         ),
         Divider(thickness: 1, color: Colors.grey.shade300),
