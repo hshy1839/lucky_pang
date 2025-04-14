@@ -2,9 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../controllers/userinfo_screen_controller.dart';
 
-class FriendsRecommendScreen extends StatelessWidget {
-  final String inviteCode = 'RECZM6'; // 예시 코드
+class FriendsRecommendScreen extends StatefulWidget {
+  @override
+  State<FriendsRecommendScreen> createState() => _FriendsRecommendScreenState();
+}
+
+class _FriendsRecommendScreenState extends State<FriendsRecommendScreen> {
+  final UserInfoScreenController _controller = UserInfoScreenController();
+  String referralCode = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchReferralCode();
+  }
+
+  Future<void> fetchReferralCode() async {
+    await _controller.fetchUserInfo(context);
+    setState(() {
+      referralCode = _controller.referralCode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +43,7 @@ class FriendsRecommendScreen extends StatelessWidget {
         children: [
           SizedBox(height: 40.h),
           Image.asset(
-            'assets/icons/friend_invite_icon.png', // 해당 이모지 이미지 경로
+            'assets/icons/friend_invite_icon.png',
             width: 120.w,
             height: 120.w,
           ),
@@ -49,7 +69,7 @@ class FriendsRecommendScreen extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              inviteCode,
+              referralCode.isNotEmpty ? referralCode : '불러오는 중...',
               style: TextStyle(
                 fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
@@ -66,12 +86,12 @@ class FriendsRecommendScreen extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Share.share(
-                          '내 친구코드: $inviteCode\n앱 다운로드하고 500P 받아봐!');
+                          '내 친구코드: $referralCode\n앱 다운로드하고 500P 받아봐!');
                     },
                     child: Column(
                       children: [
                         Image.asset(
-                          'assets/icons/kakao_icon.png', // 카카오톡 아이콘
+                          'assets/icons/kakao_icon.png',
                           width: 60.w,
                           height: 60.w,
                         ),
@@ -88,7 +108,7 @@ class FriendsRecommendScreen extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      Clipboard.setData(ClipboardData(text: inviteCode));
+                      Clipboard.setData(ClipboardData(text: referralCode));
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text('친구코드가 복사되었습니다.'),
                       ));
@@ -96,7 +116,7 @@ class FriendsRecommendScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         Image.asset(
-                          'assets/icons/copy_icon.png', // 복사 아이콘
+                          'assets/icons/copy_icon.png',
                           width: 60.w,
                           height: 60.w,
                         ),

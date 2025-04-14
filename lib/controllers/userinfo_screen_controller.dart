@@ -24,7 +24,7 @@ class UserInfoScreenController {
 
       // 서버 요청
       final response = await http.get(
-        Uri.parse('http://172.30.1.42:7778/api/users/userinfoget'), // 서버 주소에 맞게 수정
+        Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'), // 서버 주소에 맞게 수정
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // SharedPreferences에서 가져온 토큰 사용
@@ -37,9 +37,9 @@ class UserInfoScreenController {
         if (data['success'] == true && data['user'] != null) {
           final user = data['user'];
           nickname = user['nickname'] ?? '';
-          email = user['email'] ?? ''; // username은 읽기 전용
+          email = user['email'] ?? '';
           phoneNumber = user['phoneNumber'] ?? '';
-          referralCode = user['referrelCode'] ?? '';
+          referralCode = user['referralCode'] ?? '';
         } else {
           throw Exception('사용자 정보를 불러올 수 없습니다.');
         }
@@ -67,7 +67,7 @@ class UserInfoScreenController {
 
       // 서버 요청
       final response = await http.put(
-        Uri.parse('http://172.30.1.42:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
+        Uri.parse('http://172.30.1.22:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // SharedPreferences에서 가져온 토큰 사용

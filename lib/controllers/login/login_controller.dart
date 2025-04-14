@@ -8,13 +8,13 @@ class LoginController {
 
   LoginController(this.context);
 
-  Future<void> login(String username, String password) async {
-    final url = Uri.parse('http://3.36.70.200:7777/api/users/login');
+  Future<void> login(String email, String password) async {
+    final url = Uri.parse('http://172.30.1.22:7778/api/users/login');
 
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'username': username, 'password': password}),
+      body: jsonEncode({'email': email, 'password': password}),
     );
 
     if (response.statusCode == 200) {
