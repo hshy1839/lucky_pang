@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../controllers/point_controller.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LuckyBoxPurchasePage extends StatefulWidget {
   @override
@@ -8,17 +10,61 @@ class LuckyBoxPurchasePage extends StatefulWidget {
 class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   String selectedBox = '5000';
   int quantity = 1;
+  int availablePoints = 0;
   int pointsUsed = 0;
   String paymentMethod = '';
   bool allAgreed = false;
   bool purchaseConfirmed = false;
   bool refundPolicyAgreed = false;
 
-  int get totalAmount => (selectedBox == '5000' ? 5000 : 10000) * quantity - pointsUsed;
+  final pointController = PointController();
+  final storage = FlutterSecureStorage();
+  final TextEditingController pointsController = TextEditingController();
+
+  int get boxPrice => selectedBox == '5000' ? 5000 : 10000;
+
+  int get price => (boxPrice * quantity).clamp(0, double.infinity).toInt();
+  int get totalAmount {
+    final calculated = price - pointsUsed;
+    return calculated < 0 ? 0 : calculated;
+  }
+  @override
+  void initState() {
+    super.initState();
+    loadUserPoints();
+  }
+
+  void loadUserPoints() async {
+    final userId = await storage.read(key: 'userId');
+    if (userId == null) {
+      print('userId not found in secure storage');
+      return;
+    }
+
+    int fetchedPoints = await pointController.fetchUserTotalPoints(userId);
+    setState(() {
+      availablePoints = fetchedPoints;
+      pointsUsed = 0;
+      pointsController.text = '0';
+    });
+  }
 
   void changeQuantity(int change) {
     setState(() {
       quantity = (quantity + change).clamp(1, 999);
+    });
+  }
+
+  void applyMaxUsablePoints() {
+    final maxUsable = boxPrice * quantity;
+
+    setState(() {
+      if (availablePoints >= maxUsable) {
+        pointsUsed = maxUsable;
+      } else {
+        pointsUsed = availablePoints;
+      }
+      pointsController.text = pointsUsed.toString();
     });
   }
 
@@ -29,9 +75,8 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         title: Text('럭키박스 구매',
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         centerTitle: true,
-
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -70,23 +115,38 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                   ),
                   Row(
                     children: [
-                      IconButton(onPressed: () => changeQuantity(-1), icon: Icon(Icons.remove)),
+                      IconButton(
+                          onPressed: () => changeQuantity(-1),
+                          icon: Icon(Icons.remove)),
                       Text(quantity.toString()),
-                      IconButton(onPressed: () => changeQuantity(1), icon: Icon(Icons.add)),
+                      IconButton(
+                          onPressed: () => changeQuantity(1),
+                          icon: Icon(Icons.add)),
                     ],
                   ),
                 ],
               ),
               SizedBox(height: 20),
-              Text('포인트 사용 : $pointsUsed P',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),),
+              Text(
+                '상품 금액  \t  ${price.toString()}원',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 20),
+              Text('보유 포인트 : $availablePoints P',
+                  style: TextStyle(
+                      color: Colors.black, fontWeight: FontWeight.w500)),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
+                      controller: pointsController,
                       keyboardType: TextInputType.number,
                       onChanged: (val) {
-                        setState(() => pointsUsed = int.tryParse(val) ?? 0);
+                        int input = int.tryParse(val) ?? 0;
+                        setState(() {
+                          pointsUsed =
+                          input > availablePoints ? availablePoints : input;
+                        });
                       },
                       decoration: InputDecoration(
                         hintText: '0',
@@ -96,7 +156,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                   ),
                   SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: () => setState(() => pointsUsed = 1000), // 예시
+                    onPressed: applyMaxUsablePoints,
                     child: Text('전액사용'),
                   ),
                 ],
@@ -120,12 +180,14 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
               CheckboxListTile(
                 title: Text('구매 확인 동의'),
                 value: purchaseConfirmed,
-                onChanged: (val) => setState(() => purchaseConfirmed = val ?? false),
+                onChanged: (val) =>
+                    setState(() => purchaseConfirmed = val ?? false),
               ),
               CheckboxListTile(
                 title: Text('교환/환불 정책 동의'),
                 value: refundPolicyAgreed,
-                onChanged: (val) => setState(() => refundPolicyAgreed = val ?? false),
+                onChanged: (val) =>
+                    setState(() => refundPolicyAgreed = val ?? false),
               ),
               SizedBox(height: 20),
               Text(
@@ -139,7 +201,47 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                   minimumSize: Size(double.infinity, 50),
                 ),
                 onPressed: () {
-                  // 결제 로직 작성
+                  if (!allAgreed || !purchaseConfirmed || !refundPolicyAgreed) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+
+                        backgroundColor: Colors.white,
+                        title: Text('안내'),
+                        content: Text('모든 약관에 동의해주세요.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('확인', style: TextStyle(
+                              color:  Theme.of(context).primaryColor
+                            ),),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (totalAmount > 0 && paymentMethod.isEmpty) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: Colors.white,
+                        title: Text('안내'),
+                        content: Text('결제 수단을 선택해주세요!'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('확인', style: TextStyle(
+                                color:  Theme.of(context).primaryColor
+                            ),),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+
                 },
                 child: Text('결제하기', style: TextStyle(color: Colors.white)),
               )
@@ -157,27 +259,28 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
       label: Text(
         '${int.parse(price).toStringAsFixed(0)}원 박스',
         style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black, // ✅ 선택 여부에 따라 색상 변경
+          color: isSelected ? Colors.white : Colors.black,
         ),
       ),
       selected: isSelected,
-      onSelected: (_) => setState(() => selectedBox = price),
-      selectedColor: Theme.of(context).primaryColor, // ✅ 선택된 배경색
-      backgroundColor: Colors.white, // ✅ 선택 안됐을 때 배경
+      onSelected: (_) => setState(() {
+        selectedBox = price;
+        applyMaxUsablePoints(); // 박스 변경 시에도 포인트 자동 적용
+      }),
+      selectedColor: Theme.of(context).primaryColor,
+      backgroundColor: Colors.white,
     );
   }
-
-
 
   Widget quickButton(String label, int change) {
     return ElevatedButton(
       onPressed: () => changeQuantity(change),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.black,
-        padding: EdgeInsets.zero, // ✅ 내부 여백 제거
-        minimumSize: Size(40, 40), // ✅ 버튼 최소 사이즈 지정 (정사각형 느낌)
+        padding: EdgeInsets.zero,
+        minimumSize: Size(40, 40),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4), // 필요하면 모서리 둥글기 조절
+          borderRadius: BorderRadius.circular(4),
         ),
       ),
       child: Text(
@@ -187,26 +290,22 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
     );
   }
 
-
   Widget paymentOption(String method) {
     final isSelected = paymentMethod == method;
 
     return ChoiceChip(
       label: Text(
         method,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black, // 선택 여부에 따라 텍스트 색상
-        ),
+        style: TextStyle(color: isSelected ? Colors.white : Colors.black),
       ),
       selected: isSelected,
       onSelected: (_) => setState(() => paymentMethod = method),
-      backgroundColor: Colors.white, // ✅ 선택되지 않았을 때 배경 흰색
-      selectedColor: Theme.of(context).primaryColor, // ✅ 선택 시 배경색
+      backgroundColor: Colors.white,
+      selectedColor: Theme.of(context).primaryColor,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: Colors.grey.shade400), // 테두리 추가(선택사항)
+        side: BorderSide(color: Colors.grey.shade400),
         borderRadius: BorderRadius.circular(8),
       ),
     );
   }
-
 }

@@ -1,33 +1,29 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ProfileScreenController extends ChangeNotifier {
-  String userId = ''; // 사용자 ID 초기화
-  String username = ''; // 사용자 이름 초기화
+  String userId = '';
+  String username = '';
   String name = '';
-  List<dynamic> orders = []; // 주문 정보 리스트
+  List<dynamic> orders = [];
+
+  final storage = FlutterSecureStorage(); // ✅ secure storage 인스턴스
 
   Future<void> fetchUserId(BuildContext context) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다.');
-      }
+      final token = await storage.read(key: 'token'); // ✅ 토큰 읽기
+      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
         Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: { 'Authorization': 'Bearer $token' },
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['user'] != null && data['user']['_id'] != null) {
+        if (data['user']?['_id'] != null) {
           userId = data['user']['_id'];
           notifyListeners();
         } else {
@@ -47,18 +43,12 @@ class ProfileScreenController extends ChangeNotifier {
 
   Future<void> fetchUserDetails(BuildContext context) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다.');
-      }
+      final token = await storage.read(key: 'token');
+      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
         Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: { 'Authorization': 'Bearer $token' },
       );
 
       if (response.statusCode == 200) {
@@ -85,18 +75,12 @@ class ProfileScreenController extends ChangeNotifier {
 
   Future<void> fetchUserOrders(BuildContext context) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다.');
-      }
+      final token = await storage.read(key: 'token');
+      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
         Uri.parse('http://172.30.1.22:7778/api/orderByUser'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: { 'Authorization': 'Bearer $token' },
       );
 
       if (response.statusCode == 200) {
@@ -104,7 +88,6 @@ class ProfileScreenController extends ChangeNotifier {
         if (data['orders'] != null) {
           orders = data['orders'];
           notifyListeners();
-
         } else {
           throw Exception('주문 정보를 찾을 수 없습니다. ${response.body}');
         }
@@ -112,15 +95,14 @@ class ProfileScreenController extends ChangeNotifier {
         throw Exception('주문 정보 가져오기 실패: ${response.body}');
       }
     } catch (e) {
-
+      print('주문 정보 오류: $e');
       throw e;
     }
   }
 
   Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.setBool('isLoggedIn', false);
+    await storage.delete(key: 'token'); // ✅ secure storage에서 토큰 삭제
+    await storage.delete(key: 'userId');
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 }

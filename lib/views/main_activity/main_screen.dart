@@ -116,10 +116,18 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
               child: Image.network(
                 product['mainImageUrl'] ?? 'assets/icons/app_icon.jpg',
-                height: 140,
+                height: 150,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Center(child: Icon(Icons.error)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
+              child: Text(
+                product['brand'] ?? '상품 브랜드',
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey[500]),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             Padding(
@@ -254,7 +262,7 @@ class _MainScreenState extends State<MainScreen> {
       padding: const EdgeInsets.only(left: 20, right: 0, bottom: 20),
       child: CarouselSlider(
         options: CarouselOptions(
-          height: 200,
+          height: 240,
           enableInfiniteScroll: false,
           enlargeCenterPage: false,
           viewportFraction: 0.4,

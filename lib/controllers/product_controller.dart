@@ -1,17 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ProductController {
   final String baseUrl = 'http://172.30.1.22:7778';
+  final FlutterSecureStorage storage = FlutterSecureStorage(); // ✅ SecureStorage 사용
 
   Future<List<Map<String, String>>> fetchProducts() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      if (token.isEmpty) throw Exception('토큰이 없습니다.');
+      final token = await storage.read(key: 'token'); // ✅ 토큰 읽기
+      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
         Uri.parse('$baseUrl/api/products/allProduct'),
@@ -20,7 +19,6 @@ class ProductController {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-
         if (decoded['products'] is List) {
           final List<dynamic> data = decoded['products'];
 
@@ -51,8 +49,8 @@ class ProductController {
 
   Future<List<Map<String, String>>> fetchProductsByCategory({required String category}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
+      final token = await storage.read(key: 'token'); // ✅ 토큰 읽기
+      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final url = Uri.parse('$baseUrl/api/products/allProduct/category?category=$category');
 
@@ -89,8 +87,8 @@ class ProductController {
 
   Future<Map<String, dynamic>> getProductInfoById(String productId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
+      final token = await storage.read(key: 'token'); // ✅ 토큰 읽기
+      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
         Uri.parse('$baseUrl/api/products/Product/$productId'),
