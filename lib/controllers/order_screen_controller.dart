@@ -126,4 +126,51 @@ class OrderScreenController {
     }
   }
 
+
+  static void handleBoxOpen(
+      BuildContext context,
+      String orderId,
+      Function(Map<String, dynamic>) onSuccess,
+      ) async {
+    final result = await unboxOrder(orderId);
+    if (result != null) {
+      onSuccess(result);
+    } else {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('박스 열기 실패'),
+          content: Text('이미 열린 박스이거나 오류가 발생했습니다.'),
+        ),
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>?> unboxOrder(String orderId) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) {
+        debugPrint('❌ 토큰 없음');
+        return null;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://172.30.1.22:7778/api/orders/$orderId/unbox'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['order'];
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
 }

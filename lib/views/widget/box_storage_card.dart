@@ -5,6 +5,7 @@ class BoxStorageCard extends StatelessWidget {
   final String boxName;
   final String createdAt;
   final int paymentAmount;
+  final int pointUsed; // ✅ 추가됨
   final String paymentType;
   final VoidCallback onOpenPressed;
   final VoidCallback onGiftPressed;
@@ -14,6 +15,7 @@ class BoxStorageCard extends StatelessWidget {
     required this.boxName,
     required this.createdAt,
     required this.paymentAmount,
+    required this.pointUsed, // ✅ 추가됨
     required this.paymentType,
     required this.onOpenPressed,
     required this.onGiftPressed,
@@ -22,6 +24,7 @@ class BoxStorageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(createdAt));
+    final totalPrice = paymentAmount + pointUsed; // ✅ 총 구매 금액 계산
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,7 +57,7 @@ class BoxStorageCard extends StatelessWidget {
                 const Text('결제취소 7일 남음', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 4),
                 Text(
-                  '${paymentType == 'point' ? '포인트결제' : '카드결제'}\n박스구매 ${paymentAmount.toString()}원',
+                  '${paymentType == 'point' ? '포인트결제' : '카드결제'}\n박스구매 ${totalPrice.toString()}원',
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
@@ -70,9 +73,12 @@ class BoxStorageCard extends StatelessWidget {
                 onPressed: onOpenPressed,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                 ),
-                child: const Text('박스열기'),
+                child: const Text('박스열기',
+                style: TextStyle(
+                  color: Colors.white,
+                ),),
               ),
             ),
             const SizedBox(width: 12),
@@ -80,10 +86,15 @@ class BoxStorageCard extends StatelessWidget {
               child: OutlinedButton(
                 onPressed: onGiftPressed,
                 style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                   side: BorderSide(color: Theme.of(context).primaryColor),
                 ),
-                child: const Text('선물하기'),
+                child: Text(
+                  '선물하기',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
               ),
             ),
           ],
