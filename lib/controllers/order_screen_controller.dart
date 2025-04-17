@@ -1,114 +1,111 @@
+// controllers/order_screen_controller.dart
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'box_controller.dart'; // 박스 목록 접근용
 
 class OrderScreenController {
-  // 서버 주소
-  static const String orderApiUrl = 'http://172.30.1.42:7778/api/order';
-  static const String shippingApiUrl = 'http://172.30.1.42:7778/api/shipping';
-  static const String shippingInfoApiUrl = 'http://172.30.1.42:7778/api/shippinginfo';
+  static final _storage = FlutterSecureStorage();
 
-  // 주문 추가 함수
-  static Future<http.Response> addToOrder({
-    required List<Map<String, dynamic>> account,
-    required List<Map<String, dynamic>> items,
-    required double totalAmount,
-    required String address, // address 파라미터 추가
+  static Future<void> submitOrder({
+    required BuildContext context,
+    required String? selectedBoxId,
+    required int quantity,
+    required int totalAmount,
+    required int pointsUsed,
   }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? ''; // 저장된 토큰 불러오기
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
-      }
-      final response = await http.post(
-        Uri.parse(orderApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'account': account,
-          'items': items,
-          'totalAmount': totalAmount,
-          'address': address, // address 데이터 포함
-        }),
+    if (selectedBoxId == null) {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('에러'),
+          content: Text('선택된 박스가 없습니다.'),
+        ),
       );
-
-      return response;
-    } catch (e) {
-      throw Exception('Failed to add order: $e');
+      return;
     }
-  }
 
-  // 배송 추가 함수
-  static Future<http.Response> addToShipping({
-    required String name,
-    required String phone,
-    required String address,
-    required String address2,
-    required String postalCode,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? ''; // 저장된 토큰 불러오기
+    final boxController = Provider.of<BoxController>(context, listen: false);
+    final selectedBox = boxController.boxes.firstWhere(
+          (box) => box['_id'] == selectedBoxId,
+      orElse: () => null,
+    );
 
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
-      }
-      final response = await http.post(
-        Uri.parse(shippingApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'shippingAddress': {
-            'name': name,
-            'phone': phone,
-            'address': address,
-            'address2': address2,
-            'postalCode': postalCode,
-          },
-        }),
+    if (selectedBox == null) {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('에러'),
+          content: Text('박스 정보를 찾을 수 없습니다.'),
+        ),
       );
-
-      return response;
-    } catch (e) {
-      throw Exception('Failed to add shipping: $e');
+      return;
     }
-  }
 
-  // controllers/order_screen_controller.dart
-  static Future<http.Response> verifyCoupon(String code) async {
-    final url = Uri.parse('http://172.30.1.42:7778/api/verifyCoupon?code=$code');
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token') ?? ''; // 토큰 불러오기
+    final token = await _storage.read(key: 'token');
+    if (token == null) {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('로그인 필요'),
+          content: Text('로그인 후 이용해주세요.'),
+        ),
+      );
+      return;
+    }
 
-    return await http.get(
-      url,
+    final response = await http.post(
+      Uri.parse('http://172.30.1.22:7778/api/order'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token', // 서버에서 인증을 요구한다면 토큰 추가
+        'Authorization': 'Bearer $token',
       },
+      body: json.encode({
+        "box": selectedBox['_id'],
+        "boxCount": quantity,
+        "paymentType": totalAmount == 0 ? "point" : "mixed",
+        "paymentAmount": totalAmount,
+        "pointUsed": pointsUsed,
+        "deliveryFee": {
+          "point": 0,
+          "cash": 0
+        }
+      }),
     );
+
+    if (response.statusCode == 201) {
+      Navigator.pushNamed(context, '/luckyboxOrder');
+    } else {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('주문 실패'),
+          content: Text('서버 오류 (${response.statusCode})'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            )
+          ],
+        ),
+      );
+    }
   }
 
 
 
-  // 배송 정보 가져오기 함수
-  static Future<Map<String, dynamic>> getShipping() async {
+  static Future<List<Map<String, dynamic>>> getOrdersByUserId(String userId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? ''; // 저장된 토큰 불러오기
-
-      if (token.isEmpty) {
-        throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
+      final token = await _storage.read(key: 'token');
+      if (token == null) {
+        debugPrint('❌ 토큰이 없습니다.');
+        return [];
       }
 
       final response = await http.get(
-        Uri.parse(shippingInfoApiUrl),
+        Uri.parse('http://172.30.1.22:7778/api/order?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -116,19 +113,17 @@ class OrderScreenController {
       );
 
       if (response.statusCode == 200) {
-        // JSON 데이터를 파싱하여 반환
-        return jsonDecode(response.body);
+        final data = json.decode(response.body);
+        final orders = List<Map<String, dynamic>>.from(data['orders']);
+        return orders.where((order) => order['status'] == 'paid').toList();
       } else {
-        throw Exception('Failed to fetch shipping info: ${response.body}');
+        debugPrint('❌ 주문 불러오기 실패: ${response.statusCode}');
+        return [];
       }
     } catch (e) {
-      throw Exception('Failed to get shipping: $e');
+      debugPrint('❌ 주문 불러오기 중 오류: $e');
+      return [];
     }
   }
 
-  // 토큰 가져오기 (SharedPreferences 활용)
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
 }

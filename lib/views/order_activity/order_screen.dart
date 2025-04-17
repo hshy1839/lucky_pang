@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../controllers/order_screen_controller.dart';
+import '../widget/box_storage_card.dart';
 
 class OrderScreen extends StatefulWidget {
   final void Function(int)? onTabChanged;
@@ -13,7 +16,28 @@ class OrderScreen extends StatefulWidget {
 
 class _OrderScreenState extends State<OrderScreen> {
   String selectedTab = 'box'; // 'box', 'product', 'delivery'
+  List<Map<String, dynamic>> paidOrders = [];
+  bool isLoading = true;
+  final storage = FlutterSecureStorage();
+  @override
+  void initState() {
+    super.initState();
+    loadOrders();
+  }
 
+  Future<void> loadOrders() async {
+    final userId = await storage.read(key: 'userId');
+    if (userId == null) {
+      print('userId not found in secure storage');
+      return;
+    }
+
+    final orders = await OrderScreenController.getOrdersByUserId(userId);
+    setState(() {
+      paidOrders = orders as List<Map<String, dynamic>>;
+      isLoading = false;
+    });
+  }
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
@@ -81,40 +105,63 @@ class _OrderScreenState extends State<OrderScreen> {
                 icon: Icons.confirmation_number,
                 onTap: () {},
               ),
-            ] else ...[
-              Text('0개', style: TextStyle(fontSize: 14.sp)),
+            ] else if (selectedTab == 'box') ...[
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.w),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('${paidOrders.length}개', style: TextStyle(fontSize: 14.sp)),
+                ),
+              ),
               Divider(thickness: 1, color: Colors.grey.shade300),
-              SizedBox(height: 40.h),
-              Image.asset(
-                'assets/icons/app_icon.jpg',
-                width: 160.w,
-                height: 160.w,
-              ),
-              SizedBox(height: 24.h),
-              Text(
-                '보유한 럭키박스가 없어요',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
+              isLoading
+                  ? CircularProgressIndicator()
+                  : paidOrders.isEmpty
+                  ? Column(
+                children: [
+                  SizedBox(height: 40.h),
+                  Image.asset(
+                    'assets/icons/app_icon.jpg',
+                    width: 160.w,
+                    height: 160.w,
+                  ),
+                  SizedBox(height: 24.h),
+                  Text(
+                    '보유한 럭키박스가 없어요',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              )
+                  : Expanded(
+                child: ListView.separated(
+                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                  itemCount: paidOrders.length,
+                  separatorBuilder: (_, __) => SizedBox(height: 16.h),
+                  itemBuilder: (context, index) {
+                    final order = paidOrders[index];
+                    final boxName = order['box']['name'] ?? '알 수 없음';
+                    final createdAt = order['createdAt'] ?? DateTime.now().toIso8601String();
+                    final paymentAmount = order['paymentAmount'] ?? 0;
+                    final paymentType = order['paymentType'] ?? 'point';
+
+                    return BoxStorageCard(
+                      boxName: boxName,
+                      createdAt: createdAt,
+                      paymentAmount: paymentAmount,
+                      paymentType: paymentType,
+                      onOpenPressed: () {
+                        // TODO: 박스 열기 처리
+                      },
+                      onGiftPressed: () {
+                        // TODO: 선물하기 처리
+                      },
+                    );
+                  },
                 ),
-              ),
-              SizedBox(height: 80.h),
-              Text(
-                '특별한 상품들이 와딩 님을 기다리고 있어요.',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 40.h),
-              _buildMainButton(
-                title: '럭키박스 구매하기',
-                icon: Icons.card_giftcard,
-                onTap: () {
-                  widget.onTabChanged?.call(4);
-                  widget.pageController?.jumpToPage(4);
-                },
               ),
               SizedBox(height: 16.h),
               _buildMainButton(
@@ -122,7 +169,8 @@ class _OrderScreenState extends State<OrderScreen> {
                 icon: Icons.confirmation_number,
                 onTap: () {},
               ),
-            ],
+            ]
+
           ],
         ),
       ),
@@ -131,7 +179,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
   Widget _buildTab(String label, bool isSelected, String key) {
     final textStyle = TextStyle(
-      fontSize: 14.sp,
+      fontSize: 12.sp,
       fontWeight: FontWeight.bold,
       color: Colors.black,
     );
@@ -144,7 +192,7 @@ class _OrderScreenState extends State<OrderScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 24.h, // ✅ 텍스트 높이 + 여유 공간 고정
+            height: 40.h, // ✅ 텍스트 높이 + 여유 공간 고정
             child: Center(
               child: Text(label, style: textStyle),
             ),

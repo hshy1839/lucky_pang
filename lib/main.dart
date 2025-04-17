@@ -34,6 +34,7 @@ import 'package:attedance_app/views/main_activity/main_screen.dart';
 import 'package:attedance_app/views/setting_activity/notice_activity/notice_screen.dart';
 import 'package:attedance_app/views/profile_activity/profile_screen.dart';
 import 'package:attedance_app/views/main_activity/2order_detail_screen.dart';
+import 'controllers/box_controller.dart';
 import 'controllers/login/signup_controller.dart';
 import 'footer.dart';
 import 'views/order_activity/order_screen.dart';
@@ -51,6 +52,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SignupController()),
+        ChangeNotifierProvider(create: (_) => BoxController()),
         // 필요한 Provider 더 추가 가능
       ],
       child: MyApp(),

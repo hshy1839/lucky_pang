@@ -476,16 +476,7 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
                           };
                         }).toList();
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => aOrderScreen(
-                              productId: widget.productId,
-                              sizes: selectedSizes,
-                              totalAmount: totalAmount,
-                            ),
-                          ),
-                        );
+
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,

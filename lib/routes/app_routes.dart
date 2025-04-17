@@ -1,4 +1,5 @@
 import 'package:attedance_app/main.dart';
+import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
 import 'package:flutter/material.dart';
 import '../views/login_activity/login.dart';
 import '../views/login_activity/signup.dart';
@@ -40,6 +41,7 @@ class AppRoutes {
     '/qna': (_) => QnaScreen(),
     '/qnaCreate': (_) => QnaCreateScreen(),
     '/accountInfo': (_) => AccountScreen(),
+    '/luckyboxOrder': (_) => LuckyBoxOrderPage(),
     '/userinfo': (_) => UserDetailScreen(),
     '/cart': (_) => CartDetailScreen(),
     '/order': (_) => OrderScreen(),
@@ -61,19 +63,6 @@ class AppRoutes {
     '/shoppingscreen': (context) {
       final category = ModalRoute.of(context)!.settings.arguments as String? ?? '카테고리 없음';
       return ShoppingScreen(category: category);
-    },
-    '/2order': (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-      if (args == null || args['items'] == null || args['items'].isEmpty) {
-        return Scaffold(body: Center(child: Text('잘못된 접근입니다')));
-      }
-
-      final firstItem = args['items'][0] as Map<String, dynamic>;
-      final productId = firstItem['productId'] ?? '';
-      final sizes = (firstItem['sizes'] as List<dynamic>).map((e) => e as Map<String, dynamic>).toList();
-      final totalAmount = firstItem['totalPrice'] ?? 0;
-
-      return aOrderScreen(productId: productId, sizes: sizes, totalAmount: totalAmount);
     },
   };
 }

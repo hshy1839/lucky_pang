@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+class BoxStorageCard extends StatelessWidget {
+  final String boxName;
+  final String createdAt;
+  final int paymentAmount;
+  final String paymentType;
+  final VoidCallback onOpenPressed;
+  final VoidCallback onGiftPressed;
+
+  const BoxStorageCard({
+    super.key,
+    required this.boxName,
+    required this.createdAt,
+    required this.paymentAmount,
+    required this.paymentType,
+    required this.onOpenPressed,
+    required this.onGiftPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(createdAt));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.card_giftcard, size: 28),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('럭키박스 결제 정보', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('$formattedDate  결제 완료', style: const TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text('결제취소 7일 남음', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                Text(
+                  '${paymentType == 'point' ? '포인트결제' : '카드결제'}\n박스구매 ${paymentAmount.toString()}원',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: onOpenPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('박스열기'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: onGiftPressed,
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  side: BorderSide(color: Theme.of(context).primaryColor),
+                ),
+                child: const Text('선물하기'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Divider(),
+      ],
+    );
+  }
+}
