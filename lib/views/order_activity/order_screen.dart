@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../controllers/order_screen_controller.dart';
 import '../widget/box_storage_card.dart';
+import '../widget/product_storage_card.dart';
 
 class OrderScreen extends StatefulWidget {
   final void Function(int)? onTabChanged;
@@ -19,10 +20,21 @@ class _OrderScreenState extends State<OrderScreen> {
   List<Map<String, dynamic>> paidOrders = [];
   bool isLoading = true;
   final storage = FlutterSecureStorage();
+  List<Map<String, dynamic>> unboxedProducts = [];
+
+
   @override
   void initState() {
     super.initState();
     loadOrders();
+    loadUnboxedProducts();
+  }
+
+  Future<void> loadUnboxedProducts() async {
+    final userId = await storage.read(key: 'userId');
+    if (userId == null) return;
+    final result = await OrderScreenController.getUnboxedProducts(userId);
+    setState(() => unboxedProducts = result ?? []);
   }
 
   Future<void> loadOrders() async {
@@ -63,49 +75,70 @@ class _OrderScreenState extends State<OrderScreen> {
             if (selectedTab == 'product') ...[
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
-                child: Row(
-                  children: [
-                    Checkbox(value: false, onChanged: (_) {}),
-                    Text('전체 0개'),
-                    SizedBox(width: 12.w),
-                    Text('0개 선택'),
-                    Spacer(),
-                    Text('일괄환급하기',
-                        style: TextStyle(color: Colors.grey.shade400)),
-                  ],
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('${unboxedProducts.length}개', style: TextStyle(fontSize: 14.sp)),
                 ),
               ),
               Divider(thickness: 1, color: Colors.grey.shade300),
-              SizedBox(height: 40.h),
-              Image.asset(
-                'assets/icons/app_icon.jpg',
-                width: 160.w,
-                height: 160.w,
-              ),
-              SizedBox(height: 24.h),
-              Text(
-                '보유한 상품이 없어요',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey,
+              if (unboxedProducts.isEmpty) ...[
+                SizedBox(height: 40.h),
+                Image.asset(
+                  'assets/icons/app_icon.jpg',
+                  width: 160.w,
+                  height: 160.w,
                 ),
-              ),
-              SizedBox(height: 80.h),
-              Text(
-                '특별한 상품들이 와딩 님을 기다리고 있어요.',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: Colors.black,
+                SizedBox(height: 24.h),
+                Text(
+                  '보유한 상품이 없어요',
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
                 ),
-              ),
-              SizedBox(height: 40.h),
+                SizedBox(height: 80.h),
+                Text(
+                  '특별한 상품들이 와딩 님을 기다리고 있어요.',
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: Colors.black,
+                  ),
+                ),
+              ] else ...[
+                Expanded(
+                  child: ListView.separated(
+                    padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                    itemCount: unboxedProducts.length,
+                    separatorBuilder: (_, __) => SizedBox(height: 16.h),
+                    itemBuilder: (context, index) {
+                      final order = unboxedProducts[index];
+                      final product = order['unboxedProduct']['product'];
+
+                      return ProductStorageCard(
+                        imageUrl: 'http://172.30.1.22:7778${product['mainImage']}',
+                        productName: '[${product['brand']}] ${product['name']}',
+                        acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
+                        purchasePrice: product['price'],
+                        consumerPrice: product['consumerPrice'],
+                        dDay: 'D-90',
+                        isLocked: false,
+                        onRefundPressed: () {},
+                        onGiftPressed: () {},
+                        onDeliveryPressed: () {},
+                      );
+                    },
+                  ),
+                )
+              ],
+              SizedBox(height: 16.h),
               _buildMainButton(
                 title: '선물코드 입력하기',
                 icon: Icons.confirmation_number,
                 onTap: () {},
               ),
-            ] else if (selectedTab == 'box') ...[
+            ]
+            else if (selectedTab == 'box') ...[
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
                 child: Align(
@@ -193,6 +226,7 @@ class _OrderScreenState extends State<OrderScreen> {
                 onTap: () {},
               ),
             ]
+
 
           ],
         ),

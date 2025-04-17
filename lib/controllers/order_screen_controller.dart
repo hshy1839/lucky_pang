@@ -115,7 +115,12 @@ class OrderScreenController {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final orders = List<Map<String, dynamic>>.from(data['orders']);
-        return orders.where((order) => order['status'] == 'paid').toList();
+
+        // ✅ 'paid' 상태이면서 아직 언박싱되지 않은 주문만 반환
+        return orders.where((order) =>
+        order['status'] == 'paid' &&
+            (order['unboxedProduct'] == null || order['unboxedProduct']['product'] == null)
+        ).toList();
       } else {
         debugPrint('❌ 주문 불러오기 실패: ${response.statusCode}');
         return [];
@@ -172,5 +177,32 @@ class OrderScreenController {
       return null;
     }
   }
+
+  static Future<List<Map<String, dynamic>>> getUnboxedProducts(String userId) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('http://172.30.1.22:7778/api/orders/unboxed?userId=$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data['orders']);
+      } else {
+        debugPrint('❌ 언박싱 상품 조회 실패: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('❌ 언박싱 상품 조회 오류: $e');
+      return [];
+    }
+  }
+
 
 }
