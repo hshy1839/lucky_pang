@@ -28,7 +28,6 @@ class GiftCodeController {
         if (orderId != null) 'orderId': orderId,
       };
 
-
       final response = await http.post(
         Uri.parse('$_baseUrl/api/giftcode'),
         headers: {
@@ -38,20 +37,21 @@ class GiftCodeController {
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 201) {
-        final data = json.decode(response.body);
-        print('✅ 선물 코드 생성 완료: $data');
+      final data = json.decode(response.body);
+      print('🌐 응답 바디: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        print('✅ 선물 코드 수신 완료: $data');
         return {
           'success': true,
           'code': data['code'],
           'giftId': data['giftId'],
         };
       } else {
-        final error = json.decode(response.body);
-        print('❌ 선물 코드 생성 실패: ${response.statusCode} ${error['message']}');
+        print('❌ 선물 코드 생성 실패: ${response.statusCode} ${data['message']}');
         return {
           'success': false,
-          'message': error['message'] ?? '알 수 없는 오류가 발생했습니다.',
+          'message': data['message'] ?? '알 수 없는 오류가 발생했습니다.',
         };
       }
     } catch (e) {

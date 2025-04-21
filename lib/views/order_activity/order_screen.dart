@@ -307,7 +307,10 @@ class _OrderScreenState extends State<OrderScreen> {
               _buildMainButton(
                 title: '선물코드 입력하기',
                 icon: Icons.confirmation_number,
-                onTap: () {},
+                onTap: () {
+                  Navigator.pushNamed(context, '/giftCode');
+
+                },
               ),
             ]
 

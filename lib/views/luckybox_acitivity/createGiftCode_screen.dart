@@ -1,12 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/giftcode_controller.dart'; // 추가
+import 'package:flutter/services.dart';
 
-class CreateGiftCodeScreen extends StatelessWidget {
-  final String boxId; // 박스 ID 필요
+class CreateGiftCodeScreen extends StatefulWidget {
+  final String boxId;
   final String orderId;
 
-  const CreateGiftCodeScreen({super.key, required this.boxId, required this.orderId,});
+  const CreateGiftCodeScreen({super.key, required this.boxId, required this.orderId});
+
+  @override
+  State<CreateGiftCodeScreen> createState() => _CreateGiftCodeScreenState();
+}
+
+class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
+  String? giftCode;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGiftCode();
+  }
+
+  Future<void> _loadGiftCode() async {
+    final result = await GiftCodeController.createGiftCode(
+      type: 'box',
+      boxId: widget.boxId,
+      orderId: widget.orderId,
+    );
+
+    if (!mounted) return;
+
+
+    final code = result?['code'];
+    final success = result?['success'];
+
+    if (success == true && code != null) {
+      print('✅ 받은 코드: $code');
+      setState(() {
+        giftCode = code;
+        isLoading = false;
+      });
+    } else {
+      setState(() => isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result?['message'] ?? '코드 확인 중 오류')),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -18,83 +61,78 @@ class CreateGiftCodeScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          '선물하기',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        leading: BackButton(color: Colors.black),
+        title: Text('선물하기', style: TextStyle(color: Colors.black, fontSize: 16.sp, fontWeight: FontWeight.bold)),
       ),
-      body: Column(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           SizedBox(height: 40.h),
-          Center(
-            child: Container(
-              width: 150.w,
-              height: 150.w,
-              decoration: BoxDecoration(
-                color: Color(0xFFFF5C43),
-                borderRadius: BorderRadius.circular(40.r),
-              ),
-              child: Center(
-                child: Icon(Icons.card_giftcard, size: 120.sp, color: Colors.white),
-              ),
-            ),
-          ),
+          _buildGiftBoxIcon(),
           SizedBox(height: 32.h),
-          Text(
-            '럭키박스',
-            style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
-          ),
+          Text('럭키박스', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
           SizedBox(height: 8.h),
-          Text(
-            '너에겐 어떤 행운이 등장할까?… 🥲',
-            style: TextStyle(fontSize: 14.sp, color: Colors.black),
-          ),
+          Text('너에겐 어떤 행운이 등장할까?… 🥲', style: TextStyle(fontSize: 14.sp, color: Colors.black)),
           SizedBox(height: 60.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40.w),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFFF5C43),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28.r),
-                ),
-                minimumSize: Size(double.infinity, 56.h),
-              ),
-              icon: Icon(Icons.confirmation_num_outlined, color: Colors.white),
-              label: Text(
-                '선물코드 생성하기',
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              onPressed: () async {
-                final code = await GiftCodeController.createGiftCode(type: 'box', boxId: boxId, orderId: orderId,);
-                if (context.mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('선물 코드'),
-                      content: Text(code != null ? '생성된 코드: $code' : '코드 생성에 실패했습니다.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('확인'),
-                        )
+          if (giftCode != null)
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40.w),
+              child: Column(
+                children: [
+                  Text('선물 코드가 생성되었습니다:', style: TextStyle(fontSize: 14.sp)),
+                  SizedBox(height: 12.h),
+                  Container(
+                    padding: EdgeInsets.all(16.w),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.black12),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SelectableText(
+                            giftCode!,
+                            style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.copy, size: 20.sp),
+                          onPressed: () async {
+                            if (giftCode != null) {
+                              await Clipboard.setData(ClipboardData(text: giftCode!));
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('코드가 복사되었습니다!')),
+                                );
+                              }
+                            }
+                          },
+                        ),
                       ],
                     ),
-                  );
-                }
-              },
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
   }
+
+  Widget _buildGiftBoxIcon() {
+    return Center(
+      child: Container(
+        width: 150.w,
+        height: 150.w,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF5C43),
+          borderRadius: BorderRadius.circular(40.r),
+        ),
+        child: Icon(Icons.card_giftcard, size: 120.sp, color: Colors.white),
+      ),
+    );
+  }
 }
+
