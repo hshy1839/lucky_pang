@@ -109,6 +109,7 @@ class ProductController {
           'category': product['category']?.toString() ?? '',
           'description': product['description'],
           'sizeStock': product['sizeStock'] ?? {},
+          'refundProbability' : product['refundProbability'] ?? '',
         };
       }
 

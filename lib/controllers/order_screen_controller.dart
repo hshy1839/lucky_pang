@@ -76,7 +76,26 @@ class OrderScreenController {
     );
 
     if (response.statusCode == 201) {
-      Navigator.pushNamed(context, '/luckyboxOrder');
+      final data = json.decode(response.body);
+      final orders = data['orders'] ?? [];
+      final orderCount = orders.length;
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('결제 완료'),
+          content: Text('$orderCount개의 박스가 성공적으로 구매되었습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/luckyboxOrder');
+              },
+              child: const Text('확인'),
+            )
+          ],
+        ),
+      );
     } else {
       showDialog(
         context: context,

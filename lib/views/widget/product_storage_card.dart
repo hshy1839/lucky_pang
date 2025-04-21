@@ -58,7 +58,7 @@ class ProductStorageCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('구매가: $purchasePrice원', style: TextStyle(fontSize: 12.sp)),
+              Text('박스 구매가: $purchasePrice원', style: TextStyle(fontSize: 12.sp)),
               Text('소비자가: $consumerPrice원', style: TextStyle(fontSize: 12.sp)),
             ],
           ),
@@ -66,15 +66,15 @@ class ProductStorageCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(onPressed: onRefundPressed, child: Text('환불')),
+                child: OutlinedButton(onPressed: onRefundPressed, child: Text('포인트환급', style: TextStyle(color: Theme.of(context).primaryColor, ),)),
               ),
               SizedBox(width: 8.w),
               Expanded(
-                child: OutlinedButton(onPressed: onGiftPressed, child: Text('선물')),
+                child: OutlinedButton(onPressed: onGiftPressed, child: Text('선물하기', style: TextStyle(color: Theme.of(context).primaryColor,),)),
               ),
               SizedBox(width: 8.w),
               Expanded(
-                child: ElevatedButton(onPressed: onDeliveryPressed, child: Text('배송')),
+                child: ElevatedButton(onPressed: onDeliveryPressed, child: Text('배송신청', style: TextStyle(color: Theme.of(context).primaryColor,),)),
               ),
             ],
           )

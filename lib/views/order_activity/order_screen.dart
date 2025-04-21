@@ -119,13 +119,52 @@ class _OrderScreenState extends State<OrderScreen> {
                         imageUrl: 'http://172.30.1.22:7778${product['mainImage']}',
                         productName: '[${product['brand']}] ${product['name']}',
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
-                        purchasePrice: product['price'],
+                        purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
                         consumerPrice: product['consumerPrice'],
                         dDay: 'D-90',
                         isLocked: false,
-                        onRefundPressed: () {},
+                        onRefundPressed: () {
+                          final refundRateStr = product['refundProbability']?.toString() ?? '0';
+                          final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+                          final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
+
+                          final refundAmount = (purchasePrice * refundRate / 100).floor();
+
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('포인트 환급'),
+                              content: Text('$refundAmount원으로 환급하시겠습니까?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context), // 닫기
+                                  child: Text('아니요'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    // TODO: 환급 처리 로직 추가
+                                  },
+                                  child: Text('예'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+
                         onGiftPressed: () {},
-                        onDeliveryPressed: () {},
+                        onDeliveryPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/deliveryscreen',
+                            arguments: {
+                              'product': product,
+                              'orderId': order['_id'],
+                              'decidedAt': order['unboxedProduct']['decidedAt'],
+                              'box': order['box'],
+                            },
+                          );
+                        },
                       );
                     },
                   ),
@@ -203,6 +242,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                     setState(() {
                                       paidOrders.removeWhere((o) => o['_id'] == order['_id']);
                                     });
+                                    loadUnboxedProducts();
                                   },
                                   child: const Text('확인'),
                                 )

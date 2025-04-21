@@ -1,5 +1,6 @@
 import 'package:attedance_app/main.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
+import 'package:attedance_app/views/order_activity/delivery_request_screen.dart';
 import 'package:flutter/material.dart';
 import '../views/login_activity/login.dart';
 import '../views/login_activity/signup.dart';
@@ -64,5 +65,6 @@ class AppRoutes {
       final category = ModalRoute.of(context)!.settings.arguments as String? ?? '카테고리 없음';
       return ShoppingScreen(category: category);
     },
+    '/deliveryscreen': (_) => DeliveryRequestScreen(),
   };
 }

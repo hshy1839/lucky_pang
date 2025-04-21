@@ -154,37 +154,7 @@ class ProductDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.all(20.0),
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (context) {
-                  return ProductOptionsBottomSheet(
-                    product: product,
-                    productId: productId,
-                  );
-                },
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text(
-              '구매하기',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
-          ),
-        ),
-      ),
+
     );
   }
 }
