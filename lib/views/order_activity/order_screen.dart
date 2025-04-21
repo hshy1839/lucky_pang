@@ -127,23 +127,63 @@ class _OrderScreenState extends State<OrderScreen> {
                           final refundRateStr = product['refundProbability']?.toString() ?? '0';
                           final refundRate = double.tryParse(refundRateStr) ?? 0.0;
                           final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
-
                           final refundAmount = (purchasePrice * refundRate / 100).floor();
 
+                          // ✅ 현재 context 저장
+                          final dialogContext = context;
+
                           showDialog(
-                            context: context,
+                            context: dialogContext,
                             builder: (context) => AlertDialog(
                               title: Text('포인트 환급'),
                               content: Text('$refundAmount원으로 환급하시겠습니까?'),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context), // 닫기
+                                  onPressed: () => Navigator.pop(context),
                                   child: Text('아니요'),
                                 ),
                                 TextButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     Navigator.pop(context);
-                                    // TODO: 환급 처리 로직 추가
+
+                                    final refunded = await OrderScreenController.refundOrder(order['_id'], refundRate);
+                                    debugPrint('✅ refundOrder 응답: $refunded');
+
+                                    // ✅ context 유효성 검사 후 다이얼로그 표시
+                                    if (refunded != null && dialogContext.mounted) {
+                                      await showDialog(
+                                        context: dialogContext,
+                                        builder: (_) => AlertDialog(
+                                          title: Text('환급 완료'),
+                                          content: Text('$refunded원이 환급되었습니다!'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(dialogContext);
+                                                setState(() {
+                                                  unboxedProducts.removeWhere((o) => o['_id'] == order['_id']);
+                                                });
+                                              },
+                                              child: Text('확인'),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                    } else if (dialogContext.mounted) {
+                                      await showDialog(
+                                        context: dialogContext,
+                                        builder: (_) => AlertDialog(
+                                          title: Text('환급 실패'),
+                                          content: Text('서버 오류로 환급이 처리되지 않았습니다.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(dialogContext),
+                                              child: Text('확인'),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                    }
                                   },
                                   child: Text('예'),
                                 ),
@@ -151,6 +191,7 @@ class _OrderScreenState extends State<OrderScreen> {
                             ),
                           );
                         },
+
 
                         onGiftPressed: () {},
                         onDeliveryPressed: () {
@@ -211,6 +252,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   : Expanded(
                 child: ListView.separated(
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+
                   itemCount: paidOrders.length,
                   separatorBuilder: (_, __) => SizedBox(height: 16.h),
                   itemBuilder: (context, index) {

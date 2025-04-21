@@ -224,4 +224,39 @@ class OrderScreenController {
   }
 
 
+  static Future<int?> refundOrder(String orderId, double refundRate) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return null;
+
+      final response = await http.post(
+        Uri.parse('http://172.30.1.22:7778/api/orders/$orderId/refund'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'refundRate': refundRate,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true && data['refundedAmount'] != null) {
+          return data['refundedAmount'];
+        } else {
+          debugPrint('⚠️ 환급 실패 응답: $data');
+          return null;
+        }
+      } else {
+        debugPrint('❌ 서버 상태 코드 오류: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ 환급 요청 오류: $e');
+      return null;
+    }
+  }
+
 }
