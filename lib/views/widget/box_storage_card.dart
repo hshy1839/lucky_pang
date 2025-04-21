@@ -9,6 +9,9 @@ class BoxStorageCard extends StatelessWidget {
   final String paymentType;
   final VoidCallback onOpenPressed;
   final VoidCallback onGiftPressed;
+  final String boxId;
+  final String orderId;
+
 
   const BoxStorageCard({
     super.key,
@@ -19,6 +22,8 @@ class BoxStorageCard extends StatelessWidget {
     required this.paymentType,
     required this.onOpenPressed,
     required this.onGiftPressed,
+    required this.boxId,
+    required this.orderId,
   });
 
   @override
@@ -84,11 +89,13 @@ class BoxStorageCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(
-                onPressed: onGiftPressed,
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                  side: BorderSide(color: Theme.of(context).primaryColor),
-                ),
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/giftcode/create',
+                    arguments: {'type': 'box', 'boxId': boxId, 'orderId': orderId},
+                  );
+                },
                 child: Text(
                   '선물하기',
                   style: TextStyle(

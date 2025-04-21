@@ -7,6 +7,7 @@ import '../views/login_activity/signup.dart';
 import '../views/login_activity/findEmail_screen.dart';
 import '../views/login_activity/findPassword_screen.dart';
 import '../views/login_activity/singup_agree_screen.dart';
+import '../views/luckybox_acitivity/createGiftCode_screen.dart';
 import '../views/main_activity/main_screen.dart';
 import '../views/setting_activity/notice_activity/notice_screen.dart';
 import '../views/main_activity/search_product_screen.dart';
@@ -55,6 +56,10 @@ class AppRoutes {
     '/shippingCreate': (_) => ShippingCreateScreen(),
     '/setting': (_) => SettingScreen(),
     '/privacy': (_) => PrivacyScreen(),
+    '/giftcode/create': (context) {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return CreateGiftCodeScreen(boxId: args['boxId'], orderId:  args['orderId'],);
+    },
     '/terms': (_) => TermsOfServicePage(),
     '/faq': (_) => FaqScreen(),
     '/searchProduct': (context) {

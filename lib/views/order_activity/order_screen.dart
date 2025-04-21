@@ -263,6 +263,8 @@ class _OrderScreenState extends State<OrderScreen> {
                     final paymentType = order['paymentType'] ?? 'point';
 
                     return BoxStorageCard(
+                      boxId: order['box']?['_id'] ?? '',
+                      orderId: order['_id'],
                       boxName: boxName,
                       createdAt: createdAt,
                       paymentAmount: paymentAmount,
