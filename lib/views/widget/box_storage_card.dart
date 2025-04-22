@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class BoxStorageCard extends StatelessWidget {
+import '../../controllers/giftcode_controller.dart';
+
+class BoxStorageCard extends StatefulWidget {
   final String boxName;
   final String createdAt;
   final int paymentAmount;
-  final int pointUsed; // ✅ 추가됨
+  final int pointUsed;
   final String paymentType;
   final VoidCallback onOpenPressed;
   final VoidCallback onGiftPressed;
   final String boxId;
   final String orderId;
 
-
   const BoxStorageCard({
     super.key,
     required this.boxName,
     required this.createdAt,
     required this.paymentAmount,
-    required this.pointUsed, // ✅ 추가됨
+    required this.pointUsed,
     required this.paymentType,
     required this.onOpenPressed,
     required this.onGiftPressed,
@@ -27,9 +28,36 @@ class BoxStorageCard extends StatelessWidget {
   });
 
   @override
+  State<BoxStorageCard> createState() => _BoxStorageCardState();
+}
+
+class _BoxStorageCardState extends State<BoxStorageCard> {
+  bool _giftCodeExists = false;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkGiftCode();
+  }
+
+  Future<void> _checkGiftCode() async {
+    final exists = await GiftCodeController.checkGiftCodeExists(
+      type: 'box',
+      boxId: widget.boxId,
+      orderId: widget.orderId,
+    );
+
+    setState(() {
+      _giftCodeExists = exists;
+      _loading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(createdAt));
-    final totalPrice = paymentAmount + pointUsed; // ✅ 총 구매 금액 계산
+    final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(widget.createdAt));
+    final totalPrice = widget.paymentAmount + widget.pointUsed;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,7 +90,7 @@ class BoxStorageCard extends StatelessWidget {
                 const Text('결제취소 7일 남음', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 4),
                 Text(
-                  '${paymentType == 'point' ? '포인트결제' : '카드결제'}\n박스구매 ${totalPrice.toString()}원',
+                  '${widget.paymentType == 'point' ? '포인트결제' : '카드결제'}\n박스구매 ${totalPrice}원',
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
@@ -75,15 +103,17 @@ class BoxStorageCard extends StatelessWidget {
           children: [
             Expanded(
               child: ElevatedButton(
-                onPressed: onOpenPressed,
+                onPressed: _giftCodeExists || _loading ? null : widget.onOpenPressed,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: _giftCodeExists || _loading
+                      ? Colors.grey
+                      : Theme.of(context).primaryColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                 ),
-                child: const Text('박스열기',
-                style: TextStyle(
-                  color: Colors.white,
-                ),),
+                child: Text(
+                  _giftCodeExists ? '선물코드 있음' : '박스열기',
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -93,8 +123,14 @@ class BoxStorageCard extends StatelessWidget {
                   Navigator.pushNamed(
                     context,
                     '/giftcode/create',
-                    arguments: {'type': 'box', 'boxId': boxId, 'orderId': orderId},
-                  );
+                    arguments: {
+                      'type': 'box',
+                      'boxId': widget.boxId,
+                      'orderId': widget.orderId,
+                    },
+                  ).then((_) {
+                    _checkGiftCode(); // ✅ 돌아온 직후 상태 다시 확인
+                  });
                 },
                 child: Text(
                   '선물하기',

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../controllers/giftcode_controller.dart'; // 추가
+import '../../controllers/giftcode_controller.dart';
 import 'package:flutter/services.dart';
 
 class CreateGiftCodeScreen extends StatefulWidget {
   final String boxId;
   final String orderId;
 
-  const CreateGiftCodeScreen({super.key, required this.boxId, required this.orderId});
+  const CreateGiftCodeScreen({
+    super.key,
+    required this.boxId,
+    required this.orderId,
+  });
 
   @override
   State<CreateGiftCodeScreen> createState() => _CreateGiftCodeScreenState();
@@ -15,15 +19,11 @@ class CreateGiftCodeScreen extends StatefulWidget {
 
 class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
   String? giftCode;
-  bool isLoading = true;
+  bool isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadGiftCode();
-  }
+  Future<void> _generateGiftCode() async {
+    setState(() => isLoading = true);
 
-  Future<void> _loadGiftCode() async {
     final result = await GiftCodeController.createGiftCode(
       type: 'box',
       boxId: widget.boxId,
@@ -32,12 +32,10 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
 
     if (!mounted) return;
 
-
     final code = result?['code'];
     final success = result?['success'];
 
     if (success == true && code != null) {
-      print('✅ 받은 코드: $code');
       setState(() {
         giftCode = code;
         isLoading = false;
@@ -50,7 +48,6 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
@@ -61,12 +58,13 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: BackButton(color: Colors.black),
-        title: Text('선물하기', style: TextStyle(color: Colors.black, fontSize: 16.sp, fontWeight: FontWeight.bold)),
+        leading: const BackButton(color: Colors.black),
+        title: Text(
+          '선물하기',
+          style: TextStyle(color: Colors.black, fontSize: 16.sp, fontWeight: FontWeight.bold),
+        ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
+      body: Column(
         children: [
           SizedBox(height: 40.h),
           _buildGiftBoxIcon(),
@@ -75,8 +73,26 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
           SizedBox(height: 8.h),
           Text('너에겐 어떤 행운이 등장할까?… 🥲', style: TextStyle(fontSize: 14.sp, color: Colors.black)),
           SizedBox(height: 60.h),
-          if (giftCode != null)
 
+          // 🔘 선물 코드 생성 버튼
+          if (giftCode == null)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 40.w),
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _generateGiftCode,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 48.h),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                ),
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text('선물 코드 생성하기', style: TextStyle(color: Colors.white, fontSize: 16.sp)),
+              ),
+            ),
+
+          // ✅ 코드가 생성되었을 경우
+          if (giftCode != null)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.w),
               child: Column(
@@ -100,13 +116,11 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
                         IconButton(
                           icon: Icon(Icons.copy, size: 20.sp),
                           onPressed: () async {
-                            if (giftCode != null) {
-                              await Clipboard.setData(ClipboardData(text: giftCode!));
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('코드가 복사되었습니다!')),
-                                );
-                              }
+                            await Clipboard.setData(ClipboardData(text: giftCode!));
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('코드가 복사되었습니다!')),
+                              );
                             }
                           },
                         ),
@@ -135,4 +149,3 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
     );
   }
 }
-

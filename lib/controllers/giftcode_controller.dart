@@ -62,4 +62,33 @@ class GiftCodeController {
       };
     }
   }
+
+  static Future<bool> checkGiftCodeExists({
+    required String type,
+    String? boxId,
+    String? orderId,
+  }) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return false;
+
+      final queryParams = {
+        'type': type,
+        if (boxId != null) 'boxId': boxId,
+        if (orderId != null) 'orderId': orderId,
+      };
+
+      final uri = Uri.parse('$_baseUrl/api/giftcode').replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: {
+        'Authorization': 'Bearer $token',
+      });
+
+      final data = json.decode(response.body);
+      return response.statusCode == 200 && data['exists'] == true;
+    } catch (e) {
+      print('❌ 선물 코드 확인 오류: $e');
+      return false;
+    }
+  }
+
 }
