@@ -17,9 +17,48 @@ class CreateGiftCodeScreen extends StatefulWidget {
   State<CreateGiftCodeScreen> createState() => _CreateGiftCodeScreenState();
 }
 
+
 class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
   String? giftCode;
   bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingGiftCode(); // 🔍 기존 코드 확인
+  }
+
+  Future<void> _loadExistingGiftCode() async {
+    setState(() => isLoading = true);
+
+    final exists = await GiftCodeController.checkGiftCodeExists(
+      type: 'box',
+      boxId: widget.boxId,
+      orderId: widget.orderId,
+    );
+
+    if (!mounted) return;
+
+    if (exists) {
+      // ✅ 존재하면 코드 다시 받아오기 (createGiftCode는 이미 있으면 기존 코드 반환함)
+      final result = await GiftCodeController.createGiftCode(
+        type: 'box',
+        boxId: widget.boxId,
+        orderId: widget.orderId,
+      );
+
+      if (result?['success'] == true && result?['code'] != null) {
+        setState(() {
+          giftCode = result!['code'];
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } else {
+      setState(() => isLoading = false); // ❌ 없음 → 버튼 노출
+    }
+  }
 
   Future<void> _generateGiftCode() async {
     setState(() => isLoading = true);
