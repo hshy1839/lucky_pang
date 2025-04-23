@@ -58,7 +58,7 @@ class AppRoutes {
     '/privacy': (_) => PrivacyScreen(),
     '/giftcode/create': (context) {
       final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return CreateGiftCodeScreen(boxId: args['boxId'], orderId:  args['orderId'],);
+      return CreateGiftCodeScreen(boxId: args['boxId'], orderId:  args['orderId'], productId: args['productId'], type: args['type'],);
     },
     '/terms': (_) => TermsOfServicePage(),
     '/faq': (_) => FaqScreen(),

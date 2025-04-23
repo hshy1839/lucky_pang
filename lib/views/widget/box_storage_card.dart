@@ -102,20 +102,34 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
         Row(
           children: [
             Expanded(
-              child: ElevatedButton(
-                onPressed: _giftCodeExists || _loading ? null : widget.onOpenPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _giftCodeExists || _loading
-                      ? Colors.grey
-                      : Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/giftcode/create',
+                    arguments: {
+                      'type': 'box',
+                      'boxId': widget.boxId,
+                      'orderId': widget.orderId,
+                    },
+                  ).then((_) {
+                    _checkGiftCode(); // ✅ 돌아온 직후 상태 다시 확인
+                  });
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
                 child: Text(
-                  _giftCodeExists ? '선물코드 있음' : '박스열기',
-                  style: const TextStyle(color: Colors.white),
+                  _giftCodeExists ? '선물코드 있음' : '선물하기',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
               ),
             ),
+
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton(

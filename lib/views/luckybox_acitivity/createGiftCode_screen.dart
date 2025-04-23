@@ -4,19 +4,22 @@ import '../../controllers/giftcode_controller.dart';
 import 'package:flutter/services.dart';
 
 class CreateGiftCodeScreen extends StatefulWidget {
-  final String boxId;
+  final String type; // 'box' 또는 'product'
   final String orderId;
+  final String? boxId;
+  final String? productId;
 
   const CreateGiftCodeScreen({
     super.key,
-    required this.boxId,
+    required this.type,
     required this.orderId,
+    this.boxId,
+    this.productId,
   });
 
   @override
   State<CreateGiftCodeScreen> createState() => _CreateGiftCodeScreenState();
 }
-
 
 class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
   String? giftCode;
@@ -32,18 +35,19 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
     setState(() => isLoading = true);
 
     final exists = await GiftCodeController.checkGiftCodeExists(
-      type: 'box',
+      type: widget.type,
       boxId: widget.boxId,
+      productId: widget.productId,
       orderId: widget.orderId,
     );
 
     if (!mounted) return;
 
     if (exists) {
-      // ✅ 존재하면 코드 다시 받아오기 (createGiftCode는 이미 있으면 기존 코드 반환함)
       final result = await GiftCodeController.createGiftCode(
-        type: 'box',
+        type: widget.type,
         boxId: widget.boxId,
+        productId: widget.productId,
         orderId: widget.orderId,
       );
 
@@ -56,7 +60,7 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
         setState(() => isLoading = false);
       }
     } else {
-      setState(() => isLoading = false); // ❌ 없음 → 버튼 노출
+      setState(() => isLoading = false);
     }
   }
 
@@ -64,8 +68,9 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
     setState(() => isLoading = true);
 
     final result = await GiftCodeController.createGiftCode(
-      type: 'box',
+      type: widget.type,
       boxId: widget.boxId,
+      productId: widget.productId,
       orderId: widget.orderId,
     );
 
@@ -108,12 +113,16 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
           SizedBox(height: 40.h),
           _buildGiftBoxIcon(),
           SizedBox(height: 32.h),
-          Text('럭키박스', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
+          Text(widget.type == 'box' ? '럭키박스' : '상품', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
           SizedBox(height: 8.h),
-          Text('너에겐 어떤 행운이 등장할까?… 🥲', style: TextStyle(fontSize: 14.sp, color: Colors.black)),
+          Text(
+            widget.type == 'box'
+                ? '너에겐 어떤 행운이 등장할까?… 🥲'
+                : '이 선물을 누군가에게 전달해보세요!',
+            style: TextStyle(fontSize: 14.sp, color: Colors.black),
+          ),
           SizedBox(height: 60.h),
 
-          // 🔘 선물 코드 생성 버튼
           if (giftCode == null)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.w),
@@ -130,7 +139,6 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
               ),
             ),
 
-          // ✅ 코드가 생성되었을 경우
           if (giftCode != null)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.w),
@@ -188,3 +196,4 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
     );
   }
 }
+

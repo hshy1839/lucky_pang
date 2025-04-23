@@ -116,8 +116,10 @@ class _OrderScreenState extends State<OrderScreen> {
                       final product = order['unboxedProduct']['product'];
 
                       return ProductStorageCard(
+                        productId: order['unboxedProduct']?['product']['_id'] ?? '',
                         imageUrl: 'http://172.30.1.22:7778${product['mainImage']}',
                         productName: '[${product['brand']}] ${product['name']}',
+                        orderId: order['_id'],
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
                         purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
                         consumerPrice: product['consumerPrice'],
@@ -191,9 +193,8 @@ class _OrderScreenState extends State<OrderScreen> {
                             ),
                           );
                         },
-
-
-                        onGiftPressed: () {},
+                        onGiftPressed: () {
+                        },
                         onDeliveryPressed: () {
                           Navigator.pushNamed(
                             context,
@@ -206,6 +207,7 @@ class _OrderScreenState extends State<OrderScreen> {
                             },
                           );
                         },
+
                       );
                     },
                   ),

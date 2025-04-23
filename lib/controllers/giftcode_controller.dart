@@ -11,6 +11,7 @@ class GiftCodeController {
     required String type, // 'box' 또는 'product'
     String? boxId,
     String? orderId,
+    String? productId, // ✅ productId 추가
   }) async {
     try {
       final token = await _storage.read(key: 'token');
@@ -26,6 +27,7 @@ class GiftCodeController {
         'type': type,
         if (boxId != null) 'boxId': boxId,
         if (orderId != null) 'orderId': orderId,
+        if (productId != null) 'productId': productId, // ✅ 추가됨
       };
 
       final response = await http.post(
@@ -63,10 +65,12 @@ class GiftCodeController {
     }
   }
 
+
   static Future<bool> checkGiftCodeExists({
     required String type,
     String? boxId,
     String? orderId,
+    String? productId,
   }) async {
     try {
       final token = await _storage.read(key: 'token');
@@ -76,6 +80,7 @@ class GiftCodeController {
         'type': type,
         if (boxId != null) 'boxId': boxId,
         if (orderId != null) 'orderId': orderId,
+        if (productId != null) 'productId': productId,
       };
 
       final uri = Uri.parse('$_baseUrl/api/giftcode').replace(queryParameters: queryParams);
