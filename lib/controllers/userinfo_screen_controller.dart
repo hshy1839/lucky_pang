@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -12,22 +13,22 @@ class UserInfoScreenController {
 
 
   // 사용자 정보 가져오기
+  final storage = FlutterSecureStorage();
+
   Future<void> fetchUserInfo(BuildContext context) async {
     try {
-      // SharedPreferences에서 토큰 가져오기
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      // ✅ secure storage에서 토큰 읽기
+      final token = await storage.read(key: 'token');
 
       if (token == null || token.isEmpty) {
         throw Exception('로그인 정보가 없습니다. 다시 로그인해주세요.');
       }
 
-      // 서버 요청
       final response = await http.get(
-        Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'), // 서버 주소에 맞게 수정
+        Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // SharedPreferences에서 가져온 토큰 사용
+          'Authorization': 'Bearer $token', // secure storage에서 가져온 토큰
         },
       );
 

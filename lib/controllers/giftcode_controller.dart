@@ -74,10 +74,13 @@ class GiftCodeController {
   }) async {
     try {
       final token = await _storage.read(key: 'token');
-      if (token == null) return false;
+      final fromUser = await _storage.read(key: 'userId'); // ✅ 사용자 본인 ID 사용
+
+      if (token == null || fromUser == null) return false;
 
       final queryParams = {
         'type': type,
+        'fromUser': fromUser, // ✅ 현재 로그인한 사용자 기준으로
         if (boxId != null) 'boxId': boxId,
         if (orderId != null) 'orderId': orderId,
         if (productId != null) 'productId': productId,
@@ -95,5 +98,53 @@ class GiftCodeController {
       return false;
     }
   }
+
+
+
+  /// 선물 코드 입력 및 수령 처리
+  static Future<Map<String, dynamic>> claimGiftCode(String code) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) {
+        print('❌ 토큰 없음');
+        return {
+          'success': false,
+          'message': '로그인이 필요합니다.',
+        };
+      }
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/giftcode/claim'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'code': code}),
+      );
+
+      final data = json.decode(response.body);
+      print('🎁 선물 코드 입력 응답: $data');
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'giftType': data['giftType'],
+          'message': data['message'] ?? '선물이 등록되었습니다.',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? '선물 등록 실패',
+        };
+      }
+    } catch (e) {
+      print('❌ 선물 코드 입력 오류: $e');
+      return {
+        'success': false,
+        'message': '네트워크 오류 또는 서버 오류 발생',
+      };
+    }
+  }
+
 
 }

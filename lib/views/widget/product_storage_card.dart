@@ -97,13 +97,23 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           SizedBox(height: 12.h),
           Row(
             children: [
+              // ✅ 포인트환급 버튼 - 선물코드가 있으면 비활성화
               Expanded(
                 child: OutlinedButton(
-                  onPressed: widget.onRefundPressed,
-                  child: Text('포인트환급', style: TextStyle(color: Theme.of(context).primaryColor)),
+                  onPressed: _giftCodeExists ? null : widget.onRefundPressed,
+                  child: Text(
+                    '포인트환급',
+                    style: TextStyle(
+                      color: _giftCodeExists
+                          ? Colors.grey
+                          : Theme.of(context).primaryColor,
+                    ),
+                  ),
                 ),
               ),
               SizedBox(width: 8.w),
+
+              // ✅ 선물하기 버튼 - 항상 클릭 가능
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
@@ -119,16 +129,14 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                         'orderId': widget.orderId,
                       },
                     ).then((_) {
-                      _checkGiftCode(); // 돌아온 직후 다시 giftCode 확인
+                      _checkGiftCode();
                     });
                   },
                   style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                      color: Theme.of(context).primaryColor,
-                    ),
+                    foregroundColor: Theme.of(context).primaryColor,
                   ),
                   child: Text(
-                    _giftCodeExists ? '선물코드 있음' : '선물하기',
+                    _giftCodeExists ? '선물코드 확인' : '선물하기',
                     style: TextStyle(
                       color: Theme.of(context).primaryColor,
                     ),
@@ -136,13 +144,16 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                 ),
               ),
 
-
               SizedBox(width: 8.w),
+
+              // ✅ 배송신청 버튼 - 선물코드 있으면 비활성화
               Expanded(
                 child: ElevatedButton(
-                  onPressed: widget.onDeliveryPressed,
+                  onPressed: _giftCodeExists || _loading ? null : widget.onDeliveryPressed,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:Theme.of(context).primaryColor,
+                    backgroundColor: _giftCodeExists || _loading
+                        ? Colors.grey
+                        : Theme.of(context).primaryColor,
                   ),
                   child: Text(
                    '배송신청',
@@ -152,6 +163,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
               ),
             ],
           ),
+
         ],
       ),
     );

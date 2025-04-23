@@ -199,7 +199,7 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
 
   Future<void> fetchUserId() async {
     final profileController = ProfileScreenController();
-    await profileController.fetchUserId(context);
+    await profileController.fetchUserDetails(context);
     setState(() {
       userId = profileController.userId;
     });

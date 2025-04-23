@@ -11,40 +11,13 @@ class ProfileScreenController extends ChangeNotifier {
 
   final storage = FlutterSecureStorage(); // ✅ secure storage 인스턴스
 
-  Future<void> fetchUserId(BuildContext context) async {
-    try {
-      final token = await storage.read(key: 'token'); // ✅ 토큰 읽기
-      if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
-
-      final response = await http.get(
-        Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'),
-        headers: { 'Authorization': 'Bearer $token' },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['user']?['_id'] != null) {
-          userId = data['user']['_id'];
-          notifyListeners();
-        } else {
-          throw Exception('유저 ID를 찾을 수 없습니다. ${response.body}');
-        }
-      } else {
-        throw Exception('사용자 정보 가져오기 실패: ${response.body}');
-      }
-    } catch (e) {
-      print('오류 발생: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('사용자 정보를 가져오는 데 실패했습니다.')),
-      );
-      throw e;
-    }
-  }
 
   Future<void> fetchUserDetails(BuildContext context) async {
     try {
       final token = await storage.read(key: 'token');
       if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
+
+      print('📦 토큰 확인: $token');
 
       final response = await http.get(
         Uri.parse('http://172.30.1.22:7778/api/users/userinfoget'),

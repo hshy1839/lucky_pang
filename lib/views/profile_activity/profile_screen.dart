@@ -56,7 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 60.r,
                 backgroundColor: Colors.grey.shade300,
-                backgroundImage: const AssetImage('assets/images/profile_placeholder.jpg'),
               ),
               Positioned(
                 bottom: 0,
@@ -66,10 +65,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           SizedBox(height: 20.h),
-          Text(nickname, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
-          SizedBox(height: 8.h),
+          SizedBox(height: 20.h),
           Column(
             children: [
+              Text(nickname, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+              SizedBox(height: 8.h),
               Text('보유포인트', style: TextStyle(color: Colors.grey, fontSize: 12.sp)),
               SizedBox(height: 4.h),
               Text('52,000', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.redAccent)),

@@ -31,7 +31,7 @@ class _CartDetailScreenState extends State<CartDetailScreen> {
   Future<void> _loadCartData() async {
     try {
       final profileController = ProfileScreenController();
-      await profileController.fetchUserId(context);
+      await profileController.fetchUserDetails(context);
       final String userId = profileController.userId;
       final String token = await _getToken();
 

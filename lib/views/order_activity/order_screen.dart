@@ -309,9 +309,14 @@ class _OrderScreenState extends State<OrderScreen> {
               _buildMainButton(
                 title: '선물코드 입력하기',
                 icon: Icons.confirmation_number,
-                onTap: () {
-                  Navigator.pushNamed(context, '/giftCode');
-
+                onTap: () async {
+                  final result = await Navigator.pushNamed(context, '/giftCode');
+                  if (result == true) {
+                    // ✅ 선물코드 등록 성공 후 리스트 갱신
+                    await loadUnboxedProducts();
+                    await loadOrders(); // 필요하면 이것도
+                    setState(() {});
+                  }
                 },
               ),
             ]
