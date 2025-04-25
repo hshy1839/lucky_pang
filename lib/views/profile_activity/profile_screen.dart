@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../controllers/point_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -12,12 +13,25 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserInfoScreenController _controller = UserInfoScreenController();
-  String nickname = '불러오는 중...';
+  final PointController _pointController = PointController();
+  String nickname = '';
+  int totalPoints = 0;
 
   @override
   void initState() {
     super.initState();
     loadUserInfo();
+    loadUserPoints();
+  }
+
+  Future<void> loadUserPoints() async {
+    final userId = await _pointController.storage.read(key: 'userId'); // ✅ userId 가져오기
+    if (userId != null) {
+      final points = await _pointController.fetchUserTotalPoints(userId);
+      setState(() {
+        totalPoints = points;
+      });
+    }
   }
 
   Future<void> loadUserInfo() async {
@@ -72,7 +86,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               SizedBox(height: 8.h),
               Text('보유포인트', style: TextStyle(color: Colors.grey, fontSize: 12.sp)),
               SizedBox(height: 4.h),
-              Text('52,000', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+              Text('${totalPoints.toString()}원', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.redAccent)),
             ],
           ),
           SizedBox(height: 16.h),

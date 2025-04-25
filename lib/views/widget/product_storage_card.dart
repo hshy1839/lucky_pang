@@ -107,6 +107,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                       color: _giftCodeExists
                           ? Colors.grey
                           : Theme.of(context).primaryColor,
+                      fontSize: 12,
                     ),
                   ),
                 ),

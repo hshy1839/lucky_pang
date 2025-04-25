@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+import '../../controllers/point_controller.dart';
+import '../../controllers/userinfo_screen_controller.dart';
 
 class PointInfoScreen extends StatefulWidget {
   const PointInfoScreen({super.key});
@@ -9,7 +15,50 @@ class PointInfoScreen extends StatefulWidget {
 }
 
 class _PointInfoScreenState extends State<PointInfoScreen> {
-  String selectedTab = 'total'; // 'total' or 'scheduled'
+  String selectedTab = 'total';
+  final PointController _pointController = PointController();
+  final UserInfoScreenController _controller = UserInfoScreenController();
+
+  final storage = FlutterSecureStorage();
+  String nickname = '';
+  int totalPoints = 0;
+  List<dynamic> pointLogs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+    loadUserInfo();
+  }
+
+  Future<void> loadData() async {
+    final userId = await storage.read(key: 'userId');
+    final token = await storage.read(key: 'token');
+
+    if (userId == null || token == null) return;
+
+    // 포인트 총합
+    totalPoints = await _pointController.fetchUserTotalPoints(userId);
+
+    // 포인트 내역
+    final response = await http.get(
+      Uri.parse('http://172.30.1.22:7778/api/points/$userId'),
+      headers: { 'Authorization': 'Bearer $token' },
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      pointLogs = data['points'] ?? [];
+    }
+
+    setState(() {});
+  }
+
+  Future<void> loadUserInfo() async {
+    await _controller.fetchUserInfo(context);
+    setState(() {
+      nickname = _controller.nickname;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +78,6 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
       ),
       body: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: double.infinity,
@@ -38,36 +86,22 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('LUCKY한',
-                      style: TextStyle(
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                  Text('와딩 님!',
-                      style: TextStyle(
-                          fontSize: 20.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
+                  Text('LUCKY한', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text('$nickname 님!', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white)),
                   SizedBox(height: 12.h),
-                  Text(
-                    '현재 잔여 포인트는 57,000P 입니다.',
-                    style: TextStyle(fontSize: 14.sp, color: Colors.white),
-                  ),
+                  Text('현재 잔여 포인트는 ${totalPoints.toString()}P 입니다.', style: TextStyle(fontSize: 14.sp, color: Colors.white)),
                 ],
               ),
             ),
             SizedBox(height: 8.h),
-            Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildTabItem('전체 포인트 내역', 'total', selectedTab == 'total'),
-                  SizedBox(width: 24.w),
-                  _buildTabItem('소멸예정 포인트', 'scheduled', selectedTab == 'scheduled'),
-                ],
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildTabItem('전체 포인트 내역', 'total', selectedTab == 'total'),
+                SizedBox(width: 24.w),
+                _buildTabItem('소멸예정 포인트', 'scheduled', selectedTab == 'scheduled'),
+              ],
             ),
-            SizedBox(height: 8.h),
             Divider(height: 1, color: Colors.grey.shade300),
             _buildPointList(),
           ],
@@ -92,7 +126,6 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
         ),
         child: Text(
           label,
-          textAlign: TextAlign.center,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14.sp,
@@ -104,56 +137,29 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
   }
 
   Widget _buildPointList() {
-    final items = [
-      {
-        'desc': '[한국문화재재단] 보자기문 나전소함 리필 포인트 환급',
-        'date': '2025.04.10 10:32:20',
-        'point': '+18,000 P',
-        'color': Colors.redAccent
-      },
-      {
-        'desc': '럭키박스 구매',
-        'date': '2025.04.10 00:30:31',
-        'point': '-5,000 P',
-        'color': Colors.blue
-      },
-      {
-        'desc': '[입상공간] 누워보게 에어베드 (1+1) 리필 포인트 환급',
-        'date': '2025.04.10 00:30:19',
-        'point': '+6,000 P',
-        'color': Colors.redAccent
-      },
-      {
-        'desc': '[카카오프렌즈] 세이치즈 심플 에코백 리필 포인트 환급',
-        'date': '2025.04.10 00:30:16',
-        'point': '+3,000 P',
-        'color': Colors.redAccent
-      },
-      {
-        'desc': '럭키박스 구매',
-        'date': '2025.04.10 00:29:20',
-        'point': '-10,000 P',
-        'color': Colors.blue
-      },
-    ];
-
     return ListView.separated(
-      padding: EdgeInsets.only(bottom: 16.h),
       shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      itemBuilder: (_, i) => ListTile(
-        title: Text(items[i]['desc'] as String, style: TextStyle(fontSize: 13.sp)),
-        subtitle: Text(items[i]['date'] as String, style: TextStyle(fontSize: 11.sp)),
-        trailing: Text(
-          items[i]['point'] as String,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: (items[i]['point'] as String).startsWith('+') ? Colors.orange : Colors.blue,
-          ),
-        ),
-      ),
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      itemCount: pointLogs.length,
       separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade300),
-      itemCount: items.length,
+      itemBuilder: (_, i) {
+        final item = pointLogs[i];
+        final amount = int.tryParse(item['amount'].toString()) ?? 0;
+        final isPlus = item['type'] == '추가' || item['type'] == '환불';
+
+        return ListTile(
+          title: Text(item['description'] ?? '-', style: TextStyle(fontSize: 13.sp)),
+          subtitle: Text(item['createdAt']?.toString().substring(0, 19).replaceAll('T', ' ') ?? '', style: TextStyle(fontSize: 11.sp)),
+          trailing: Text(
+            '${isPlus ? '+' : '-'}${amount.toString()} P',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isPlus ? Colors.orange : Colors.blue,
+            ),
+          ),
+        );
+      },
     );
   }
 }

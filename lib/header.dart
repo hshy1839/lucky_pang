@@ -34,13 +34,6 @@ class Header extends StatelessWidget {
                     Text("럭키탕", style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w900, fontSize: 22),),
                     ]
                     ),
-                    IconButton(
-                      icon: Icon(Icons.shopping_cart_outlined, color:Colors.black, size: 28,),
-                      onPressed: () {
-                        // 장바구니 화면으로 이동
-                        Navigator.pushNamed(context, '/cart');
-                      },
-                    ),
                   ],
                 ),
                 SizedBox(height: 8.0), // 줄 간격

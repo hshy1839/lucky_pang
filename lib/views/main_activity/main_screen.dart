@@ -116,7 +116,7 @@ class _MainScreenState extends State<MainScreen> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
               child: Image.network(
                 product['mainImageUrl'] ?? 'assets/icons/app_icon.jpg',
-                height: 150,
+                height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Center(child: Icon(Icons.error)),
@@ -259,10 +259,10 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildCarousel(List<Map<String, String>> items, BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20, right: 0, bottom: 20),
+      padding: const EdgeInsets.only(left: 0, right: 0, bottom: 20),
       child: CarouselSlider(
         options: CarouselOptions(
-          height: 240,
+          height: 200,
           enableInfiniteScroll: false,
           enlargeCenterPage: false,
           viewportFraction: 0.4,

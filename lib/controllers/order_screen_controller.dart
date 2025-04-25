@@ -224,7 +224,7 @@ class OrderScreenController {
   }
 
 
-  static Future<int?> refundOrder(String orderId, double refundRate) async {
+  static Future<int?> refundOrder(String orderId, double refundRate, {required String description}) async {
     try {
       final token = await _storage.read(key: 'token');
       if (token == null) return null;
@@ -237,6 +237,7 @@ class OrderScreenController {
         },
         body: jsonEncode({
           'refundRate': refundRate,
+          'description': description, // ✅ 추가됨
         }),
       );
 
@@ -258,5 +259,6 @@ class OrderScreenController {
       return null;
     }
   }
+
 
 }

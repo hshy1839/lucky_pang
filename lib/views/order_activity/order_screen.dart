@@ -148,8 +148,12 @@ class _OrderScreenState extends State<OrderScreen> {
                                   onPressed: () async {
                                     Navigator.pop(context);
 
-                                    final refunded = await OrderScreenController.refundOrder(order['_id'], refundRate);
-                                    debugPrint('✅ refundOrder 응답: $refunded');
+                                    final refunded = await OrderScreenController.refundOrder(
+                                      order['_id'],
+                                      refundRate,
+                                      description: '[${product['brand']}] ${product['name']} 포인트 환급',
+                                    );
+                                      debugPrint('✅ refundOrder 응답: $refunded');
 
                                     // ✅ context 유효성 검사 후 다이얼로그 표시
                                     if (refunded != null && dialogContext.mounted) {
