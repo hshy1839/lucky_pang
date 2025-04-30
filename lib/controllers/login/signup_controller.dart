@@ -47,7 +47,7 @@ class SignupController extends ChangeNotifier {
       nicknameError = '닉네임을 입력해주세요.';
     } else {
       final response = await http.post(
-        Uri.parse('http://172.30.1.22:7778/api/users/check-duplicate'),
+        Uri.parse('http://192.168.25.15:7778/api/users/check-duplicate'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nickname': nickname}),
       );
@@ -69,7 +69,7 @@ class SignupController extends ChangeNotifier {
       emailError = '이메일을 입력해주세요.';
     } else {
       final response = await http.post(
-        Uri.parse('http://172.30.1.22:7778/api/users/check-duplicate'),
+        Uri.parse('http://192.168.25.15:7778/api/users/check-duplicate'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
@@ -95,7 +95,7 @@ class SignupController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('http://172.30.1.22:7778/api/users/check-referral'),
+        Uri.parse('http://192.168.25.15:7778/api/users/check-referral'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'referralCode': code}),
       );
@@ -171,7 +171,7 @@ class SignupController extends ChangeNotifier {
     }
 
     final response = await http.post(
-      Uri.parse('http://172.30.1.22:7778/api/users/signup'),
+      Uri.parse('http://192.168.25.15:7778/api/users/signup'),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
       body: jsonEncode(body),
     );

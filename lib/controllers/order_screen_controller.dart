@@ -57,7 +57,7 @@ class OrderScreenController {
     }
 
     final response = await http.post(
-      Uri.parse('http://172.30.1.22:7778/api/order'),
+      Uri.parse('http://192.168.25.15:7778/api/order'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -124,7 +124,7 @@ class OrderScreenController {
       }
 
       final response = await http.get(
-        Uri.parse('http://172.30.1.22:7778/api/order?userId=$userId'),
+        Uri.parse('http://192.168.25.15:7778/api/order?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -179,7 +179,7 @@ class OrderScreenController {
       }
 
       final response = await http.post(
-        Uri.parse('http://172.30.1.22:7778/api/orders/$orderId/unbox'),
+        Uri.parse('http://192.168.25.15:7778/api/orders/$orderId/unbox'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -203,7 +203,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://172.30.1.22:7778/api/orders/unboxed?userId=$userId'),
+        Uri.parse('http://192.168.25.15:7778/api/orders/unboxed?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -230,7 +230,7 @@ class OrderScreenController {
       if (token == null) return null;
 
       final response = await http.post(
-        Uri.parse('http://172.30.1.22:7778/api/orders/$orderId/refund'),
+        Uri.parse('http://192.168.25.15:7778/api/orders/$orderId/refund'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

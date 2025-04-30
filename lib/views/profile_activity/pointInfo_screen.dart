@@ -42,7 +42,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
 
     // 포인트 내역
     final response = await http.get(
-      Uri.parse('http://172.30.1.22:7778/api/points/$userId'),
+      Uri.parse('http://192.168.25.15:7778/api/points/$userId'),
       headers: { 'Authorization': 'Bearer $token' },
     );
     if (response.statusCode == 200) {

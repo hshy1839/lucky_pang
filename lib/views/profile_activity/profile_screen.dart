@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/point_controller.dart';
+import '../../controllers/profile_screen_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
+import 'package:image_picker/image_picker.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,8 +19,14 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserInfoScreenController _controller = UserInfoScreenController();
   final PointController _pointController = PointController();
+  final ProfileScreenController _profileController = ProfileScreenController();
+
   String nickname = '';
   int totalPoints = 0;
+  String? profileImage = '';
+
+
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -34,16 +45,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickAndUploadProfileImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final imageFile = File(pickedFile.path);
+      await _profileController.uploadProfileImage(context, imageFile);
+      _controller.clearCache();
+      await loadUserInfo();
+    }
+  }
+
   Future<void> loadUserInfo() async {
     await _controller.fetchUserInfo(context);
     setState(() {
       nickname = _controller.nickname;
+      profileImage = _controller.profileImage;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
+
+    final String baseUrl = 'http://192.168.25.15:7778/';
+    final String? imageUrl = (profileImage != null && profileImage!.isNotEmpty)
+        ? '$baseUrl$profileImage'
+        : null;
+
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -64,21 +92,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Column(
         children: [
           SizedBox(height: 20.h),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              CircleAvatar(
-                radius: 60.r,
-                backgroundColor: Colors.grey.shade300,
-              ),
-              Positioned(
-                bottom: 0,
-                right: MediaQuery.of(context).size.width / 2 - 60.r,
-                child: Icon(Icons.edit, size: 20.sp, color: Colors.grey),
-              ),
-            ],
+          GestureDetector(
+            onTap: _pickAndUploadProfileImage, // ✅ 터치 시 이미지 선택 및 업로드
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 60.r,
+                  backgroundColor: Colors.grey.shade300,
+                  backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: MediaQuery.of(context).size.width / 2 - 60.r,
+                  child: Icon(Icons.edit, size: 20.sp, color: Colors.grey),
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 20.h),
           SizedBox(height: 20.h),
           Column(
             children: [

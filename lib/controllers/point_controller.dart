@@ -11,7 +11,7 @@ class PointController {
       if (token == null) throw Exception('No token found');
 
       final response = await http.get(
-        Uri.parse('http://172.30.1.22:7778/api/points/$userId'),
+        Uri.parse('http://192.168.25.15:7778/api/points/$userId'),
         headers: {
           'Authorization': 'Bearer $token',
         },

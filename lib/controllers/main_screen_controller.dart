@@ -26,7 +26,7 @@ class MainScreenController extends ChangeNotifier {
       DateTime.now().day,
     ).toIso8601String();
 
-    final url = 'http://172.30.1.22:7778/api/users/noticeList/find';
+    final url = 'http://192.168.25.15:7778/api/users/noticeList/find';
     final headers = {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -70,7 +70,7 @@ class MainScreenController extends ChangeNotifier {
       }
 
       final response = await http.get(
-        Uri.parse('http://172.30.1.22:7778/api/promotion/read'),
+        Uri.parse('http://192.168.25.15:7778/api/promotion/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -81,7 +81,7 @@ class MainScreenController extends ChangeNotifier {
         if (decodedResponse is Map<String, dynamic> &&
             decodedResponse['promotions'] is List<dynamic>) {
           final promotions = decodedResponse['promotions'] as List<dynamic>;
-          const serverUrl = 'http://172.30.1.22:7778';
+          const serverUrl = 'http://192.168.25.15:7778';
 
           return promotions.map((promotion) {
             final promotionMap = promotion as Map<String, dynamic>;
