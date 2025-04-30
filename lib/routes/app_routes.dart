@@ -9,6 +9,7 @@ import '../views/login_activity/findPassword_screen.dart';
 import '../views/login_activity/singup_agree_screen.dart';
 import '../views/luckybox_acitivity/createGiftCode_screen.dart';
 import '../views/main_activity/main_screen.dart';
+import '../views/setting_activity/event_activity/event_screen.dart';
 import '../views/setting_activity/notice_activity/notice_screen.dart';
 import '../views/main_activity/search_product_screen.dart';
 import '../views/main_activity/userinfo_detail_screen.dart';
@@ -41,6 +42,7 @@ class AppRoutes {
     '/findPassword': (_) => FindPasswordScreen(),
     '/notice': (_) => NoticeScreen(),
 
+    '/event': (_) => EventScreen(),
     '/qna': (_) => QnaScreen(),
     '/qnaCreate': (_) => QnaCreateScreen(),
     '/accountInfo': (_) => AccountScreen(),
