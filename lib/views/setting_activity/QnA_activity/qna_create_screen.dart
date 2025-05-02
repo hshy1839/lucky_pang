@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../../controllers/qna_controller.dart'; // QnaController 경로에 맞게 수정
+import '../../../controllers/qna_controller.dart';
 
 class QnaCreateScreen extends StatefulWidget {
   @override
@@ -12,24 +11,30 @@ class _QnaCreateScreenState extends State<QnaCreateScreen> {
   final TextEditingController _bodyController = TextEditingController();
   final QnaController _qnaController = QnaController();
 
+  final List<String> _categories = [
+    '#계정', '#구매/환불', '#배송', '#포인트', '#오류/개선', '#일반', '#기타'
+  ];
+  String? _selectedCategory;
+
   void _submitQna() async {
     final String title = _titleController.text.trim();
     final String body = _bodyController.text.trim();
+    final String? category = _selectedCategory;
 
-    if (title.isEmpty || body.isEmpty) {
+    if (title.isEmpty || body.isEmpty || category == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('제목과 내용을 모두 입력해주세요.')),
+        SnackBar(content: Text('제목, 내용, 카테고리를 모두 입력해주세요.')),
       );
       return;
     }
 
-    final success = await _qnaController.createQna(title, body);
+    final success = await _qnaController.createQna(title, body, category);
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('문의가 성공적으로 등록되었습니다.')),
       );
-      Navigator.pop(context); // 이전 화면으로 이동
+      Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('문의 등록에 실패했습니다. 다시 시도해주세요.')),
@@ -61,6 +66,25 @@ class _QnaCreateScreenState extends State<QnaCreateScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              items: _categories.map((category) {
+                return DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              decoration: InputDecoration(
+                labelText: '카테고리',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                });
+              },
+            ),
+            SizedBox(height: 16.0),
             TextField(
               controller: _titleController,
               decoration: InputDecoration(

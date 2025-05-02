@@ -80,7 +80,7 @@ class _QnaScreenState extends State<QnaScreen> {
             children: [
               ListTile(
                 title: Text(
-                  question['title'] ?? '제목 없음',
+                  '[${(question['category'] ?? '').replaceAll('#', '')}] ${question['title'] ?? '제목 없음'}',
                   style: TextStyle(
                     fontSize: 16.0,
                     fontWeight: FontWeight.bold,

@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class QnaController {
-  final String apiUrl = 'http://192.168.25.15:7778/api/qnaQuestion'; // API 엔드포인트
+  final String apiUrl = 'http://192.168.25.15:7778/api/qnaQuestion';
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
-  // QnA 생성
-  Future<bool> createQna(String title, String body) async {
+  // QnA 생성 (카테고리 추가됨)
+  Future<bool> createQna(String title, String body, String category) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
+      final token = await secureStorage.read(key: 'token') ?? '';
 
       if (token.isEmpty) {
         throw Exception('토큰이 없습니다.');
@@ -24,6 +24,7 @@ class QnaController {
         body: json.encode({
           'title': title,
           'body': body,
+          'category': category, // ✅ 카테고리 포함
         }),
       );
 
@@ -40,11 +41,10 @@ class QnaController {
     }
   }
 
-  // 토큰을 사용한 QnA 조회
+  // QnA 조회
   Future<List<Map<String, dynamic>>> getQnaInfo() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
+      final token = await secureStorage.read(key: 'token') ?? '';
 
       if (token.isEmpty) {
         throw Exception('토큰이 없습니다.');
@@ -78,11 +78,10 @@ class QnaController {
     }
   }
 
-  // 특정 질문에 대한 답변 가져오기
+  // 답변 조회
   Future<List<Map<String, dynamic>>> getAnswersByQuestionId(String questionId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
+      final token = await secureStorage.read(key: 'token') ?? '';
 
       if (token.isEmpty) {
         throw Exception('토큰이 없습니다.');
