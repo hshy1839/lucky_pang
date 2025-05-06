@@ -23,7 +23,7 @@ class UserInfoScreenController {
       if (token == null || token.isEmpty) throw Exception('로그인 정보가 없습니다.');
 
       final response = await http.get(
-        Uri.parse('http://192.168.25.15:7778/api/users/userinfoget'),
+        Uri.parse('http://192.168.219.107:7778/api/users/userinfoget'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -72,7 +72,7 @@ class UserInfoScreenController {
 
       // 서버 요청
       final response = await http.put(
-        Uri.parse('http://192.168.25.15:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
+        Uri.parse('http://192.168.219.107:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // SharedPreferences에서 가져온 토큰 사용

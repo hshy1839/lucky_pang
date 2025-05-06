@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../controllers/order_screen_controller.dart';
+
 class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key});
 
@@ -10,6 +12,21 @@ class RankingScreen extends StatefulWidget {
 
 class _RankingScreenState extends State<RankingScreen> {
   bool showRealtimeLog = true;
+  List<Map<String, dynamic>> unboxedOrders = [];
+
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUnboxedLogs();
+  }
+
+  Future<void> fetchUnboxedLogs() async {
+    final orders = await OrderScreenController.getAllUnboxedOrders();
+    setState(() {
+      unboxedOrders = orders;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,37 +158,41 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   Widget _buildRealtimeList() {
-    return ListView(
+    if (unboxedOrders.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView.builder(
       padding: EdgeInsets.symmetric(vertical: 12.h),
-      children: [
-        _buildUnboxItem(
-          isHighlighted: true,
-          profileName: '나도쥬라',
-          productName: '[DIOR]소바쥬 오 드 퍼퓸 60ML',
-          price: '정가 150,000원',
-          boxPrice: '10,000원 박스',
-          dateTime: '2025-04-10 00:06',
-          image: 'https://via.placeholder.com/50',
-        ),
-        _buildUnboxItem(
-          profileName: '또~또',
-          productName: '[큐라덴]CTC202 Double Blade 혀클리너 (랜덤)',
-          price: '정가 6,000원',
-          boxPrice: '5,000원 박스',
-          dateTime: '2025-04-10 09:23',
-          image: 'https://via.placeholder.com/50',
-        ),
-        _buildUnboxItem(
-          profileName: '또~또',
-          productName: '[큐라덴]CTC202 Double Blade 혀클리너 (랜덤)',
-          price: '정가 6,000원',
-          boxPrice: '5,000원 박스',
-          dateTime: '2025-04-10 09:23',
-          image: 'https://via.placeholder.com/50',
-        ),
-      ],
+      itemCount: unboxedOrders.length,
+      itemBuilder: (context, index) {
+        final order = unboxedOrders[index];
+        final user = order['user'];
+        final product = order['unboxedProduct']?['product'];
+        final box = order['box'];
+        final rawProfileImage = user?['profileImage'];
+        final userProfileImage = rawProfileImage != null && rawProfileImage.isNotEmpty
+            ? (rawProfileImage.startsWith('http')
+            ? rawProfileImage
+            : 'http://192.168.219.107:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
+            : null;
+        
+        return _buildUnboxItem(
+          profileName: user?['nickname'] ?? '익명',
+          userProfileImage: userProfileImage,
+          productName: product?['name'] ?? '상품명 없음',
+          price: '정가 ${(product?['price'] ?? 0).toString()}원',
+          boxPrice: '${box?['price'] ?? 0}원 박스',
+          dateTime: DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')?.toLocal().toString().substring(0, 16) ?? '',
+          image: product?['mainImage'] != null && product['mainImage'].isNotEmpty
+              ? 'http://192.168.219.107:7778${product['mainImage']}'
+              : 'https://via.placeholder.com/50',
+
+        );
+      },
     );
   }
+
 
   Widget _buildWeeklyRanking() {
     return ListView(
@@ -208,19 +229,6 @@ class _RankingScreenState extends State<RankingScreen> {
               ],
             ),
           ),
-        ),
-        _buildRankItem(
-          rank: '1위',
-          name: '폭삭속았수다🥲',
-          amount: '192,786,040원 만큼 획득',
-          point: '3,855,721 P',
-          isFirst: true,
-        ),
-        _buildRankItem(
-          rank: '2위',
-          name: '큰것좀',
-          amount: '62,903,860원 만큼 획득',
-          point: '943,558 P',
         ),
       ],
     );
@@ -288,6 +296,7 @@ class _RankingScreenState extends State<RankingScreen> {
     required String boxPrice,
     required String dateTime,
     required String image,
+    String? userProfileImage,
     bool isHighlighted = false,
   }) {
     return Padding(
@@ -306,14 +315,34 @@ class _RankingScreenState extends State<RankingScreen> {
             backgroundImage: NetworkImage(image),
             radius: 24.r,
           ),
-          title: Text(
-            profileName,
-            style: TextStyle(
-              color: isHighlighted ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold,
-              fontSize: 14.sp,
-            ),
+          title: Row(
+            children: [
+              // 🔥 프로필 이미지 or 기본 아이콘
+              userProfileImage != null && userProfileImage.isNotEmpty
+                  ? CircleAvatar(
+                radius: 12.r,
+                backgroundImage: NetworkImage('$userProfileImage'),
+              )
+                  : const Icon(Icons.account_circle, size: 24, color: Colors.grey),
+
+              SizedBox(width: 6.w),
+
+              // 🔥 닉네임
+              Expanded(
+                child: Text(
+                  profileName,
+                  style: TextStyle(
+                    color: isHighlighted ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.sp,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
+
+
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

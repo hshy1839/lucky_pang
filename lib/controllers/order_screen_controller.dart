@@ -57,7 +57,7 @@ class OrderScreenController {
     }
 
     final response = await http.post(
-      Uri.parse('http://192.168.25.15:7778/api/order'),
+      Uri.parse('http://192.168.219.107:7778/api/order'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -124,7 +124,7 @@ class OrderScreenController {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.25.15:7778/api/order?userId=$userId'),
+        Uri.parse('http://192.168.219.107:7778/api/order?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -179,7 +179,7 @@ class OrderScreenController {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.25.15:7778/api/orders/$orderId/unbox'),
+        Uri.parse('http://192.168.219.107:7778/api/orders/$orderId/unbox'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -203,7 +203,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.25.15:7778/api/orders/unboxed?userId=$userId'),
+        Uri.parse('http://192.168.219.107:7778/api/orders/unboxed?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -230,7 +230,7 @@ class OrderScreenController {
       if (token == null) return null;
 
       final response = await http.post(
-        Uri.parse('http://192.168.25.15:7778/api/orders/$orderId/refund'),
+        Uri.parse('http://192.168.219.107:7778/api/orders/$orderId/refund'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -259,6 +259,33 @@ class OrderScreenController {
       return null;
     }
   }
+
+  static Future<List<Map<String, dynamic>>> getAllUnboxedOrders() async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return [];
+
+      final response = await http.get(
+        Uri.parse('http://192.168.219.107:7778/api/orders/unboxed/all'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data['orders']);
+      } else {
+        debugPrint('❌ 전체 언박싱 로그 조회 실패: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('❌ 전체 언박싱 로그 조회 오류: $e');
+      return [];
+    }
+  }
+
 
 
 }

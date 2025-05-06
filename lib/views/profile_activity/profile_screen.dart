@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
 
-    final String baseUrl = 'http://192.168.25.15:7778/';
+    final String baseUrl = 'http://192.168.219.107:7778/';
     final String? imageUrl = (profileImage != null && profileImage!.isNotEmpty)
         ? '$baseUrl$profileImage'
         : null;

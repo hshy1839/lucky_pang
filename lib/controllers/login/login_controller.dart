@@ -10,7 +10,7 @@ class LoginController {
   LoginController(this.context);
 
   Future<void> login(String email, String password) async {
-    final url = Uri.parse('http://192.168.25.15:7778/api/users/login');
+    final url = Uri.parse('http://192.168.219.107:7778/api/users/login');
     final storage = FlutterSecureStorage();
 
     final response = await http.post(

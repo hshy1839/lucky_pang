@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class NoticeScreenController {
   final _secureStorage = const FlutterSecureStorage();
-  final _baseUrl = 'http://192.168.25.15:7778';
+  final _baseUrl = 'http://192.168.219.107:7778';
 
   Future<List<Map<String, dynamic>>> fetchNotices() async {
     try {

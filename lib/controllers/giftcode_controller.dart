@@ -3,7 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class GiftCodeController {
-  static const _baseUrl = 'http://192.168.25.15:7778'; // 🛠️ 서버 주소에 맞게 수정
+  static const _baseUrl = 'http://192.168.219.107:7778'; // 🛠️ 서버 주소에 맞게 수정
   static final _storage = FlutterSecureStorage();
 
   /// 선물코드 생성 (박스 또는 상품)
