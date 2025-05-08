@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../controllers/giftcode_controller.dart';
 
 class ProductStorageCard extends StatefulWidget {
-  final String imageUrl;
+  final String mainImageUrl;
   final String productName;
   final String acquiredAt;
   final int purchasePrice;
@@ -19,7 +19,7 @@ class ProductStorageCard extends StatefulWidget {
 
   const ProductStorageCard({
     super.key,
-    required this.imageUrl,
+    required this.mainImageUrl,
     required this.productName,
     required this.acquiredAt,
     required this.purchasePrice,
@@ -72,7 +72,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
         children: [
           Row(
             children: [
-              Image.network(widget.imageUrl, width: 60.w, height: 60.w, fit: BoxFit.cover),
+              Image.network(widget.mainImageUrl, width: 60.w, height: 60.w, fit: BoxFit.cover),
               SizedBox(width: 12.w),
               Expanded(
                 child: Column(

@@ -41,7 +41,6 @@ class AppRoutes {
     '/findEmail': (_) => FindEmailScreen(),
     '/findPassword': (_) => FindPasswordScreen(),
     '/notice': (_) => NoticeScreen(),
-
     '/event': (_) => EventScreen(),
     '/qna': (_) => QnaScreen(),
     '/qnaCreate': (_) => QnaCreateScreen(),

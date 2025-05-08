@@ -23,6 +23,7 @@ import 'package:attedance_app/views/setting_activity/setting_screen.dart';
 import 'package:attedance_app/views/setting_activity/terms_screen.dart';
 import 'package:attedance_app/views/shopping_screen/shopping_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -34,6 +35,7 @@ import 'package:attedance_app/views/main_activity/main_screen.dart';
 import 'package:attedance_app/views/setting_activity/notice_activity/notice_screen.dart';
 import 'package:attedance_app/views/profile_activity/profile_screen.dart';
 import 'package:attedance_app/views/main_activity/2order_detail_screen.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'controllers/box_controller.dart';
 import 'controllers/login/signup_controller.dart';
 import 'footer.dart';
@@ -41,13 +43,12 @@ import 'views/order_activity/order_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
     statusBarBrightness: Brightness.light,
   ));
-
+  KakaoSdk.init(nativeAppKey: 'b45a934bfd09b6d5513a4080c9bf7990');
   runApp(
     MultiProvider(
       providers: [
@@ -55,6 +56,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => BoxController()),
         // 필요한 Provider 더 추가 가능
       ],
+
       child: MyApp(),
     ),
   );

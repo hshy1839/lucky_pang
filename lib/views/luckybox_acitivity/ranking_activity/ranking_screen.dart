@@ -13,7 +13,7 @@ class RankingScreen extends StatefulWidget {
 class _RankingScreenState extends State<RankingScreen> {
   bool showRealtimeLog = true;
   List<Map<String, dynamic>> unboxedOrders = [];
-
+  int highestPrice = 0;
 
   @override
   void initState() {
@@ -23,14 +23,46 @@ class _RankingScreenState extends State<RankingScreen> {
 
   Future<void> fetchUnboxedLogs() async {
     final orders = await OrderScreenController.getAllUnboxedOrders();
+
+    final now = DateTime.now();
+    final startDate = showRealtimeLog
+        ? now.subtract(const Duration(hours: 24))
+        : now.subtract(const Duration(days: 6)); // 주간은 오늘 포함 7일
+
+    final filteredOrders = orders.where((order) {
+      final createdAtStr = order['createdAt'];
+      if (createdAtStr == null) return false;
+
+      final createdAt = DateTime.tryParse(createdAtStr);
+      if (createdAt == null) return false;
+
+      return createdAt.isAfter(startDate);
+    }).toList();
+
+    int maxPrice = 0;
+    for (var order in filteredOrders) {
+      final product = order['unboxedProduct']?['product'];
+      final price = product?['price'] ?? 0;
+      if (price > maxPrice) maxPrice = price;
+    }
+
     setState(() {
-      unboxedOrders = orders;
+      unboxedOrders = filteredOrders;
+      highestPrice = maxPrice;
     });
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
+    String _twoDigits(int n) => n.toString().padLeft(2, '0');
+
+    final today = DateTime.now();
+    final weekAgo = today.subtract(const Duration(days: 6));
+    final dateFormat = "${weekAgo.year}-${_twoDigits(weekAgo.month)}-${_twoDigits(weekAgo.day)}"
+        " - ${today.year}-${_twoDigits(today.month)}-${_twoDigits(today.day)}";
 
     return Scaffold(
       backgroundColor: const Color(0xFFFF5C43),
@@ -55,7 +87,7 @@ class _RankingScreenState extends State<RankingScreen> {
           ),
           SizedBox(height: 4.h),
           Text(
-            showRealtimeLog ? '최근 24시간' : '2025-04-06 - 2025-04-12',
+            showRealtimeLog ? '최근 24시간' : dateFormat,
             style: TextStyle(fontSize: 14.sp, color: Colors.white),
           ),
           SizedBox(height: 20.h),
@@ -64,9 +96,12 @@ class _RankingScreenState extends State<RankingScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(child: _buildStatCard('언박싱 최고가', '216', '만원')),
+                Flexible(child: _buildStatCard('언박싱 최고가', (highestPrice ~/ 10000).toString(), '만원')),
                 SizedBox(width: 8.w),
-                Flexible(child: _buildStatCard('언박싱 횟수', '3.44', '천')),
+                Flexible(
+                  child: _buildStatCard('언박싱 횟수', unboxedOrders.length.toString(), '회'),
+                ),
+
                 SizedBox(width: 8.w),
                 Flexible(child: _buildStatCard('누적 최고가', '1', '천만원')),
               ],
@@ -131,6 +166,7 @@ class _RankingScreenState extends State<RankingScreen> {
         setState(() {
           showRealtimeLog = label == '실시간 로그';
         });
+        fetchUnboxedLogs();
       },
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
@@ -202,10 +238,10 @@ class _RankingScreenState extends State<RankingScreen> {
           child: Container(
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24.r),
               gradient: const LinearGradient(
                 colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
               ),
-              borderRadius: BorderRadius.circular(24.r),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +251,7 @@ class _RankingScreenState extends State<RankingScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('2D 13:25:54 🔥',
+                    Text('3D 13:02:21 🔥',
                         style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
                     Row(
                       children: [
@@ -223,18 +259,37 @@ class _RankingScreenState extends State<RankingScreen> {
                         SizedBox(width: 4.w),
                         Icon(Icons.help_outline, size: 16.sp),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ),
+        _buildWeeklyRankUser(
+          rank: '1위',
+          name: '힘드네',
+          amount: '73,289,720원 만큼 획득',
+          point: '1,465,794 P',
+          isFirst: true,
+        ),
+        _buildWeeklyRankUser(
+          rank: '2위',
+          name: '크크크',
+          amount: '39,956,850원 만큼 획득',
+          point: '599,353 P',
+        ),
+        _buildWeeklyRankUser(
+          rank: '3위',
+          name: '큰것좀',
+          amount: '25,533,320원 만큼 획득',
+          point: '255,333 P',
+        ),
       ],
     );
   }
 
-  Widget _buildRankItem({
+  Widget _buildWeeklyRankUser({
     required String rank,
     required String name,
     required String amount,
@@ -245,49 +300,26 @@ class _RankingScreenState extends State<RankingScreen> {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
       child: Container(
         decoration: BoxDecoration(
-          color: isFirst ? const Color(0xFFFBE9E7) : const Color(0xFFF5F5F5),
+          color: isFirst ? Colors.white : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(20.r),
+          boxShadow: isFirst
+              ? [BoxShadow(color: Colors.black12, blurRadius: 6.r, offset: const Offset(0, 2))]
+              : [],
         ),
         child: ListTile(
-          leading: SizedBox(
-            width: 40.w,
-            child: Center(
-              child: Text(
-                rank,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14.sp,
-                  color: isFirst ? Colors.white : Colors.black,
-                ),
-              ),
-            ),
+          leading: CircleAvatar(
+            backgroundColor: Colors.grey.shade300,
+            child: Text(rank, style: TextStyle(fontWeight: FontWeight.bold)),
           ),
-          title: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: isFirst ? Colors.redAccent : Colors.grey,
-                radius: 16.r,
-                child: Icon(Icons.person, color: Colors.white, size: 18.sp),
-              ),
-              SizedBox(width: 8.w),
-              Text(
-                name,
-                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          subtitle: Text(
-            amount,
-            style: TextStyle(fontSize: 12.sp, color: Colors.black54),
-          ),
-          trailing: Text(
-            point,
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
+          subtitle: Text(amount, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+          trailing: Text(point, style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
+
+
 
   Widget _buildUnboxItem({
     required String profileName,

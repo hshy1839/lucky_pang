@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'box_controller.dart'; // 박스 목록 접근용
 
 class OrderScreenController {
@@ -15,6 +16,7 @@ class OrderScreenController {
     required int quantity,
     required int totalAmount,
     required int pointsUsed,
+    required String paymentMethod,
   }) async {
     if (selectedBoxId == null) {
       showDialog(
@@ -56,6 +58,48 @@ class OrderScreenController {
       return;
     }
 
+    // ✅ Payletter PG 결제일 경우
+    if (totalAmount > 0 && paymentMethod == '신용/체크카드') {
+      final response = await http.post(
+        Uri.parse('http://192.168.219.107:7778/api/payletter'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          "box": selectedBox['_id'],
+          "boxCount": quantity,
+          "paymentAmount": totalAmount,
+          "amount" : selectedBox['price'],
+          "pointUsed": pointsUsed,
+          "orderNo": DateTime.now().millisecondsSinceEpoch.toString(),
+          "productName": selectedBox['name'],
+          "callbackUrl": "https://yourdomain.com/payletter/callback",
+          "returnUrl": "https://yourdomain.com/payletter/return",
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final paymentUrl = data['paymentUrl'];
+
+        if (paymentUrl != null) {
+          Navigator.pushNamed(context, '/webview', arguments: paymentUrl);
+          return;
+        }
+      }
+
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('결제 실패'),
+          content: Text('PG 결제 URL을 가져오지 못했습니다.'),
+        ),
+      );
+      return;
+    }
+
+    // ✅ 포인트 결제 또는 무통장 등의 일반 처리
     final response = await http.post(
       Uri.parse('http://192.168.219.107:7778/api/order'),
       headers: {
@@ -68,10 +112,7 @@ class OrderScreenController {
         "paymentType": totalAmount == 0 ? "point" : "mixed",
         "paymentAmount": totalAmount,
         "pointUsed": pointsUsed,
-        "deliveryFee": {
-          "point": 0,
-          "cash": 0
-        }
+        "deliveryFee": {"point": 0, "cash": 0}
       }),
     );
 
@@ -283,6 +324,98 @@ class OrderScreenController {
     } catch (e) {
       debugPrint('❌ 전체 언박싱 로그 조회 오류: $e');
       return [];
+    }
+  }
+
+
+
+  static Future<void> requestCardPayment({
+    required BuildContext context,
+    required String boxId,
+    required String boxName,
+    required int amount,
+  }) async {
+    final storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'token');
+
+    if (token == null) {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('로그인 필요'),
+          content: Text('로그인이 필요합니다.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.219.107:7778/api/payletter/request'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "amount": amount,
+          "productName": boxName,
+          "boxId": boxId,
+        }),
+      );
+
+      print('🔁 서버 응답 statusCode: ${response.statusCode}');
+      print('🔁 서버 응답 body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+
+        if (decoded['data'] != null &&
+            decoded['data']['paymentUrl'] != null &&
+            decoded['data']['paymentUrl'] is String) {
+          final paymentUrl = decoded['data']['paymentUrl'];
+          final uri = Uri.parse(paymentUrl);
+
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } else {
+            showDialog(
+              context: context,
+              builder: (_) => const AlertDialog(
+                title: Text('오류'),
+                content: Text('외부 브라우저를 열 수 없습니다.'),
+              ),
+            );
+          }
+          return;
+        } else {
+          showDialog(
+            context: context,
+            builder: (_) => const AlertDialog(
+              title: Text('결제 URL 없음'),
+              content: Text('서버 응답에 paymentUrl이 없습니다.'),
+            ),
+          );
+          return;
+        }
+      }
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('결제 실패'),
+          content: Text('서버 응답 오류: ${response.statusCode}'),
+        ),
+      );
+    } catch (e, stack) {
+      print('❌ 예외 발생: $e');
+      print('❌ 스택트레이스: $stack');
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('에러 발생'),
+          content: Text('에러: $e'),
+        ),
+      );
     }
   }
 

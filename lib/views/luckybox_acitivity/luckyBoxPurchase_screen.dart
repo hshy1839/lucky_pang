@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/box_controller.dart';
@@ -22,7 +24,6 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   List<dynamic> boxes = [];
   String? selectedBoxId;
 
-
   final pointController = PointController();
   final storage = FlutterSecureStorage();
   final TextEditingController pointsController = TextEditingController();
@@ -30,17 +31,19 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   int get boxPrice {
     final boxController = Provider.of<BoxController>(context, listen: false);
     final selectedBox = boxController.boxes.firstWhere(
-          (b) => b['_id'] == selectedBoxId,
+      (b) => b['_id'] == selectedBoxId,
       orElse: () => null,
     );
     return selectedBox != null ? (selectedBox['price'] as int) : 0;
   }
 
   int get price => (boxPrice * quantity).clamp(0, double.infinity).toInt();
+
   int get totalAmount {
     final calculated = price - pointsUsed;
     return calculated < 0 ? 0 : calculated;
   }
+
   @override
   void initState() {
     super.initState();
@@ -138,7 +141,6 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                   );
                 },
               ),
-
               SizedBox(height: 20),
               Text('구매수량'),
               Row(
@@ -185,7 +187,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                         int input = int.tryParse(val) ?? 0;
                         setState(() {
                           pointsUsed =
-                          input > availablePoints ? availablePoints : input;
+                              input > availablePoints ? availablePoints : input;
                         });
                       },
                       decoration: InputDecoration(
@@ -240,53 +242,83 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                   backgroundColor: Theme.of(context).primaryColor,
                   minimumSize: Size(double.infinity, 50),
                 ),
-    onPressed: () {
-    if (!allAgreed || !purchaseConfirmed || !refundPolicyAgreed) {
-    showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-    backgroundColor: Colors.white,
-    title: Text('안내'),
-    content: Text('모든 약관에 동의해주세요.'),
-    actions: [
-    TextButton(
-    onPressed: () => Navigator.of(context).pop(),
-    child: Text('확인', style: TextStyle(color: Theme.of(context).primaryColor)),
-    ),
-    ],
-    ),
-    );
-    return;
-    }
+                onPressed: () {
+                  if (!allAgreed || !purchaseConfirmed || !refundPolicyAgreed) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: Colors.white,
+                        title: Text('안내'),
+                        content: Text('모든 약관에 동의해주세요.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('확인',
+                                style: TextStyle(
+                                    color: Theme.of(context).primaryColor)),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
 
-    if (totalAmount > 0 && paymentMethod.isEmpty) {
-    showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-    backgroundColor: Colors.white,
-    title: Text('안내'),
-    content: Text('결제 수단을 선택해주세요!'),
-    actions: [
-    TextButton(
-    onPressed: () => Navigator.of(context).pop(),
-    child: Text('확인', style: TextStyle(color: Theme.of(context).primaryColor)),
-    ),
-    ],
-    ),
-    );
-    return;
-    }
+                  if (totalAmount > 0 && paymentMethod.isEmpty) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: Colors.white,
+                        title: Text('안내'),
+                        content: Text('결제 수단을 선택해주세요!'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('확인',
+                                style: TextStyle(
+                                    color: Theme.of(context).primaryColor)),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
 
-    // ✅ 주문 요청 함수 호출
-    OrderScreenController.submitOrder(
-    context: context,
-    selectedBoxId: selectedBoxId,
-    quantity: quantity,
-    totalAmount: totalAmount,
-    pointsUsed: pointsUsed,
-    );
-    },
+                  if (paymentMethod == '신용/체크카드') {
+                    final boxController = Provider.of<BoxController>(context, listen: false);
+                    final selectedBox = boxController.boxes.firstWhere(
+                          (b) => b['_id'] == selectedBoxId,
+                      orElse: () => null,
+                    );
 
+                    if (selectedBox == null) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const AlertDialog(
+                          title: Text('박스 선택 오류'),
+                          content: Text('박스를 선택해주세요.'),
+                        ),
+                      );
+                      return;
+                    }
+
+                     OrderScreenController.requestCardPayment(
+                      context: context,
+                      boxId: selectedBox['_id'],
+                      boxName: selectedBox['name'],
+                      amount: totalAmount,
+                    );
+                    return;
+                  }
+                  // ✅ 주문 요청 함수 호출
+                  OrderScreenController.submitOrder(
+                    context: context,
+                    selectedBoxId: selectedBoxId,
+                    quantity: quantity,
+                    totalAmount: totalAmount,
+                    pointsUsed: pointsUsed,
+                    paymentMethod: paymentMethod,
+                  );
+                },
                 child: Text('결제하기', style: TextStyle(color: Colors.white)),
               )
             ],
