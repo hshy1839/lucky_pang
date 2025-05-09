@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:attedance_app/routes/app_routes.dart';
 import 'package:attedance_app/views/login_activity/findEmail_screen.dart';
 import 'package:attedance_app/views/login_activity/findPassword_screen.dart';
@@ -43,6 +45,9 @@ import 'views/order_activity/order_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+
+
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,

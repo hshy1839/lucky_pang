@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '../../../controllers/shipping_controller.dart';
+import 'address_search_screen.dart';
 
 class ShippingCreateScreen extends StatefulWidget {
   const ShippingCreateScreen({super.key});
@@ -10,6 +15,9 @@ class ShippingCreateScreen extends StatefulWidget {
 
 class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
   bool isDefault = false;
+  TextEditingController addressController = TextEditingController();
+  TextEditingController zipcodeController = TextEditingController();
+  TextEditingController detailAddressController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +58,35 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
               width: double.infinity,
               height: 56.h,
               child: ElevatedButton(
-                onPressed: () {},
+    onPressed: () async {
+    final address = addressController.text.trim();
+    final address2 = detailAddressController.text.trim();
+    final postcode = zipcodeController.text.trim();
+
+    if (address.isEmpty || address2.isEmpty || postcode.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('모든 주소 정보를 입력해주세요.')),
+    );
+    return;
+    }
+
+    final success = await ShippingController.addShipping(
+    postcode: postcode,
+    address: address,
+    address2: address2,
+    );
+
+    if (success) {
+    ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('배송지가 등록되었습니다.')),
+    );
+    Navigator.pop(context);
+    } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('배송지 등록에 실패했습니다.')),
+    );
+    }
+    },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5C43),
                   shape: RoundedRectangleBorder(
@@ -107,12 +143,23 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                     width: 100.w,
                     height: 48.h,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () async {
+                        final selected = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AddressSearchScreen()),
+                        );
+                        if (selected != null) {
+                          print("선택된 주소: $selected");
+
+                          setState(() {
+                            zipcodeController.text = selected['zonecode'] ?? '';
+                            addressController.text = selected['address'] ?? '';
+                          });
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
                       child: const Text('주소검색', style: TextStyle(color: Colors.white)),
                     ),
@@ -120,15 +167,24 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                   SizedBox(width: 8.w),
                   Expanded(
                     child: TextField(
-                      decoration: _inputDecoration(),
+                      controller: zipcodeController,
+                      readOnly: true,
+                      decoration: _inputDecoration().copyWith(hintText: '우편번호'),
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 8.h),
-              TextField(decoration: _inputDecoration()),
+              TextField(
+                controller: addressController,
+                readOnly: true,
+                decoration: _inputDecoration().copyWith(hintText: '기본주소'),
+              ),
               SizedBox(height: 8.h),
-              TextField(decoration: _inputDecoration()),
+              TextField(
+                controller: detailAddressController,
+                decoration: _inputDecoration().copyWith(hintText: '상세주소'),
+              ),
             ],
           ),
         )

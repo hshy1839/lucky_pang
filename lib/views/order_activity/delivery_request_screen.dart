@@ -44,7 +44,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
               // 상품 정보
               Row(
                 children: [
-                  Image.network('http://172.30.1.22:7778${product['mainImage']}', width: 80.w, height: 80.w),
+                  Image.network('http://192.168.219.107:7778${product['mainImage']}', width: 80.w, height: 80.w),
                   SizedBox(width: 12.w),
                   Expanded(
                     child: Column(
@@ -63,7 +63,12 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
 
               // 배송지 추가하기
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(
+                      context,
+                      '/shippingCreate'
+                  );
+                },
                 icon: Icon(Icons.add),
                 label: Text('배송지 추가하기'),
                 style: ElevatedButton.styleFrom(
