@@ -1,8 +1,6 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
 import '../../../controllers/shipping_controller.dart';
 import 'address_search_screen.dart';
 
@@ -15,9 +13,13 @@ class ShippingCreateScreen extends StatefulWidget {
 
 class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
   bool isDefault = false;
-  TextEditingController addressController = TextEditingController();
-  TextEditingController zipcodeController = TextEditingController();
-  TextEditingController detailAddressController = TextEditingController();
+
+  final TextEditingController recipientController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController memoController = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
+  final TextEditingController zipcodeController = TextEditingController();
+  final TextEditingController detailAddressController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +39,32 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
         padding: EdgeInsets.all(24.w),
         child: Column(
           children: [
-            _buildLabeledField('수령인', TextField(decoration: _inputDecoration())),
+            _buildLabeledField(
+              '수령인',
+              TextField(
+                controller: recipientController,
+                decoration: _inputDecoration(),
+              ),
+            ),
             SizedBox(height: 20.h),
             _buildAddressFields(),
             SizedBox(height: 20.h),
-            _buildLabeledField('연락처',
-                TextField(decoration: _inputDecoration(), keyboardType: TextInputType.phone)),
+            _buildLabeledField(
+              '연락처',
+              TextField(
+                controller: phoneController,
+                decoration: _inputDecoration(),
+                keyboardType: TextInputType.phone,
+              ),
+            ),
+            SizedBox(height: 20.h),
+            _buildLabeledField(
+              '메모',
+              TextField(
+                controller: memoController,
+                decoration: _inputDecoration(),
+              ),
+            ),
             SizedBox(height: 24.h),
             Row(
               children: [
@@ -58,35 +80,42 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
               width: double.infinity,
               height: 56.h,
               child: ElevatedButton(
-    onPressed: () async {
-    final address = addressController.text.trim();
-    final address2 = detailAddressController.text.trim();
-    final postcode = zipcodeController.text.trim();
+                onPressed: () async {
+                  final recipient = recipientController.text.trim();
+                  final phone = phoneController.text.trim();
+                  final memo = memoController.text.trim();
+                  final postcode = zipcodeController.text.trim();
+                  final address = addressController.text.trim();
+                  final address2 = detailAddressController.text.trim();
 
-    if (address.isEmpty || address2.isEmpty || postcode.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('모든 주소 정보를 입력해주세요.')),
-    );
-    return;
-    }
+                  if ([recipient, phone, postcode, address, address2].any((e) => e.isEmpty)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('모든 필수 정보를 입력해주세요.')),
+                    );
+                    return;
+                  }
 
-    final success = await ShippingController.addShipping(
-    postcode: postcode,
-    address: address,
-    address2: address2,
-    );
+                  final success = await ShippingController.addShipping(
+                    recipient: recipient,
+                    phone: phone,
+                    memo: memo,
+                    postcode: postcode,
+                    address: address,
+                    address2: address2,
+                    isDefault: isDefault,
+                  );
 
-    if (success) {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('배송지가 등록되었습니다.')),
-    );
-    Navigator.pop(context);
-    } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('배송지 등록에 실패했습니다.')),
-    );
-    }
-    },
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('배송지가 등록되었습니다.')),
+                    );
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('배송지 등록에 실패했습니다.')),
+                    );
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5C43),
                   shape: RoundedRectangleBorder(
@@ -95,7 +124,11 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                 ),
                 child: const Text(
                   '추가하기',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             )
@@ -105,7 +138,6 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
     );
   }
 
-  // ✅ 왼쪽 라벨 + 오른쪽 위젯 조합
   Widget _buildLabeledField(String label, Widget field) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +154,6 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
     );
   }
 
-  // ✅ 주소 3줄 (주소검색 버튼 포함)
   Widget _buildAddressFields() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,11 +177,12 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                       onPressed: () async {
                         final selected = await Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const AddressSearchScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const AddressSearchScreen(),
+                          ),
                         );
                         if (selected != null) {
                           print("선택된 주소: $selected");
-
                           setState(() {
                             zipcodeController.text = selected['zonecode'] ?? '';
                             addressController.text = selected['address'] ?? '';
@@ -159,7 +191,9 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.grey,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
                       ),
                       child: const Text('주소검색', style: TextStyle(color: Colors.white)),
                     ),
@@ -192,7 +226,6 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
     );
   }
 
-  // ✅ 사각형 입력창 스타일
   InputDecoration _inputDecoration() {
     return InputDecoration(
       contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
