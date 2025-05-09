@@ -11,7 +11,7 @@ class SignupController extends ChangeNotifier {
   final confirmPasswordController = TextEditingController();
   final phoneController = TextEditingController();
   final referralCodeController = TextEditingController();
-
+  String kakaoId = '';
   bool eventAgree = false;
   String referralCodeError = '';
   bool referralCodeChecked = false;
@@ -165,6 +165,9 @@ class SignupController extends ChangeNotifier {
       'eventAgree': eventAgree,
     };
 
+    if (kakaoId != null && kakaoId!.isNotEmpty) {
+      body['kakaoId'] = kakaoId;
+    }
     // 추천인 코드가 있고, 확인까지 완료되었을 경우에만 포함
     if (referralCodeController.text.isNotEmpty && referralCodeChecked) {
       body['referralCode'] = referralCodeController.text.trim();
@@ -177,8 +180,13 @@ class SignupController extends ChangeNotifier {
     );
 
     if (response.statusCode == 200) {
+      if (!context.mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => LoginScreen()),
+      );
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('회원가입 성공')));
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
+
     } else {
       final responseData = jsonDecode(response.body);
       errorMessage = responseData['message'] ?? '회원가입 실패';

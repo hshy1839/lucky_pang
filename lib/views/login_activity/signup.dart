@@ -11,6 +11,25 @@
 
   class _SignUpScreenState extends State<SignUpScreen> {
     bool eventOptIn = false; // ✅ 이벤트 정보 수신 여부
+    bool _isInitialized = false;
+
+    @override
+    void didChangeDependencies() {
+      super.didChangeDependencies();
+
+      if (!_isInitialized) {
+        final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+        final signupController = Provider.of<SignupController>(context, listen: false);
+
+        if (args != null) {
+          signupController.kakaoId = args['kakaoId'] ?? ''; // ✅ null 방어
+          signupController.nicknameController.text = args['nickname'] ?? '';
+        }
+
+        _isInitialized = true;
+      }
+    }
 
     @override
     Widget build(BuildContext context) {

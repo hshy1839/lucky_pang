@@ -170,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   // 카카오톡 버튼
                   _buildSocialButton('assets/icons/kakao_icon.png', () {
+                    loginController.loginWithKakao(context);  // ✅ 인스턴스로 호출
                   }),
 
                   SizedBox(width: 16),

@@ -24,8 +24,10 @@ class _SignupAgreeScreenState extends State<SignupAgreeScreen> {
 
   Future<void> _loadTermsText() async {
     try {
-      final term1 = await rootBundle.loadString('assets/terms/signup_term_1.txt');
-      final term2 = await rootBundle.loadString('assets/terms/signup_term_2.txt');
+      final term1 =
+          await rootBundle.loadString('assets/terms/signup_term_1.txt');
+      final term2 =
+          await rootBundle.loadString('assets/terms/signup_term_2.txt');
       setState(() {
         term1Text = term1;
         term2Text = term2;
@@ -45,7 +47,8 @@ class _SignupAgreeScreenState extends State<SignupAgreeScreen> {
       appBar: AppBar(
         title: const Text(
           '약관 · 개인정보처리방침 동의',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
@@ -56,101 +59,114 @@ class _SignupAgreeScreenState extends State<SignupAgreeScreen> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // 첫 번째 약관
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    term1Text,
-                    style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.6),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // 첫 번째 약관
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          term1Text,
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.black87, height: 1.6),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: agree1,
-                  onChanged: (value) {
-                    setState(() {
-                      agree1 = value ?? false;
-                    });
-                  },
-                  activeColor: Theme.of(context).primaryColor,
-                  checkColor: Colors.white,
-                ),
-                const Text('동의합니다.'),
-              ],
-            ),
-            const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: agree1,
+                        onChanged: (value) {
+                          setState(() {
+                            agree1 = value ?? false;
+                          });
+                        },
+                        activeColor: Theme.of(context).primaryColor,
+                        checkColor: Colors.white,
+                      ),
+                      const Text('동의합니다.'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-            // 두 번째 약관
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SingleChildScrollView(
-                  child: Text(
-                    term2Text,
-                    style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.6),
+                  // 두 번째 약관
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          term2Text,
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.black87, height: 1.6),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            Row(
-              children: [
-                Checkbox(
-                  value: agree2,
-                  onChanged: (value) {
-                    setState(() {
-                      agree2 = value ?? false;
-                    });
-                  },
-                  activeColor: Theme.of(context).primaryColor,
-                  checkColor: Colors.white,
-                ),
-                const Text('동의합니다.'),
-              ],
-            ),
-            const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: agree2,
+                        onChanged: (value) {
+                          setState(() {
+                            agree2 = value ?? false;
+                          });
+                        },
+                        activeColor: Theme.of(context).primaryColor,
+                        checkColor: Colors.white,
+                      ),
+                      const Text('동의합니다.'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-            // 확인 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: (agree1 && agree2)
-                    ? () {
-                  Navigator.pushNamed(context, '/signup');
-                }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+                  // 확인 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: (agree1 && agree2)
+                          ? () {
+                              Navigator.pushNamed(context, '/signup',
+                                  arguments: {
+                                    'kakaoId': ModalRoute.of(context)!
+                                                .settings
+                                                .arguments !=
+                                            null
+                                        ? (ModalRoute.of(context)!
+                                            .settings
+                                            .arguments as Map)['kakaoId']
+                                        : null,
+                                  });
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        disabledBackgroundColor: Colors.grey.shade300,
+                      ),
+                      child: const Text(
+                        '확인',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
                   ),
-                  disabledBackgroundColor: Colors.grey.shade300,
-                ),
-                child: const Text(
-                  '확인',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

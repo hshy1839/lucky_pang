@@ -48,7 +48,7 @@ void main() {
     statusBarIconBrightness: Brightness.dark,
     statusBarBrightness: Brightness.light,
   ));
-  KakaoSdk.init(nativeAppKey: 'b45a934bfd09b6d5513a4080c9bf7990');
+  KakaoSdk.init(nativeAppKey: '89857ed78c6e2c92bab47311bbea5546', loggingEnabled: true);
   runApp(
     MultiProvider(
       providers: [
