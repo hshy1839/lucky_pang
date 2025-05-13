@@ -22,7 +22,6 @@ class _OrderScreenState extends State<OrderScreen> {
   final storage = FlutterSecureStorage();
   List<Map<String, dynamic>> unboxedProducts = [];
 
-
   @override
   void initState() {
     super.initState();
@@ -50,6 +49,7 @@ class _OrderScreenState extends State<OrderScreen> {
       isLoading = false;
     });
   }
+
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
@@ -61,7 +61,7 @@ class _OrderScreenState extends State<OrderScreen> {
           children: [
             SizedBox(height: 24.h),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              padding: EdgeInsets.symmetric(horizontal: 10.w),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -73,14 +73,7 @@ class _OrderScreenState extends State<OrderScreen> {
             ),
             SizedBox(height: 8.h),
             if (selectedTab == 'product') ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.w),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('${unboxedProducts.length}개', style: TextStyle(fontSize: 14.sp)),
-                ),
-              ),
-              Divider(thickness: 1, color: Colors.grey.shade300),
+
               if (unboxedProducts.isEmpty) ...[
                 SizedBox(height: 40.h),
                 Image.asset(
@@ -108,7 +101,7 @@ class _OrderScreenState extends State<OrderScreen> {
               ] else ...[
                 Expanded(
                   child: ListView.separated(
-                    padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                    padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),
                     itemCount: unboxedProducts.length,
                     separatorBuilder: (_, __) => SizedBox(height: 16.h),
                     itemBuilder: (context, index) {
@@ -118,11 +111,12 @@ class _OrderScreenState extends State<OrderScreen> {
                       return ProductStorageCard(
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
                         mainImageUrl: 'http://192.168.219.108:7778${product['mainImage']}',
-                        productName: '[${product['brand']}] ${product['name']}',
+                        productName: '${product['name']}',
                         orderId: order['_id'],
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
                         purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
                         consumerPrice: product['consumerPrice'],
+                        brand: '${product['brand']}',
                         dDay: 'D-90',
                         isLocked: false,
                         onRefundPressed: () {
@@ -131,7 +125,6 @@ class _OrderScreenState extends State<OrderScreen> {
                           final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
                           final refundAmount = (purchasePrice * refundRate / 100).floor();
 
-                          // ✅ 현재 context 저장
                           final dialogContext = context;
 
                           showDialog(
@@ -153,9 +146,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                       refundRate,
                                       description: '[${product['brand']}] ${product['name']} 포인트 환급',
                                     );
-                                      debugPrint('✅ refundOrder 응답: $refunded');
 
-                                    // ✅ context 유효성 검사 후 다이얼로그 표시
                                     if (refunded != null && dialogContext.mounted) {
                                       await showDialog(
                                         context: dialogContext,
@@ -198,6 +189,17 @@ class _OrderScreenState extends State<OrderScreen> {
                           );
                         },
                         onGiftPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/giftcode/create',
+                            arguments: {
+                              'type': 'product',
+                              'productId': product['_id'],
+                              'orderId': order['_id'],
+                            },
+                          ).then((_) {
+                            loadUnboxedProducts();
+                          });
                         },
                         onDeliveryPressed: () {
                           Navigator.pushNamed(
@@ -211,28 +213,12 @@ class _OrderScreenState extends State<OrderScreen> {
                             },
                           );
                         },
-
                       );
                     },
                   ),
-                )
-              ],
-              SizedBox(height: 16.h),
-              _buildMainButton(
-                title: '선물코드 입력하기',
-                icon: Icons.confirmation_number,
-                onTap: () {},
-              ),
-            ]
-            else if (selectedTab == 'box') ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.w),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('${paidOrders.length}개', style: TextStyle(fontSize: 14.sp)),
                 ),
-              ),
-              Divider(thickness: 1, color: Colors.grey.shade300),
+              ],
+            ] else if (selectedTab == 'box') ...[
               isLoading
                   ? CircularProgressIndicator()
                   : paidOrders.isEmpty
@@ -258,7 +244,6 @@ class _OrderScreenState extends State<OrderScreen> {
                   : Expanded(
                 child: ListView.separated(
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-
                   itemCount: paidOrders.length,
                   separatorBuilder: (_, __) => SizedBox(height: 16.h),
                   itemBuilder: (context, index) {
@@ -301,7 +286,6 @@ class _OrderScreenState extends State<OrderScreen> {
                           );
                         });
                       },
-
                       onGiftPressed: () {
                         // TODO: 선물하기 처리
                       },
@@ -309,23 +293,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   },
                 ),
               ),
-              SizedBox(height: 16.h),
-              _buildMainButton(
-                title: '선물코드 입력하기',
-                icon: Icons.confirmation_number,
-                onTap: () async {
-                  final result = await Navigator.pushNamed(context, '/giftCode');
-                  if (result == true) {
-                    // ✅ 선물코드 등록 성공 후 리스트 갱신
-                    await loadUnboxedProducts();
-                    await loadOrders(); // 필요하면 이것도
-                    setState(() {});
-                  }
-                },
-              ),
             ]
-
-
           ],
         ),
       ),
@@ -333,73 +301,36 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
   Widget _buildTab(String label, bool isSelected, String key) {
-    final textStyle = TextStyle(
-      fontSize: 12.sp,
-      fontWeight: FontWeight.bold,
-      color: Colors.black,
-    );
-
-    final underlineWidth = _textWidth(label, textStyle);
-
-    return GestureDetector(
-      onTap: () => setState(() => selectedTab = key),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 40.h, // ✅ 텍스트 높이 + 여유 공간 고정
-            child: Center(
-              child: Text(label, style: textStyle),
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() => selectedTab = key),
+          splashColor: Colors.transparent, // 눌렀을 때 효과 제거
+          highlightColor: Colors.transparent,
+          child: Container(
+            height: 50.h,
+            margin: EdgeInsets.symmetric(horizontal: 4.w),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(context).primaryColor
+                  : Color(0xFFF5F6F6),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : Color(0xFF8D969D)
+                ,
+              ),
             ),
           ),
-          SizedBox(height: 4.h),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 200),
-            width: isSelected ? underlineWidth : 0,
-            height: 2.h,
-            color: isSelected ? Colors.black : Colors.transparent,
-          ),
-        ],
-      ),
-    );
-  }
-  double _textWidth(String text, TextStyle style) {
-    final TextPainter painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    return painter.size.width;
-  }
-
-  Widget _buildMainButton({
-    required String title,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24.w),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56.h,
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF5C43),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20.r),
-            ),
-          ),
-          onPressed: onTap,
-          label: Text(
-            title,
-            style: TextStyle(
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          icon: Icon(icon, size: 20.sp, color: Colors.white),
         ),
       ),
     );
   }
+
 }

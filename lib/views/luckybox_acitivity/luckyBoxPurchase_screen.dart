@@ -320,11 +320,13 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                   );
                 },
                 child: Text('결제하기', style: TextStyle(color: Colors.white)),
-              )
+              ),
+              SizedBox(height: 100,),
             ],
           ),
         ),
       ),
+
     );
   }
 

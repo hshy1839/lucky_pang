@@ -7,6 +7,7 @@ class ProductStorageCard extends StatefulWidget {
   final String mainImageUrl;
   final String productName;
   final String acquiredAt;
+  final String brand;
   final int purchasePrice;
   final int consumerPrice;
   final String dDay;
@@ -21,6 +22,7 @@ class ProductStorageCard extends StatefulWidget {
     super.key,
     required this.mainImageUrl,
     required this.productName,
+    required this.brand,
     required this.acquiredAt,
     required this.purchasePrice,
     required this.consumerPrice,
@@ -64,103 +66,95 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Color(0xFFF0F1F2)),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Image.network(widget.mainImageUrl, width: 60.w, height: 60.w, fit: BoxFit.cover),
+              // 이미지
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15.r),
+                child: Image.network(
+                  widget.mainImageUrl,
+                  width: 170.w,
+                  height: 224.w,
+                  fit: BoxFit.cover,
+                ),
+              ),
               SizedBox(width: 12.w),
+
+              // 텍스트 + 가격
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.productName, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold)),
-                    Text(widget.acquiredAt, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-                  ],
+                child: SizedBox(
+                  height: 224.w, // 이미지 높이와 맞춤
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 브랜드 + 상품명
+                      SizedBox(height: 15.h,),
+                      Text(
+                        widget.brand,
+                        style: TextStyle(fontSize: 14.sp, color: Colors.black),
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        widget.productName,
+                        style: TextStyle(fontSize: 13.sp, color: Color(0xFF465461)),
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Spacer(), // 👈 가격을 아래로 밀어냄
+                      Text(
+                        '5,000 원',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          color: Color(0xFFFF5722),
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
+                        style: TextStyle(
+                          fontSize: 17.sp,
+                          color: Color(0xFF8D969D),
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Text(widget.dDay, style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12.sp)),
             ],
           ),
-          SizedBox(height: 12.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          SizedBox(height: 20,),
+          // 버튼들
+          // 버튼들
+          Column(
             children: [
-              Text('박스 구매가: ${widget.purchasePrice}원', style: TextStyle(fontSize: 12.sp)),
-              Text('소비자가: ${widget.consumerPrice}원', style: TextStyle(fontSize: 12.sp)),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Row(
-            children: [
-              // ✅ 포인트환급 버튼 - 선물코드가 있으면 비활성화
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _giftCodeExists ? null : widget.onRefundPressed,
-                  child: Text(
-                    '포인트환급',
-                    style: TextStyle(
-                      color: _giftCodeExists
-                          ? Colors.grey
-                          : Theme.of(context).primaryColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 8.w),
-
-              // ✅ 선물하기 버튼 - 항상 클릭 가능
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    print('productId: ${widget.productId}');
-                    print('orderId: ${widget.orderId}');
-
-                    Navigator.pushNamed(
-                      context,
-                      '/giftcode/create',
-                      arguments: {
-                        'type': 'product',
-                        'productId': widget.productId,
-                        'orderId': widget.orderId,
-                      },
-                    ).then((_) {
-                      _checkGiftCode();
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).primaryColor,
-                  ),
-                  child: Text(
-                    _giftCodeExists ? '선물코드 확인' : '선물하기',
-                    style: TextStyle(
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
+              _buildOutlinedButton(
+                context,
+                text: '포인트발급',
+                onPressed: !_giftCodeExists ? widget.onRefundPressed : null,
+                enabled: !_giftCodeExists,
               ),
 
-              SizedBox(width: 8.w),
-
-              // ✅ 배송신청 버튼 - 선물코드 있으면 비활성화
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _giftCodeExists || _loading ? null : widget.onDeliveryPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _giftCodeExists || _loading
-                        ? Colors.grey
-                        : Theme.of(context).primaryColor,
-                  ),
-                  child: Text(
-                   '배송신청',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
+              SizedBox(height: 8.h),
+              _buildOutlinedButton(
+                context,
+                text: _giftCodeExists ? '선물코드 확인' : '선물하기',
+                onPressed: widget.onGiftPressed, // ✅ 항상 클릭 가능
+                enabled: true, // ✅ 항상 활성화 상태
+              ),
+              SizedBox(height: 8.h),
+              _buildElevatedButton(
+                context,
+                text: '배송신청',
+                onPressed: widget.onDeliveryPressed,
+                enabled: !_giftCodeExists && !_loading, // ✅ 선물코드 있으면 비활성화
               ),
             ],
           ),
@@ -169,4 +163,73 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
       ),
     );
   }
+
+  Widget _buildOutlinedButton(BuildContext context, {
+    required String text,
+    VoidCallback? onPressed,
+    required bool enabled,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(
+            color: enabled ? Theme.of(context).primaryColor :Theme.of(context).primaryColor.withOpacity(0.3),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15), // ✅ radius 15
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: enabled ? Theme.of(context).primaryColor : Theme.of(context).primaryColor.withOpacity(0.3),
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
+  Widget _buildElevatedButton(BuildContext context, {
+    required String text,
+    required VoidCallback onPressed,
+    required bool enabled,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton(
+        onPressed: enabled ? onPressed : null, // ✅ 선택 불가 처리
+        style: ButtonStyle(
+          backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+            if (states.contains(MaterialState.disabled)) {
+              return Theme.of(context).primaryColor.withOpacity(0.3); // ✅ 흐릿한 색
+            }
+            return Theme.of(context).primaryColor; // ✅ 일반 색
+          }),
+          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+
+
 }
