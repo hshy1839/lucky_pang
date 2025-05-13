@@ -73,6 +73,8 @@ flutter:
     - assets/icons/footer_icons/user-round_icon.png
 
     - assets/images/EndOfScreen.png
+    - assets/images/BoxEmptyStateImage.png
+    - assets/images/order_box_image.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

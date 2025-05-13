@@ -42,6 +42,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
   }
 
   Future<void> _checkGiftCode() async {
+    if (_giftCodeExists) return; // 이미 존재하면 재요청하지 않음
+
     final exists = await GiftCodeController.checkGiftCodeExists(
       type: 'box',
       boxId: widget.boxId,
@@ -54,97 +56,167 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
     });
   }
 
+
   @override
   Widget build(BuildContext context) {
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(widget.createdAt));
     final totalPrice = widget.paymentAmount + widget.pointUsed;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.card_giftcard, size: 28),
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Color(0xFFF0F1F2)),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 박스 이미지
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.asset(
+              'assets/images/order_box_image.png',
+              width: 320,
+              height: 200,
+              fit: BoxFit.cover,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('럭키박스 결제 정보', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('$formattedDate  결제 완료', style: const TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text('결제취소 7일 남음', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 4),
-                Text(
-                  '${widget.paymentType == 'point' ? '포인트결제' : '카드결제'}\n박스구매 ${totalPrice}원',
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          SizedBox(height: 12),
+
+          // 가격 및 결제정보
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${NumberFormat('#,###').format(totalPrice)}원 ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: Colors.black,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "럭키박스",
+                      style: TextStyle(fontSize: 14, color: Color(0xFF465461)
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _giftCodeExists || _loading ? null : widget.onOpenPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _giftCodeExists || _loading
-                      ? Colors.grey
-                      : Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Color(0xFF8D969D)),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _giftCodeExists ? '선물코드 있음' : '박스열기',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/giftcode/create',
-                    arguments: {
-                      'type': 'box',
-                      'boxId': widget.boxId,
-                      'orderId': widget.orderId,
-                    },
-                  ).then((_) {
-                    _checkGiftCode(); // ✅ 돌아온 직후 상태 다시 확인
-                  });
-                },
-                child: Text(
-                  _giftCodeExists ? '선물코드 확인' : '선물하기',
+                  widget.paymentType == 'point'
+                      ? '포인트 결제'
+                      : widget.paymentType == 'card'
+                      ? '카드 결제'
+                      : '기타 결제',
                   style: TextStyle(
-                    color: Theme.of(context).primaryColor,
+                    fontSize: 12,
+                    color: Color(0xFF465461),
                   ),
                 ),
               ),
+            ],
+          ),
+          SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+          Text(
+            '구매날짜: $formattedDate',
+            style: TextStyle(fontSize: 12, color: Color(0xFF8D969D)
             ),
+          ),
+          Text(
+            '결제취소 7일 남음',
+            style: TextStyle(fontSize: 12, color: Color(0xFF2EB520)
+            ),
+          ),
           ],
-        ),
-        const SizedBox(height: 16),
-        const Divider(),
-      ],
+          ),
+          SizedBox(height: 12),
+
+          // 버튼들
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 45,
+                    child: ElevatedButton(
+                      onPressed: (_giftCodeExists || _loading) ? null : widget.onOpenPressed, // ✅ 비활성화 로직
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+                          if (states.contains(MaterialState.disabled)) {
+                            return Theme.of(context).primaryColor.withOpacity(0.3); // ✅ 흐릿한 색
+                          }
+                          return Theme.of(context).primaryColor; // ✅ 일반 색
+                        }),
+                        shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10), // ✅ 동일한 radius
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        '박스열기',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 45, // ✅ 높이 52로 고정
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/giftcode/create',
+                          arguments: {
+                            'type': 'box',
+                            'boxId': widget.boxId,
+                            'orderId': widget.orderId,
+                          },
+                        ).then((_) {
+                          _checkGiftCode();
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Theme.of(context).primaryColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        _giftCodeExists ? '선물코드 확인' : '선물하기',
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              ],
+          ),
+        ],
+      ),
     );
   }
+
 }

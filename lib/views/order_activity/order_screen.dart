@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../controllers/order_screen_controller.dart';
+import '../luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import '../widget/box_storage_card.dart';
 import '../widget/product_storage_card.dart';
 
@@ -222,25 +223,99 @@ class _OrderScreenState extends State<OrderScreen> {
               isLoading
                   ? CircularProgressIndicator()
                   : paidOrders.isEmpty
-                  ? Column(
-                children: [
-                  SizedBox(height: 40.h),
-                  Image.asset(
-                    'assets/icons/app_icon.jpg',
-                    width: 160.w,
-                    height: 160.w,
+                  ? Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/BoxEmptyStateImage.png',
+                        width: 192.w,
+                        height: 192.w,
+                      ),
+                      SizedBox(height: 24.h),
+                      Text(
+                        '아직 구매한 박스가 없습니다',
+                        style: TextStyle(
+                          fontSize: 23.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                      ),
+                      SizedBox(height: 10.h),
+                      Text(
+                        '다음 럭키박스 당첨의 주인공이 되어보세요!',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF465461),
+                        ),
+                      ),
+                      SizedBox(height: 64.h),
+                      // 첫 번째 버튼
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24.w),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 48.h,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (widget.onTabChanged != null) {
+                                widget.onTabChanged!(4); // 4번 인덱스로 전환
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFFFF5C43),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.r),
+                              ),
+                            ),
+                            child: Text(
+                              '럭키박스 구매하기',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+
+                      // 두 번째 버튼
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24.w),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 48.h,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/giftCode');
+                            },
+                            icon: Icon(Icons.qr_code, color: Color(0xFFFF5C43)),
+                            label: Text(
+                              '선물코드 입력하기',
+                              style: TextStyle(
+                                color: Color(0xFFFF5C43),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Color(0xFFFF5C43)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.r),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 24.h),
-                  Text(
-                    '보유한 럭키박스가 없어요',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
+                ),
               )
+
                   : Expanded(
                 child: ListView.separated(
                   padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
