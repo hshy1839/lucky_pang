@@ -37,6 +37,7 @@ dependencies:
   kakao_flutter_sdk_user: ^1.9.7+3
   webview_flutter: ^4.11.0
   webview_flutter_android: ^4.4.2
+  marquee: ^2.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -70,6 +71,8 @@ flutter:
     - assets/icons/footer_icons/boxButton_icon.png
     - assets/icons/footer_icons/trophy_icon.png
     - assets/icons/footer_icons/user-round_icon.png
+
+    - assets/images/EndOfScreen.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

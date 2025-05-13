@@ -18,8 +18,11 @@ class ProductDetailScreen extends StatelessWidget {
     return formatter.format(price);
   }
 
+
   @override
   Widget build(BuildContext context) {
+    final isSoldOut = product['isSourceSoldOut'] == true || product['isSourceSoldOut'] == 'true';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -51,35 +54,62 @@ class ProductDetailScreen extends StatelessWidget {
                     },
                   ),
                 ),
-
+                SizedBox(height: 30,),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product['category'] ?? '카테고리',
+                        '정가: ${NumberFormat('#,###').format(int.tryParse(product['consumerPrice'] ?? '0') ?? 0)}원',
+
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey),
+                            fontSize: 14,
+                            color: Color(0xFF8D969D)
+                  ),
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 10,),
+                      Text(
+                        product['brand'] ?? 'brand',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 8,),
                       Text(
                         product['name'] ?? '상품 제목',
                         style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Color(0xFF021526),
                         ),
+                      ),
+                      SizedBox(height: 30,),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                      Text(
+                        product['category'] ?? '박스',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).primaryColor
+                        ),
+                      ),
+                          Text(
+                            isSoldOut ? '재고없음' : '재고있음 / 배송가능',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: isSoldOut ? Colors.grey : Color(0xFF3370FC)
+                              ,
+                            ),
+                          ),
+
+                        ],
                       ),
                       SizedBox(height: 8),
-                      Text(
-                        '₩ ${formatPrice(int.parse(product['price'] ?? '0'))}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+
                     ],
                   ),
                 ),
@@ -95,27 +125,27 @@ class ProductDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '추가 이미지',
+                          '추가 설명',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 18),
+                              fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                         SizedBox(height: 15),
                         Column(
                           children: List.generate(
-                            product['additionalImageUrls']
-                                .split(',')
-                                .length, // ','로 구분된 URL의 개수만큼 반복
+                            product['additionalImageUrls'].split(',').length,
                                 (index) {
-                              final imageUrl =
-                              product['additionalImageUrls'].split(',')[index];
+                              final imageUrl = product['additionalImageUrls'].split(',')[index];
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8.0),
-                                child: Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.fill,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Image.asset('assets/images/placeholder.png'); // 대체 이미지
-                                  },
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(15),
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.fill,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Image.asset('assets/images/placeholder.png');
+                                    },
+                                  ),
                                 ),
                               );
                             },
@@ -124,7 +154,6 @@ class ProductDetailScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                Divider(color: Colors.grey[200],),
 
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -134,7 +163,7 @@ class ProductDetailScreen extends StatelessWidget {
                       Text(
                         '상품 정보',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 12,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -142,11 +171,24 @@ class ProductDetailScreen extends StatelessWidget {
                       Text(
                         product['description'] ?? '상품 설명이 없습니다.',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF465461),
                         ),
                       ),
+                      SizedBox(height: 104),
+                      Center(
+                        child: Image.asset(
+                          'assets/images/EndOfScreen.png',
+                          width: 172,
+                          height: 32,
+                          fit: BoxFit.contain, // 이미지가 비율 내에서 잘리지 않도록
+                        ),
+                      ),
+                      SizedBox(height: 32), // 하단 여백
+
                     ],
+
                   ),
                 ),
               ],
@@ -461,12 +503,15 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
                       ),
                     ),
                   ),
+
                 ],
               ),
             ),
           ],
         ),
+
       ),
+
     );
   }
 }

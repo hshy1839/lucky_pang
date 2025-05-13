@@ -33,6 +33,7 @@ class ProductController {
               'category': item['category']?.toString() ?? '',
               'brand': item['brand']?.toString() ?? '',
               'mainImageUrl': mainImageUrl,
+              'consumerPrice': item['consumerPrice']?.toString() ?? '',
               'description': item['description']?.toString() ?? '',
               'additionalImageUrls': additionalImageUrls.join(','),
             };
@@ -112,6 +113,7 @@ class ProductController {
           'brand': product['brand']?.toString() ?? '',
           'description': product['description'],
           'sizeStock': product['sizeStock'] ?? {},
+          'isSourceSoldOut': product['isSourceSoldOut'] ?? false,
           'refundProbability' : product['refundProbability'] ?? '',
         };
       }

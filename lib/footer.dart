@@ -22,31 +22,40 @@ class Footer extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                Expanded(
+                child:
                   _buildFooterItem(
                     context,
                     imagePath: 'assets/icons/footer_icons/home_icon.png',
                     label: '홈',
                     index: 0,
                   ),
-                  _buildFooterItem(
+                ),
+        Expanded(
+          child:  _buildFooterItem(
                     context,
                     imagePath: 'assets/icons/footer_icons/trophy_icon.png',
                     label: '랭킹',
                     index: 1,
                   ),
+        ),
                   SizedBox(width: 70), // 중앙 럭키박스 자리 확보
-                  _buildFooterItem(
+              Expanded(
+                child:_buildFooterItem(
                     context,
                     imagePath: 'assets/icons/footer_icons/inbox_icon.png',
                     label: '보관함',
                     index: 2,
                   ),
-                  _buildFooterItem(
+              ),
+              Expanded(
+                child: _buildFooterItem(
                     context,
                     imagePath: 'assets/icons/footer_icons/user-round_icon.png',
                     label: '내 정보',
                     index: 3,
                   ),
+              ),
                 ],
               ),
             ),
