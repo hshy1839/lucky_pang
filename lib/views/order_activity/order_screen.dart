@@ -76,30 +76,101 @@ class _OrderScreenState extends State<OrderScreen> {
             if (selectedTab == 'product') ...[
 
               if (unboxedProducts.isEmpty) ...[
-                SizedBox(height: 40.h),
-                Image.asset(
-                  'assets/icons/app_icon.jpg',
-                  width: 160.w,
-                  height: 160.w,
-                ),
-                SizedBox(height: 24.h),
-                Text(
-                  '보유한 상품이 없어요',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey,
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/BoxEmptyStateImage.png',
+                          width: 192.w,
+                          height: 192.w,
+                        ),
+                        SizedBox(height: 24.h),
+                        Text(
+                          '아직 당첨된 상품이 없습니다',
+                          style: TextStyle(
+                            fontSize: 23.sp,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          '다음 럭키박스 당첨의 주인공이 되어보세요!',
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF465461),
+                          ),
+                        ),
+                        SizedBox(height: 64.h),
+
+                        // 구매 버튼
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 48.h,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (widget.onTabChanged != null) {
+                                  widget.onTabChanged!(4); // Footer 탭 이동
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFFF5C43),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15.r),
+                                ),
+                              ),
+                              child: Text(
+                                '럭키박스 구매하기',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+
+                        // 선물코드 입력 버튼
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.w),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 48.h,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/giftCode');
+                              },
+                              icon: Icon(Icons.qr_code, color: Color(0xFFFF5C43)),
+                              label: Text(
+                                '선물코드 입력하기',
+                                style: TextStyle(
+                                  color: Color(0xFFFF5C43),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Color(0xFFFF5C43)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(15.r),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                SizedBox(height: 80.h),
-                Text(
-                  '특별한 상품들이 와딩 님을 기다리고 있어요.',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.black,
-                  ),
-                ),
-              ] else ...[
+                )
+              ]
+              else ...[
                 Expanded(
                   child: ListView.separated(
                     padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),

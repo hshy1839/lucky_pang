@@ -75,6 +75,8 @@ flutter:
     - assets/images/EndOfScreen.png
     - assets/images/BoxEmptyStateImage.png
     - assets/images/order_box_image.png
+    - assets/images/present_image.png
+    - assets/images/coupon_code_image.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
