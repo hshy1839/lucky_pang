@@ -176,6 +176,7 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
     ];
 
     return Scaffold(
+      extendBody: true,
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: PageView(

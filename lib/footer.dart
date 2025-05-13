@@ -2,77 +2,105 @@ import 'package:flutter/material.dart';
 
 class Footer extends StatelessWidget {
   final Function(int) onTabTapped;
-  final int selectedIndex; // 현재 선택된 탭의 인덱스 추가
+  final int selectedIndex;
 
   Footer({required this.onTabTapped, required this.selectedIndex});
 
   @override
   Widget build(BuildContext context) {
-    return BottomAppBar(
-      color: Colors.white, // Footer 배경 색상 설정
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return SizedBox(
+      height: 96, // Footer 전체 높이
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
         children: [
-          // 홈 탭
-          _buildFooterItem(
-            context,
-            icon: Icons.home_outlined,
-            label: '홈',
-            index: 0,
+          // 하단 바
+          BottomAppBar(
+            color: Colors.white,
+            child: SizedBox(
+              height: 68,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildFooterItem(
+                    context,
+                    imagePath: 'assets/icons/footer_icons/home_icon.png',
+                    label: '홈',
+                    index: 0,
+                  ),
+                  _buildFooterItem(
+                    context,
+                    imagePath: 'assets/icons/footer_icons/trophy_icon.png',
+                    label: '랭킹',
+                    index: 1,
+                  ),
+                  SizedBox(width: 70), // 중앙 럭키박스 자리 확보
+                  _buildFooterItem(
+                    context,
+                    imagePath: 'assets/icons/footer_icons/inbox_icon.png',
+                    label: '보관함',
+                    index: 2,
+                  ),
+                  _buildFooterItem(
+                    context,
+                    imagePath: 'assets/icons/footer_icons/user-round_icon.png',
+                    label: '내 정보',
+                    index: 3,
+                  ),
+                ],
+              ),
+            ),
           ),
-          // 1:1 문의 탭
 
-          _buildFooterItem(
-            context,
-            icon: Icons.bar_chart,
-            label: '실시간 랭킹',
-            index: 1,
-          ),
-          _buildFooterItem(
-            context,
-            icon: Icons.card_giftcard_outlined,
-            label: '럭키박스',
-            index: 4,
-          ),
-          // 구매내역 탭
-          _buildFooterItem(
-            context,
-            icon: Icons.receipt_long_outlined,
-            label: '주문내역',
-            index: 2,
-          ),
-          // 마이페이지 탭
-          _buildFooterItem(
-            context,
-            icon: Icons.person_outline,
-            label: '마이페이지',
-            index: 3,
+          // 중앙 럭키박스 (위로 띄우기)
+          Positioned(
+            top: 5, // 96 - 68 = 28 → 위로 튀어나오도록
+            child: GestureDetector(
+              onTap: () => onTabTapped(4),
+              child: Image.asset(
+                'assets/icons/footer_icons/boxButton_icon.png',
+                width: 70,
+                height: 70,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Footer 아이템 빌드 함수
-  Widget _buildFooterItem(BuildContext context, {required IconData icon, required String label, required int index}) {
+  Widget _buildFooterItem(
+      BuildContext context, {
+        required String imagePath,
+        required String label,
+        required int index,
+      }) {
+    final isSelected = selectedIndex == index;
+    final color = isSelected ? Theme.of(context).primaryColor : const Color(0xFF465461);
+
     return GestureDetector(
-      onTap: () => onTabTapped(index), // 탭을 눌렀을 때 해당 인덱스 호출
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: selectedIndex == index ? Theme.of(context).primaryColor : Colors.grey, // 선택된 경우 검은색
-          ),
-          SizedBox(height: 4), // 아이콘과 텍스트 사이 간격
-          Text(
-            label,
-            style: TextStyle(
-              color: selectedIndex == index ? Theme.of(context).primaryColor : Colors.grey,
-              fontSize: 12, // 텍스트 크기
+      onTap: () => onTabTapped(index),
+      child: SizedBox(
+        width: 72, // 디자이너 기준 138/2 or 65~72 사이에서 균형
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              imagePath,
+              width: 25,
+              height: 25,
+              color: color,
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
