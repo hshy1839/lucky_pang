@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ShippingController {
-  static const _baseUrl = 'http://192.168.219.107:7778';
+  static const _baseUrl = 'http://192.168.219.108:7778';
   static const _storage = FlutterSecureStorage();
 
   static Future<bool> addShipping({

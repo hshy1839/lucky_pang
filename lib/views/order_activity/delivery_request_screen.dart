@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
 import '../../../controllers/shipping_controller.dart';
+import '../../../controllers/shipping_order_controller.dart';
+import '../../../controllers/order_screen_controller.dart';
 import '../widget/shipping_card.dart';
 
 class DeliveryRequestScreen extends StatefulWidget {
@@ -21,6 +24,15 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
   String? selectedShippingId;
   List<Map<String, dynamic>> shippingList = [];
 
+  int get totalAmount {
+    final shippingFee = product['shippingFee'] ?? 0;
+    final calculated = shippingFee - usedPoints;
+    return calculated < 0 ? 0 : calculated;
+  }
+
+  late Map<String, dynamic> product;
+  late String orderId;
+  late dynamic box;
 
   @override
   void initState() {
@@ -51,10 +63,10 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
       );
     }
 
-    final product = args['product'];
-    final orderId = args['orderId'];
+    product = args['product'];
+    orderId = args['orderId'];
     final decidedAt = args['decidedAt'];
-    final box = args['box'];
+    box = args['box'];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -67,11 +79,10 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 상품 정보
               Row(
                 children: [
                   Image.network(
-                    'http://192.168.219.107:7778${product['mainImage']}',
+                    'http://192.168.219.108:7778${product['mainImage']}',
                     width: 80.w,
                     height: 80.w,
                   ),
@@ -91,8 +102,6 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 ],
               ),
               SizedBox(height: 16.h),
-
-              // 배송지 추가 버튼
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pushNamed(context, '/shippingCreate');
@@ -105,8 +114,6 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                   foregroundColor: Colors.black,
                 ),
               ),
-
-              // 배송지 카드 표시
               if (shippingList.isNotEmpty) ...[
                 SizedBox(height: 16.h),
                 SizedBox(
@@ -129,23 +136,15 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                               selectedShipping = shipping;
                             });
                           },
-                          onEdit: () {
-                            // TODO: 수정
-                          },
-                          onDelete: () {
-                            // TODO: 삭제
-                          },
+                          onEdit: () {},
+                          onDelete: () {},
                         ),
                       );
                     },
                   ),
                 ),
-
               ],
-
               SizedBox(height: 24.h),
-
-              // 포인트 사용
               Text('보유 포인트: ${totalPoints.toString()} P', style: TextStyle(fontSize: 14.sp)),
               Row(
                 children: [
@@ -164,7 +163,8 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                   ElevatedButton(
                     onPressed: () {
                       setState(() {
-                        usedPoints = totalPoints;
+                        final shippingFee = product['shippingFee'] ?? 0;
+                        usedPoints = totalPoints >= shippingFee ? shippingFee : totalPoints;
                       });
                     },
                     style: ElevatedButton.styleFrom(
@@ -175,8 +175,6 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 ],
               ),
               SizedBox(height: 24.h),
-
-              // 결제수단
               Text('결제수단', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
               Wrap(
                 spacing: 10.w,
@@ -187,15 +185,11 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 ],
               ),
               SizedBox(height: 24.h),
-
-              // 안내 문구
               Text(
                 '상품은 2~7 영업일 이내에 받아보실 수 있습니다.\n단, 상품의 종류나 신청 시기, 지역 등의 원인에 의해 배송이 지연될 수 있다는 점 참고 부탁드립니다.',
                 style: TextStyle(color: Colors.grey, fontSize: 12.sp),
               ),
               SizedBox(height: 24.h),
-
-              // 동의 체크박스
               CheckboxListTile(
                 title: Text('모든 내용을 확인하였으며 결제에 동의합니다.'),
                 value: agreedAll,
@@ -209,26 +203,19 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
               ),
               CheckboxListTile(
                 title: Text.rich(TextSpan(
-                  children: [
-                    TextSpan(text: '구매 확인 동의', style: TextStyle(color: Colors.blue)),
-                  ],
+                  children: [TextSpan(text: '구매 확인 동의', style: TextStyle(color: Colors.blue))],
                 )),
                 value: agreedPurchase,
                 onChanged: (val) => setState(() => agreedPurchase = val ?? false),
               ),
               CheckboxListTile(
                 title: Text.rich(TextSpan(
-                  children: [
-                    TextSpan(text: '교환/환불 정책 동의', style: TextStyle(color: Colors.blue)),
-                  ],
+                  children: [TextSpan(text: '교환/환불 정책 동의', style: TextStyle(color: Colors.blue))],
                 )),
                 value: agreedReturn,
                 onChanged: (val) => setState(() => agreedReturn = val ?? false),
               ),
-
               SizedBox(height: 24.h),
-
-              // 결제하기 버튼
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -242,8 +229,118 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 width: double.infinity,
                 height: 56.h,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: 결제 로직
+                  onPressed: () async {
+                    if (!agreedAll || !agreedPurchase || !agreedReturn) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text('안내'),
+                          content: Text('모든 약관에 동의해주세요.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text('확인'),
+                            )
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (selectedShippingId == null) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text('안내'),
+                          content: Text('배송지를 선택해주세요.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text('확인'),
+                            )
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (selectedPayment.isEmpty) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text('안내'),
+                          content: Text('결제 수단을 선택해주세요.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text('확인'),
+                            )
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (selectedPayment == '신용/체크카드') {
+                      await OrderScreenController.requestCardPayment(
+                        context: context,
+                        boxId: box['_id'],
+                        boxName: box['name'],
+                        amount: totalAmount,
+                      );
+                      return;
+                    }
+
+                    final mappedPaymentType = selectedPayment == '신용/체크카드'
+                        ? 'card'
+                        : selectedPayment == '계좌이체'
+                        ? 'bank'
+                        : selectedPayment == '카카오페이'
+                        ? 'kakaopay'
+                        : 'point';
+
+                    final success = await ShippingOrderController.createShippingOrder(
+                      productId: product['_id'],
+                      shippingId: selectedShippingId!,
+                      orderId: orderId,
+                      paymentType: mappedPaymentType,
+                      shippingFee: product['shippingFee'] ?? 0,
+                      pointUsed: usedPoints,
+                      paymentAmount: totalAmount,
+                    );
+
+                    if (success) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text('결제 완료'),
+                          content: Text('결제가 완료되었습니다!'),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                Navigator.of(context).pushReplacementNamed('/main');
+                              },
+                              child: Text('확인'),
+                            ),
+                          ],
+                        ),
+                      );
+                    } else {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text('결제 실패'),
+                          content: Text('결제 처리 중 오류가 발생했습니다.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: Text('확인'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: Text('결제하기', style: TextStyle(color: Colors.white)),

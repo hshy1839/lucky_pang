@@ -61,7 +61,7 @@ class OrderScreenController {
     // ✅ Payletter PG 결제일 경우
     if (totalAmount > 0 && paymentMethod == '신용/체크카드') {
       final response = await http.post(
-        Uri.parse('http://192.168.219.107:7778/api/payletter'),
+        Uri.parse('http://192.168.219.108:7778/api/payletter'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -101,7 +101,7 @@ class OrderScreenController {
 
     // ✅ 포인트 결제 또는 무통장 등의 일반 처리
     final response = await http.post(
-      Uri.parse('http://192.168.219.107:7778/api/order'),
+      Uri.parse('http://192.168.219.108:7778/api/order'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -165,7 +165,7 @@ class OrderScreenController {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.107:7778/api/order?userId=$userId'),
+        Uri.parse('http://192.168.219.108:7778/api/order?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -220,7 +220,7 @@ class OrderScreenController {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.219.107:7778/api/orders/$orderId/unbox'),
+        Uri.parse('http://192.168.219.108:7778/api/orders/$orderId/unbox'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -244,7 +244,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.107:7778/api/orders/unboxed?userId=$userId'),
+        Uri.parse('http://192.168.219.108:7778/api/orders/unboxed?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -271,7 +271,7 @@ class OrderScreenController {
       if (token == null) return null;
 
       final response = await http.post(
-        Uri.parse('http://192.168.219.107:7778/api/orders/$orderId/refund'),
+        Uri.parse('http://192.168.219.108:7778/api/orders/$orderId/refund'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -307,7 +307,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.107:7778/api/orders/unboxed/all'),
+        Uri.parse('http://192.168.219.108:7778/api/orders/unboxed/all'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -351,7 +351,7 @@ class OrderScreenController {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.219.107:7778/api/payletter/request'),
+        Uri.parse('http://192.168.219.108:7778/api/payletter/request'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 import 'package:attedance_app/main.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
 import 'package:attedance_app/views/order_activity/delivery_request_screen.dart';
+import 'package:attedance_app/views/setting_activity/event_activity/event_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../views/login_activity/login.dart';
 import '../views/login_activity/signup.dart';

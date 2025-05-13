@@ -5,18 +5,18 @@ import 'package:http/http.dart' as http;
 
 class EventScreenController {
   final _secureStorage = const FlutterSecureStorage();
-  final _baseUrl = 'http://192.168.219.107:7778';
+  final _baseUrl = 'http://192.168.219.108:7778';
 
   Future<List<Map<String, dynamic>>> fetchEvents() async {
     try {
-      final token = await _secureStorage.read(key: 'token'); // SecureStorage에서 토큰 불러오기
+      final token = await _secureStorage.read(key: 'token');
 
       if (token == null || token.isEmpty) {
         throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
       }
 
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/event'),
+        Uri.parse('$_baseUrl/api/promotion/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -25,18 +25,21 @@ class EventScreenController {
       if (response.statusCode == 200) {
         final decodedResponse = json.decode(response.body);
 
-        if (decodedResponse is Map<String, dynamic> && decodedResponse['events'] is List<dynamic>) {
-          final List<dynamic> data = decodedResponse['events'];
+        if (decodedResponse is Map<String, dynamic> &&
+            decodedResponse['promotions'] is List<dynamic>) {
+          final List<dynamic> data = decodedResponse['promotions'];
 
           return data.reversed.map<Map<String, dynamic>>((item) {
-            final originalDate = item['created_at']?.toString() ?? '';
+            final originalDate = item['createdAt']?.toString() ?? '';
             final formattedDate = _formatDate(originalDate);
 
             return {
               'id': item['_id'],
+              'name': item['name']?.toString() ?? '',
               'title': item['title']?.toString() ?? '',
               'content': item['content']?.toString() ?? '',
               'created_at': formattedDate,
+              'mainImage': _getImageUrl(item['promotionImage']),
             };
           }).toList();
         } else {
@@ -47,7 +50,7 @@ class EventScreenController {
         return [];
       }
     } catch (error) {
-      print('공지사항 조회 중 오류 발생: $error');
+      print('프로모션 목록 조회 중 오류 발생: $error');
       return [];
     }
   }
@@ -83,7 +86,7 @@ class EventScreenController {
       if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/event/$id'),
+        Uri.parse('$_baseUrl/api/promotion/read/$id'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -91,27 +94,24 @@ class EventScreenController {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-        final event = decoded['event'];
-        final createdAt = _formatDate(event['created_at']?.toString() ?? '');
-
-
+        final promo = decoded['promotion'];
+        final createdAt = _formatDate(promo['createdAt']?.toString() ?? '');
 
         return {
-          'id': event['_id'],
-          'title': event['title'],
-          'content': event['content'],
+          'id': promo['_id'],
+          'name': promo['name'],
+          'title': promo['title'],
+          'content': promo['content'],
           'created_at': createdAt,
-          'images': _getImageList(event['eventImage']),
+          'images': _getImageList(promo['promotionDetailImage']),
         };
       } else {
-        print('상세 공지 조회 실패: ${response.statusCode}');
+        print('상세 프로모션 조회 실패: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('공지사항 상세 조회 오류: $e');
+      print('프로모션 상세 조회 오류: $e');
       return null;
     }
   }
-
 }
-

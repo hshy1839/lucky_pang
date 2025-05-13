@@ -9,6 +9,7 @@ import '../../controllers/notice_screen_controller.dart';
 import '../../footer.dart';
 import '../../header.dart';
 import '../product_activity/product_detail_screen.dart';
+import '../setting_activity/event_activity/event_detail_screen.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -50,10 +51,11 @@ class _MainScreenState extends State<MainScreen> {
       List<Map<String, dynamic>> promotions = await controller.getPromotions();
 
       setState(() {
-        ads = promotions.where((promotion) => promotion['promotionImageUrl'] != '')
+        ads = promotions
+            .where((promotion) => promotion['promotionImageUrl'] != '')
             .map((promotion) => {
+          'id': promotion['id'], // ✅ 추가
           'image': promotion['promotionImageUrl'] ?? '',
-          'link': promotion['link'] ?? '',
         })
             .toList();
       });
@@ -169,15 +171,16 @@ class _MainScreenState extends State<MainScreen> {
                 ? CarouselSlider(
               items: ads.map((ad) {
                 final imageUrl = ad['image']!;
-                final linkUrl = ad['link']!;
+                final promoId = ad['id']!;
 
                 return GestureDetector(
-                  onTap: () async {
-                    if (await canLaunchUrl(Uri.parse(linkUrl))) {
-                      await launchUrl(Uri.parse(linkUrl), mode: LaunchMode.externalApplication);
-                    } else {
-                      print('링크 열기 실패: $linkUrl');
-                    }
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventDetailScreen(eventId: promoId),
+                      ),
+                    );
                   },
                   child: Container(
                     width: MediaQuery.of(context).size.width,
@@ -200,6 +203,8 @@ class _MainScreenState extends State<MainScreen> {
             )
                 : Center(child: CircularProgressIndicator()),
           ),
+
+
 
           // 5,000원 박스
           SliverToBoxAdapter(

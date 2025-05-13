@@ -88,7 +88,7 @@ class _RankingScreenState extends State<RankingScreen> {
           SizedBox(height: 4.h),
           Text(
             showRealtimeLog ? '최근 24시간' : dateFormat,
-            style: TextStyle(fontSize: 14.sp, color: Colors.white),
+            style: TextStyle(fontSize: 12.sp, color: Colors.white),
           ),
           SizedBox(height: 20.h),
           Padding(
@@ -210,7 +210,7 @@ class _RankingScreenState extends State<RankingScreen> {
         final userProfileImage = rawProfileImage != null && rawProfileImage.isNotEmpty
             ? (rawProfileImage.startsWith('http')
             ? rawProfileImage
-            : 'http://192.168.219.107:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
+            : 'http://192.168.219.108:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
             : null;
         
         return _buildUnboxItem(
@@ -221,7 +221,7 @@ class _RankingScreenState extends State<RankingScreen> {
           boxPrice: '${box?['price'] ?? 0}원 박스',
           dateTime: DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')?.toLocal().toString().substring(0, 16) ?? '',
           image: product?['mainImage'] != null && product['mainImage'].isNotEmpty
-              ? 'http://192.168.219.107:7778${product['mainImage']}'
+              ? 'http://192.168.219.108:7778${product['mainImage']}'
               : 'https://via.placeholder.com/50',
 
         );

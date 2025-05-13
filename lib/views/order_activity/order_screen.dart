@@ -117,7 +117,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
                       return ProductStorageCard(
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
-                        mainImageUrl: 'http://192.168.219.107:7778${product['mainImage']}',
+                        mainImageUrl: 'http://192.168.219.108:7778${product['mainImage']}',
                         productName: '[${product['brand']}] ${product['name']}',
                         orderId: order['_id'],
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',

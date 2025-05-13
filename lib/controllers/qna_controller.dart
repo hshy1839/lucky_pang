@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class QnaController {
-  final String apiUrl = 'http://192.168.219.107:7778/api/qnaQuestion';
+  final String apiUrl = 'http://192.168.219.108:7778/api/qnaQuestion';
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   // QnA 생성 (카테고리 추가됨)
