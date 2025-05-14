@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../routes/base_url.dart';
+
 class MainScreenController extends ChangeNotifier {
   int selectedIndex = 0;
   List<String> titles = [];
@@ -26,7 +28,7 @@ class MainScreenController extends ChangeNotifier {
       DateTime.now().day,
     ).toIso8601String();
 
-    final url = 'http://192.168.219.108:7778/api/users/noticeList/find';
+    final url = '${BaseUrl.value}:7778/api/users/noticeList/find';
     final headers = {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -70,7 +72,7 @@ class MainScreenController extends ChangeNotifier {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/promotion/read'),
+        Uri.parse('${BaseUrl.value}:7778/api/promotion/read'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -81,7 +83,7 @@ class MainScreenController extends ChangeNotifier {
         if (decodedResponse is Map<String, dynamic> &&
             decodedResponse['promotions'] is List<dynamic>) {
           final promotions = decodedResponse['promotions'] as List<dynamic>;
-          const serverUrl = 'http://192.168.219.108:7778';
+          const serverUrl = '${BaseUrl.value}:7778';
 
           return promotions.map((promotion) {
             final promotionMap = promotion as Map<String, dynamic>;

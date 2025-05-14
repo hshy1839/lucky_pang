@@ -71,12 +71,22 @@ flutter:
     - assets/icons/footer_icons/boxButton_icon.png
     - assets/icons/footer_icons/trophy_icon.png
     - assets/icons/footer_icons/user-round_icon.png
+    - assets/icons/profile_icons/profile_coupon_icon.png
+    - assets/icons/profile_icons/profile_friend_icon.png
+    - assets/icons/profile_icons/profile_gift_icon.png
+    - assets/icons/profile_icons/profile_point_icon.png
+    - assets/icons/profile_icons/profile_setting_icon.png
+    - assets/icons/profile_icons/profile_shipping_icon.png
 
     - assets/images/EndOfScreen.png
     - assets/images/BoxEmptyStateImage.png
     - assets/images/order_box_image.png
     - assets/images/present_image.png
     - assets/images/coupon_code_image.png
+    - assets/images/shipping_missing.png
+    - assets/images/ranking_images/unboxing_high.png
+    - assets/images/ranking_images/unboxing_max.png
+    - assets/images/ranking_images/unboxing_try.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

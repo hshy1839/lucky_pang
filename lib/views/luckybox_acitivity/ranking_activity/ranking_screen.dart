@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
 import '../../../controllers/order_screen_controller.dart';
+import '../../../routes/base_url.dart';
+import '../../widget/ranking_screen_widget/ranking_tab_bar_header.dart';
+import '../../widget/ranking_screen_widget/unbox_realtime_list.dart';
+import '../../widget/ranking_screen_widget/unbox_weekly_ranking.dart';
 
 class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key});
@@ -14,11 +17,21 @@ class _RankingScreenState extends State<RankingScreen> {
   bool showRealtimeLog = true;
   List<Map<String, dynamic>> unboxedOrders = [];
   int highestPrice = 0;
+  int totalPrice = 0;
+  ScrollController _scrollController = ScrollController();
+  bool isCollapsed = false;
 
   @override
   void initState() {
     super.initState();
     fetchUnboxedLogs();
+    _scrollController.addListener(() {
+      if (_scrollController.hasClients) {
+        setState(() {
+          isCollapsed = _scrollController.offset > 200.h;
+        });
+      }
+    });
   }
 
   Future<void> fetchUnboxedLogs() async {
@@ -27,398 +40,230 @@ class _RankingScreenState extends State<RankingScreen> {
     final now = DateTime.now();
     final startDate = showRealtimeLog
         ? now.subtract(const Duration(hours: 24))
-        : now.subtract(const Duration(days: 6)); // 주간은 오늘 포함 7일
+        : now.subtract(const Duration(days: 6));
 
     final filteredOrders = orders.where((order) {
       final createdAtStr = order['createdAt'];
       if (createdAtStr == null) return false;
-
       final createdAt = DateTime.tryParse(createdAtStr);
       if (createdAt == null) return false;
-
       return createdAt.isAfter(startDate);
     }).toList();
 
     int maxPrice = 0;
+    int sumPrice = 0;
     for (var order in filteredOrders) {
       final product = order['unboxedProduct']?['product'];
-      final price = product?['price'] ?? 0;
+      final rawPrice = product?['price'] ?? 0;
+      final price = rawPrice is int ? rawPrice : (rawPrice as num).toInt();
       if (price > maxPrice) maxPrice = price;
+      sumPrice += price;
     }
 
     setState(() {
       unboxedOrders = filteredOrders;
       highestPrice = maxPrice;
+      totalPrice = sumPrice;
     });
   }
 
-
+  String _formatShortNumber(int number) {
+    if (number >= 1000000) {
+      return (number / 1000000).toStringAsFixed(1) + 'M';
+    } else if (number >= 1000) {
+      return (number / 1000).toStringAsFixed(1) + 'K';
+    } else {
+      return number.toString();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-    String _twoDigits(int n) => n.toString().padLeft(2, '0');
-
     final today = DateTime.now();
     final weekAgo = today.subtract(const Duration(days: 6));
-    final dateFormat = "${weekAgo.year}-${_twoDigits(weekAgo.month)}-${_twoDigits(weekAgo.day)}"
-        " - ${today.year}-${_twoDigits(today.month)}-${_twoDigits(today.day)}";
+    final dateFormat = "${weekAgo.year}-${weekAgo.month.toString().padLeft(2, '0')}-${weekAgo.day.toString().padLeft(2, '0')}"
+        " - ${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFF5C43),
-      body:
-    SafeArea(
-    child: Column(
-        children: [
-          SizedBox(height: 60.h),
-          Icon(
-            showRealtimeLog ? Icons.people : Icons.bar_chart,
-            color: Colors.white,
-            size: 40,
-          ),
-          SizedBox(height: 10.h),
-          Text(
-            showRealtimeLog ? '지금 언박싱하는 사람들' : '이번주 언박싱 랭킹',
-            style: TextStyle(
-              fontSize: 22.sp,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+        backgroundColor: Color(0xFFFF5C43),
+      body: SafeArea(
+        child: CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            SliverAppBar(
+              automaticallyImplyLeading: false,
+              expandedHeight: 480.h,
+              pinned: true,
+              backgroundColor: const Color(0xFFFF5C43),
+              flexibleSpace: LayoutBuilder(
+                builder: (context, constraints) {
+                  final top = constraints.biggest.height;
+                  return FlexibleSpaceBar(
+                    background: Padding(
+                      padding: EdgeInsets.only(top: 40.h),
+                      child: isCollapsed
+                          ? _buildCompactStatHeader()
+                          : Column(
+                        children: [
+                          Text(
+                            showRealtimeLog ? '지금 언박싱하는 사람들' : '이번주 언박싱 랭킹',
+                            style: TextStyle(
+                              fontSize: 22.sp,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            showRealtimeLog ? '최근 24시간' : dateFormat,
+                            style: TextStyle(fontSize: 12.sp, color: Colors.white),
+                          ),
+                          SizedBox(height: 20.h),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
+                            child: Column(
+                              children: [
+                                buildUnboxStatCard(
+                                  title: '언박싱 최고가',
+                                  value: _formatNumber(highestPrice),
+                                  unit: '원',
+                                  backgroundColor: Color(0xFF021526),
+                                  backgroundImage: 'assets/images/ranking_images/unboxing_high.png',
+                                ),
+                                buildUnboxStatCard(
+                                  title: '언박싱 횟수',
+                                  value: '${unboxedOrders.length}',
+                                  unit: '회',
+                                  backgroundColor: Color(0xFF021526),
+                                  backgroundImage: 'assets/images/ranking_images/unboxing_try.png',
+                                ),
+                                buildUnboxStatCard(
+                                  title: '누적 최고가',
+                                  value: _formatNumber(totalPrice),
+                                  unit: '원',
+                                  backgroundColor: Color(0xFF021526),
+                                  backgroundImage: 'assets/images/ranking_images/unboxing_max.png',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            showRealtimeLog ? '최근 24시간' : dateFormat,
-            style: TextStyle(fontSize: 12.sp, color: Colors.white),
-          ),
-          SizedBox(height: 20.h),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(child: _buildStatCard('언박싱 최고가', (highestPrice ~/ 10000).toString(), '만원')),
-                SizedBox(width: 8.w),
-                Flexible(
-                  child: _buildStatCard('언박싱 횟수', unboxedOrders.length.toString(), '회'),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: RankingTabBarHeader(
+                isSelected: showRealtimeLog,
+                onTap: (selected) {
+                  setState(() {
+                    showRealtimeLog = selected;
+                    fetchUnboxedLogs();
+                  });
+                },
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Container(
+                color: Colors.white,
+                height: 350.h,
+                child: showRealtimeLog
+                    ? SingleChildScrollView(
+                  child: UnboxRealtimeList(unboxedOrders: unboxedOrders),
+                )
+                    : const SingleChildScrollView(
+                  child: UnboxWeeklyRanking(),
                 ),
-
-                SizedBox(width: 8.w),
-                Flexible(child: _buildStatCard('누적 최고가', '1', '천만원')),
-              ],
-            ),
-          ),
-          SizedBox(height: 30.h),
-          Container(
-            color: Colors.white,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildTab('실시간 로그', showRealtimeLog),
-                _buildTab('위클리 랭킹', !showRealtimeLog),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Container(
-              color: Colors.white,
-              child: showRealtimeLog
-                  ? _buildRealtimeList()
-                  : _buildWeeklyRanking(),
-            ),
-          ),
-        ],
-      ),
-    ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, String unit) {
-    return Container(
-      width: 100.w,
-      height: 120.h,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.r),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFA726), Color(0xFFFF7043)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      padding: EdgeInsets.all(12.w),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(title, style: TextStyle(color: Colors.white, fontSize: 12.sp)),
-          SizedBox(height: 8.h),
-          Text(
-            value,
-            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          Text(unit, style: TextStyle(color: Colors.white)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTab(String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          showRealtimeLog = label == '실시간 로그';
-        });
-        fetchUnboxedLogs();
-      },
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: isSelected ? const Color(0xFFFF5C43) : Colors.black54,
-                fontWeight: FontWeight.bold,
               ),
             ),
-            if (isSelected)
-              Container(
-                margin: EdgeInsets.only(top: 4.h),
-                height: 2.h,
-                width: 60.w,
-                color: const Color(0xFFFF5C43),
-              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildRealtimeList() {
-    if (unboxedOrders.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(vertical: 12.h),
-      itemCount: unboxedOrders.length,
-      itemBuilder: (context, index) {
-        final order = unboxedOrders[index];
-        final user = order['user'];
-        final product = order['unboxedProduct']?['product'];
-        final box = order['box'];
-        final rawProfileImage = user?['profileImage'];
-        final userProfileImage = rawProfileImage != null && rawProfileImage.isNotEmpty
-            ? (rawProfileImage.startsWith('http')
-            ? rawProfileImage
-            : 'http://192.168.219.108:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
-            : null;
-        
-        return _buildUnboxItem(
-          profileName: user?['nickname'] ?? '익명',
-          userProfileImage: userProfileImage,
-          productName: product?['name'] ?? '상품명 없음',
-          price: '정가 ${(product?['price'] ?? 0).toString()}원',
-          boxPrice: '${box?['price'] ?? 0}원 박스',
-          dateTime: DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')?.toLocal().toString().substring(0, 16) ?? '',
-          image: product?['mainImage'] != null && product['mainImage'].isNotEmpty
-              ? 'http://192.168.219.108:7778${product['mainImage']}'
-              : 'https://via.placeholder.com/50',
-
-        );
-      },
+  Widget _buildCompactStatHeader() {
+    return Padding(
+      padding: EdgeInsets.only(top: 90.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _circleStat("${_formatShortNumber(highestPrice)}", "언박싱 최고가"),
+          _circleStat("${_formatShortNumber(unboxedOrders.length)}", "언박싱 횟수"),
+          _circleStat("${_formatShortNumber(totalPrice)}", "누적 최고가"),
+        ],
+      ),
     );
   }
 
-
-  Widget _buildWeeklyRanking() {
-    return ListView(
+  Widget _circleStat(String value, String label) {
+    return Column(
       children: [
-        Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Container(
-            padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24.r),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('랭킹전 종료까지', style: TextStyle(fontSize: 14.sp)),
-                SizedBox(height: 8.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('3D 13:02:21 🔥',
-                        style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Text('랭킹전 룰', style: TextStyle(fontSize: 13.sp)),
-                        SizedBox(width: 4.w),
-                        Icon(Icons.help_outline, size: 16.sp),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        Container(
+          width: 60.w,
+          height: 60.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFF021526),
+            boxShadow: [
+              BoxShadow(color: Colors.black26, blurRadius: 4.r, offset: Offset(0, 2)),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            value,
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
           ),
         ),
-        _buildWeeklyRankUser(
-          rank: '1위',
-          name: '힘드네',
-          amount: '73,289,720원 만큼 획득',
-          point: '1,465,794 P',
-          isFirst: true,
-        ),
-        _buildWeeklyRankUser(
-          rank: '2위',
-          name: '크크크',
-          amount: '39,956,850원 만큼 획득',
-          point: '599,353 P',
-        ),
-        _buildWeeklyRankUser(
-          rank: '3위',
-          name: '큰것좀',
-          amount: '25,533,320원 만큼 획득',
-          point: '255,333 P',
-        ),
+        SizedBox(height: 4.h),
+        Text(label, style: TextStyle(color: Colors.white, fontSize: 12.sp)),
       ],
     );
   }
 
-  Widget _buildWeeklyRankUser({
-    required String rank,
-    required String name,
-    required String amount,
-    required String point,
-    bool isFirst = false,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isFirst ? Colors.white : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(20.r),
-          boxShadow: isFirst
-              ? [BoxShadow(color: Colors.black12, blurRadius: 6.r, offset: const Offset(0, 2))]
-              : [],
-        ),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.grey.shade300,
-            child: Text(rank, style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          title: Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp)),
-          subtitle: Text(amount, style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
-          trailing: Text(point, style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
+  String _formatNumber(int number) {
+    return number.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
   }
 
-
-
-  Widget _buildUnboxItem({
-    required String profileName,
-    required String productName,
-    required String price,
-    required String boxPrice,
-    required String dateTime,
-    required String image,
-    String? userProfileImage,
-    bool isHighlighted = false,
+  Widget buildUnboxStatCard({
+    required String title,
+    required String value,
+    required String unit,
+    Color? backgroundColor,
+    String? backgroundImage,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isHighlighted ? const Color(0xFFFF5C43) : Colors.white,
-          borderRadius: BorderRadius.circular(30.r),
-          boxShadow: isHighlighted
-              ? []
-              : [BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2))],
-        ),
-        child: ListTile(
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-          leading: CircleAvatar(
-            backgroundImage: NetworkImage(image),
-            radius: 24.r,
-          ),
-          title: Row(
-            children: [
-              // 🔥 프로필 이미지 or 기본 아이콘
-              userProfileImage != null && userProfileImage.isNotEmpty
-                  ? CircleAvatar(
-                radius: 12.r,
-                backgroundImage: NetworkImage('$userProfileImage'),
-              )
-                  : const Icon(Icons.account_circle, size: 24, color: Colors.grey),
-
-              SizedBox(width: 6.w),
-
-              // 🔥 닉네임
-              Expanded(
-                child: Text(
-                  profileName,
-                  style: TextStyle(
-                    color: isHighlighted ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.sp,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-
-
-          subtitle: Column(
+    return Container(
+      margin: EdgeInsets.only(bottom: 16.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? Colors.black,
+        borderRadius: BorderRadius.circular(10.r),
+        image: backgroundImage != null
+            ? DecorationImage(
+          image: AssetImage(backgroundImage),
+          fit: BoxFit.cover,
+          opacity: 0.4,
+        )
+            : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                productName,
-                style: TextStyle(
-                  color: isHighlighted ? Colors.white : Colors.black,
-                  fontSize: 13.sp,
-                ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                price,
-                style: TextStyle(
-                  color: isHighlighted ? Colors.white70 : Colors.black54,
-                  fontSize: 12.sp,
-                ),
-              ),
+              Text(title, style: TextStyle(fontSize: 12.sp, color: Colors.white.withOpacity(0.8))),
+              SizedBox(height: 6.h),
+              Text(value, style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.white)),
             ],
           ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                boxPrice,
-                style: TextStyle(
-                  color: isHighlighted ? Colors.white : Colors.black87,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13.sp,
-                ),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                dateTime,
-                style: TextStyle(
-                  color: isHighlighted ? Colors.white70 : Colors.black45,
-                  fontSize: 11.sp,
-                ),
-              ),
-            ],
-          ),
-        ),
+          Text(unit, style: TextStyle(fontSize: 14.sp, color: Colors.white.withOpacity(0.9))),
+        ],
       ),
     );
   }
-
 }

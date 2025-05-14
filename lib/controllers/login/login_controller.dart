@@ -5,13 +5,15 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../routes/base_url.dart';
+
 class LoginController {
   final BuildContext context;
 
   LoginController(this.context);
 
   Future<void> login(String email, String password) async {
-    final url = Uri.parse('http://192.168.219.108:7778/api/users/login');
+    final url = Uri.parse('${BaseUrl.value}:7778/api/users/login');
     final storage = FlutterSecureStorage();
 
     final response = await http.post(
@@ -63,7 +65,7 @@ class LoginController {
       print('카카오 유저 정보 전체: ${user.toJson()}');
 
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/users/kakao-login'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/kakao-login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'kakaoId': kakaoId}),
       );

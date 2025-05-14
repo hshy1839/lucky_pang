@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../routes/base_url.dart';
+
 class PointController {
   final storage = FlutterSecureStorage();
 
@@ -11,7 +13,7 @@ class PointController {
       if (token == null) throw Exception('No token found');
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/points/$userId'),
+        Uri.parse('${BaseUrl.value}:7778/api/points/$userId'),
         headers: {
           'Authorization': 'Bearer $token',
         },

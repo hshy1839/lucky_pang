@@ -29,25 +29,26 @@ class ShippingInfoScreen extends StatelessWidget {
           children: [
             SizedBox(height: 60.h),
             Image.asset(
-              'assets/icons/app_icon.jpg', // 등록된 이미지 경로
-              width: 160.w,
-              height: 160.w,
+              'assets/images/shipping_missing.png', // 등록된 이미지 경로
+              width: double.infinity,
             ),
             SizedBox(height: 24.h),
             Text(
-              '등록된 배송지가 없어요',
+              '아직 등록된 배송지가 없습니다',
               style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF465461)
+                ,
               ),
             ),
-            SizedBox(height: 40.h),
+            SizedBox(height: 10.h),
             Text(
-              '배송지 추가 후 상품배송이 가능합니다.',
+              '배송지 추가 후 상품 배송이 가능합니다',
               style: TextStyle(
                 fontSize: 14.sp,
-                color: Colors.black,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF465461),
               ),
             ),
             SizedBox(height: 40.h),
@@ -66,7 +67,6 @@ class ShippingInfoScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.pushNamed(context, '/shippingCreate');
                   },
-                  icon: Icon(Icons.add, color: Colors.white),
                   label: Text(
                     '배송지 추가하기',
                     style: TextStyle(

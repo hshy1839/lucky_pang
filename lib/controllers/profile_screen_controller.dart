@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as path;
 
+import '../routes/base_url.dart';
+
 
 class ProfileScreenController extends ChangeNotifier {
   String userId = '';
@@ -24,7 +26,7 @@ class ProfileScreenController extends ChangeNotifier {
       print('📦 토큰 확인: $token');
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/users/userinfoget'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/userinfoget'),
         headers: { 'Authorization': 'Bearer $token' },
       );
 
@@ -56,7 +58,7 @@ class ProfileScreenController extends ChangeNotifier {
       if (token == null || token.isEmpty) throw Exception('토큰이 없습니다.');
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/orderByUser'),
+        Uri.parse('${BaseUrl.value}:7778/api/orderByUser'),
         headers: { 'Authorization': 'Bearer $token' },
       );
 
@@ -97,7 +99,7 @@ class ProfileScreenController extends ChangeNotifier {
         throw Exception('로그인 정보가 없습니다.');
       }
 
-      final uri = Uri.parse('http://192.168.219.108:7778/api/users/profile');
+      final uri = Uri.parse('${BaseUrl.value}:7778/api/users/profile');
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $token'
         ..files.add(

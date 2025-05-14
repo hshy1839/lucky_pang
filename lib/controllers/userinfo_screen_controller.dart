@@ -5,13 +5,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
+import '../routes/base_url.dart';
+
 class UserInfoScreenController {
   String nickname = "";
   String email = "";
   String phoneNumber = "";
   String referralCode = "";
   String profileImage = "";
-
+  String createdAt = '';
   bool _fetched = false;
 
   final storage = FlutterSecureStorage();
@@ -23,7 +25,7 @@ class UserInfoScreenController {
       if (token == null || token.isEmpty) throw Exception('로그인 정보가 없습니다.');
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/users/userinfoget'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/userinfoget'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -39,6 +41,7 @@ class UserInfoScreenController {
           phoneNumber = user['phoneNumber'] ?? '';
           referralCode = user['referralCode'] ?? '';
           profileImage = user['profileImage'] ?? '';
+          createdAt = user['created_at'] ?? '';
           _fetched = true; // ✅ 캐싱 완료 표시
         } else {
           throw Exception('사용자 정보를 불러올 수 없습니다.');
@@ -72,7 +75,7 @@ class UserInfoScreenController {
 
       // 서버 요청
       final response = await http.put(
-        Uri.parse('http://192.168.219.108:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
+        Uri.parse('${BaseUrl.value}:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token', // SharedPreferences에서 가져온 토큰 사용

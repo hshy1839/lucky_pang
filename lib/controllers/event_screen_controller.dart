@@ -3,9 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../routes/base_url.dart';
+
 class EventScreenController {
   final _secureStorage = const FlutterSecureStorage();
-  final _baseUrl = 'http://192.168.219.108:7778';
+  final _baseUrl = '${BaseUrl.value}:7778';
 
   Future<List<Map<String, dynamic>>> fetchEvents() async {
     try {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../routes/base_url.dart';
 import '../../views/login_activity/login.dart';
 import '../userinfo_screen_controller.dart';
 
@@ -47,7 +48,7 @@ class SignupController extends ChangeNotifier {
       nicknameError = '닉네임을 입력해주세요.';
     } else {
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/users/check-duplicate'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/check-duplicate'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'nickname': nickname}),
       );
@@ -69,7 +70,7 @@ class SignupController extends ChangeNotifier {
       emailError = '이메일을 입력해주세요.';
     } else {
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/users/check-duplicate'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/check-duplicate'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
@@ -95,7 +96,7 @@ class SignupController extends ChangeNotifier {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/users/check-referral'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/check-referral'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'referralCode': code}),
       );
@@ -174,7 +175,7 @@ class SignupController extends ChangeNotifier {
     }
 
     final response = await http.post(
-      Uri.parse('http://192.168.219.108:7778/api/users/signup'),
+      Uri.parse('${BaseUrl.value}:7778/api/users/signup'),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
       body: jsonEncode(body),
     );

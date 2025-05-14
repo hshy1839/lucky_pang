@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../routes/base_url.dart';
 import 'box_controller.dart'; // 박스 목록 접근용
 
 class OrderScreenController {
@@ -61,7 +62,7 @@ class OrderScreenController {
     // ✅ Payletter PG 결제일 경우
     if (totalAmount > 0 && paymentMethod == '신용/체크카드') {
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/payletter'),
+        Uri.parse('${BaseUrl.value}:7778/api/payletter'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -101,7 +102,7 @@ class OrderScreenController {
 
     // ✅ 포인트 결제 또는 무통장 등의 일반 처리
     final response = await http.post(
-      Uri.parse('http://192.168.219.108:7778/api/order'),
+      Uri.parse('${BaseUrl.value}:7778/api/order'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -165,7 +166,7 @@ class OrderScreenController {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/order?userId=$userId'),
+        Uri.parse('${BaseUrl.value}:7778/api/order?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -220,7 +221,7 @@ class OrderScreenController {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/orders/$orderId/unbox'),
+        Uri.parse('${BaseUrl.value}:7778/api/orders/$orderId/unbox'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -244,7 +245,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/orders/unboxed?userId=$userId'),
+        Uri.parse('${BaseUrl.value}:7778/api/orders/unboxed?userId=$userId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -271,7 +272,7 @@ class OrderScreenController {
       if (token == null) return null;
 
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/orders/$orderId/refund'),
+        Uri.parse('${BaseUrl.value}:7778/api/orders/$orderId/refund'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -307,7 +308,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/orders/unboxed/all'),
+        Uri.parse('${BaseUrl.value}:7778/api/orders/unboxed/all'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -351,7 +352,7 @@ class OrderScreenController {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.219.108:7778/api/payletter/request'),
+        Uri.parse('${BaseUrl.value}:7778/api/payletter/request'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

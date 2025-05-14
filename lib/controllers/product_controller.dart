@@ -3,8 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../routes/base_url.dart';
+
 class ProductController {
-  final String baseUrl = 'http://192.168.219.108:7778';
+  final String baseUrl = '${BaseUrl.value}:7778';
   final FlutterSecureStorage storage = FlutterSecureStorage(); // ✅ SecureStorage 사용
 
   Future<List<Map<String, String>>> fetchProducts() async {

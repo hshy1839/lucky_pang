@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../routes/base_url.dart';
+
 class AddressSearchScreen extends StatelessWidget {
   const AddressSearchScreen({super.key});
 
@@ -16,7 +18,7 @@ class AddressSearchScreen extends StatelessWidget {
           Navigator.pop(context, result); // zonecode, address 전달
         },
       )
-      ..loadRequest(Uri.parse('http://192.168.219.108:7778/kakao_postcode.html')); // 🔥 변경된 부분
+      ..loadRequest(Uri.parse('${BaseUrl.value}:7778/kakao_postcode.html')); // 🔥 변경된 부분
 
     return Scaffold(
       appBar: AppBar(

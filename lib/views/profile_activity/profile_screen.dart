@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/point_controller.dart';
 import '../../controllers/profile_screen_controller.dart';
@@ -24,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String nickname = '';
   int totalPoints = 0;
   String? profileImage = '';
+  String createdAt = '';
 
 
   final ImagePicker _picker = ImagePicker();
@@ -33,6 +35,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     loadUserInfo();
     loadUserPoints();
+  }
+
+  String formatJoinDate(String createdAt) {
+    try {
+      final date = DateTime.parse(createdAt);
+      return DateFormat('yyyy-MM-dd').format(date);
+    } catch (_) {
+      return '';
+    }
   }
 
   Future<void> loadUserPoints() async {
@@ -60,141 +71,164 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       nickname = _controller.nickname;
       profileImage = _controller.profileImage;
+      createdAt = _controller.createdAt;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    ScreenUtil.init(context, designSize: const Size(375, 812));
-
-    final String baseUrl = 'http://192.168.219.107:7778/';
-    final String? imageUrl = (profileImage != null && profileImage!.isNotEmpty)
-        ? '$baseUrl$profileImage'
-        : null;
-
+    final String? imageUrl = profileImage?.isNotEmpty == true ? 'http://192.168.219.107:7778/$profileImage' : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('MY PAGE', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.grey),
-            onPressed: () {
-              Navigator.pushNamed(context, '/setting');
-            },
-          ),
-        ],
         elevation: 0,
+        centerTitle: true,
+        title: Text(
+          '내 정보',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
       ),
-      body: Column(
-        children: [
-          SizedBox(height: 20.h),
-          GestureDetector(
-            onTap: _pickAndUploadProfileImage, // ✅ 터치 시 이미지 선택 및 업로드
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 60.r,
-                  backgroundColor: Colors.grey.shade300,
-                  backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: MediaQuery.of(context).size.width / 2 - 60.r,
-                  child: Icon(Icons.edit, size: 20.sp, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 20.h),
-          Column(
-            children: [
-              Text(nickname, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
-              SizedBox(height: 8.h),
-              Text('보유포인트', style: TextStyle(color: Colors.grey, fontSize: 12.sp)),
-              SizedBox(height: 4.h),
-              Text('${totalPoints.toString()}원', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.redAccent)),
-            ],
-          ),
-          SizedBox(height: 16.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildRoundLabel(context, '인증완료', selected: true),
-              SizedBox(width: 10.w),
-              _buildRoundLabel(context, '친구코드 미등록', selected: false),
-            ],
-          ),
-          SizedBox(height: 20.h),
-          Divider(thickness: 1, color: Colors.grey.shade300),
-          Expanded(
-            child: ListView(
-              children: [
-                _buildListItem('내 포인트 내역', onTap: () => Navigator.pushNamed(context, '/pointInfo')),
-                _buildListItem('배송지 관리', onTap: () => Navigator.pushNamed(context, '/shippingInfo')),
-                _buildListItem('친구 초대하기', onTap: () => Navigator.pushNamed(context, '/recommend')),
-                _buildListItem('선물코드 입력', onTap: () => Navigator.pushNamed(context, '/giftCode')),
-                _buildListItem('쿠폰코드 입력', onTap: () => Navigator.pushNamed(context, '/couponCode')),
-                SizedBox(height: 16.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () async {
-                        final prefs = await SharedPreferences.getInstance();
-                        await prefs.remove('token');
-                        await prefs.remove('isLoggedIn');
-                        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                      },
-                      child: const Text('로그아웃', style: TextStyle(color: Colors.black)),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            SizedBox(height: 16),
+
+            // 🔵 프로필 사진
+            GestureDetector(
+              onTap: _pickAndUploadProfileImage,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    // 오른쪽 위 방향 그림자 (주황색)
+                    BoxShadow(
+                      color: Color(0xFFFF5722),
+                      offset: Offset(2, -2),
+                      blurRadius: 0,
+                      spreadRadius: 0,
                     ),
-                    SizedBox(width: 20.w),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('회원탈퇴', style: TextStyle(color: Colors.black)),
+                    // 왼쪽 아래 방향 그림자 (보라색)
+                    BoxShadow(
+                      color: Color(0xFFC622FF),
+                      offset: Offset(-2, 2),
+                      blurRadius: 0,
+                      spreadRadius: 0,
                     ),
                   ],
                 ),
-                SizedBox(height: 100.h),
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+                  backgroundColor: Colors.grey.shade200,
+                ),
+              ),
+            ),
+
+
+            SizedBox(height: 12),
+            Text(nickname, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            SizedBox(height: 6),
+            Text('가입일자: ${formatJoinDate(createdAt)}', style: TextStyle(fontSize: 12, color: Color(0xFF465461)
+            )),
+
+            SizedBox(height: 24),
+
+            // 🔶 2 x 2 정보 박스
+            Row(
+              children: [
+                Expanded(child: _infoBox(title: '보유 포인트', value: '${totalPoints.toString()}', valueColor: Color(0xFFFF5C43))),
+                SizedBox(width: 12),
+                Expanded(child: _infoBox(title: '친구 추천인 코드', value: 'ㅋㅋㅋㅋㅋ', valueColor: Color(0xFFFF5C43))),
               ],
             ),
-          )
+            SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _infoBox(title: '', value: '본인인증 완료', valueColor: Color(0xFF2EB520), border: true)),
+                SizedBox(width: 12),
+                Expanded(child: _infoBox(title: '', value: '배송지 등록완료', valueColor: Color(0xFF2EB520), border: true)),
+              ],
+            ),
+
+            SizedBox(height: 44),
+
+            // 🔽 설정 리스트
+            _menuItem('앱 설정', 'assets/icons/profile_icons/profile_setting_icon.png', () => Navigator.pushNamed(context, '/setting')),
+            _menuItem('내 포인트 내역', 'assets/icons/profile_icons/profile_point_icon.png', () => Navigator.pushNamed(context, '/pointInfo')),
+            _menuItem('배송지 관리', 'assets/icons/profile_icons/profile_shipping_icon.png', () => Navigator.pushNamed(context, '/shippingInfo')),
+            _menuItem('친구 초대하기', 'assets/icons/profile_icons/profile_friend_icon.png', () => Navigator.pushNamed(context, '/recommend')),
+            _menuItem('선물코드 입력', 'assets/icons/profile_icons/profile_gift_icon.png', () => Navigator.pushNamed(context, '/giftCode')),
+            _menuItem('쿠폰코드 입력', 'assets/icons/profile_icons/profile_coupon_icon.png', () => Navigator.pushNamed(context, '/couponCode')),
+            SizedBox(height: 82),
+            Image.asset('assets/images/EndOfScreen.png', width: 172, height: 32),
+            SizedBox(height: 102),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoBox({
+    required String title,
+    required String value,
+    required Color valueColor,
+    bool border = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Color(0xFFF0F1F2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center, // 🔹 가운데 정렬
+        children: [
+          if (title.isNotEmpty)
+            Text(
+              title,
+              textAlign: TextAlign.center, // 🔹 텍스트 자체도 가운데 정렬
+              style: TextStyle(fontSize: 12, color: Color(0xFF8D969D)),
+            ),
+          SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center, // 🔹 텍스트 자체도 가운데 정렬
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: valueColor,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRoundLabel(BuildContext context, String text, {bool selected = false}) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: selected ? Colors.blue : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: selected ? Colors.white : Colors.grey,
-          fontSize: 12.sp,
-        ),
-      ),
-    );
-  }
 
-  Widget _buildListItem(String title, {required VoidCallback onTap}) {
+  Widget _menuItem(String title, String assetImagePath, VoidCallback onTap) {
     return Column(
       children: [
         ListTile(
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          contentPadding: EdgeInsets.symmetric(vertical: 10),
+          leading: Image.asset(assetImagePath, width: 24, height: 24),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.w400)),
+          trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black),
           onTap: onTap,
         ),
-        Divider(thickness: 1, color: Colors.grey.shade300),
+
       ],
     );
   }
+
+
 }

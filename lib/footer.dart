@@ -9,7 +9,7 @@ class Footer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 96, // Footer 전체 높이
+      height: 75, // Footer 전체 높이
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
@@ -63,7 +63,7 @@ class Footer extends StatelessWidget {
 
           // 중앙 럭키박스 (위로 띄우기)
           Positioned(
-            top: 5, // 96 - 68 = 28 → 위로 튀어나오도록
+            top: -20, // 96 - 68 = 28 → 위로 튀어나오도록
             child: GestureDetector(
               onTap: () => onTabTapped(4),
               child: Image.asset(

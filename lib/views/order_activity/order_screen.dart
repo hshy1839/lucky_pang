@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../controllers/order_screen_controller.dart';
+import '../../routes/base_url.dart';
 import '../luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import '../widget/box_storage_card.dart';
 import '../widget/product_storage_card.dart';
@@ -182,7 +183,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
                       return ProductStorageCard(
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
-                        mainImageUrl: 'http://192.168.219.108:7778${product['mainImage']}',
+                        mainImageUrl: '${BaseUrl.value}:7778${product['mainImage']}',
                         productName: '${product['name']}',
                         orderId: order['_id'],
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',

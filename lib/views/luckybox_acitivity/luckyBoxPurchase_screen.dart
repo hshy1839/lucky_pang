@@ -217,8 +217,15 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
               CheckboxListTile(
                 title: Text('모든 내용을 확인하였으며 결제에 동의합니다.'),
                 value: allAgreed,
-                onChanged: (val) => setState(() => allAgreed = val ?? false),
+                onChanged: (val) {
+                  setState(() {
+                    allAgreed = val ?? false;
+                    purchaseConfirmed = val ?? false;      // ✅ 함께 체크
+                    refundPolicyAgreed = val ?? false;     // ✅ 함께 체크
+                  });
+                },
               ),
+
               CheckboxListTile(
                 title: Text('구매 확인 동의'),
                 value: purchaseConfirmed,

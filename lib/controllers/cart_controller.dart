@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../routes/base_url.dart';
+
 class CartController {
   // 장바구니 데이터 가져오기
   List<Map<String, dynamic>> cartItems = [];
@@ -10,7 +12,7 @@ class CartController {
   Future<List<Map<String, dynamic>>> fetchCartData(String userId, String token) async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.219.108:7778/api/cart/$userId'),
+        Uri.parse('${BaseUrl.value}:7778/api/cart/$userId'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -43,7 +45,7 @@ class CartController {
 
 
 
-  static const String apiUrl = 'http://192.168.219.108:7778/api/cart'; // 서버 주소
+  static const String apiUrl = '${BaseUrl.value}:7778/api/cart'; // 서버 주소
 
   // 장바구니에 상품 추가하는 함수
   static Future<http.Response> addToCart({
@@ -95,7 +97,7 @@ class CartController {
       final token = prefs.getString('token') ?? '';
       // DELETE 요청을 보내기 위한 headers 설정
       final response = await http.delete(
-        Uri.parse('http://192.168.219.108:7778/api/cart/delete/$cartId'),
+        Uri.parse('${BaseUrl.value}:7778/api/cart/delete/$cartId'),
         headers: {
           'Authorization': 'Bearer $token', // JWT 토큰을 헤더에 추가
         },

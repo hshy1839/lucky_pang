@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../controllers/shipping_controller.dart';
 import '../../../controllers/shipping_order_controller.dart';
 import '../../../controllers/order_screen_controller.dart';
+import '../../routes/base_url.dart';
 import '../widget/shipping_card.dart';
 
 class DeliveryRequestScreen extends StatefulWidget {
@@ -82,7 +83,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
               Row(
                 children: [
                   Image.network(
-                    'http://192.168.219.108:7778${product['mainImage']}',
+                    '${BaseUrl.value}:7778${product['mainImage']}',
                     width: 80.w,
                     height: 80.w,
                   ),
