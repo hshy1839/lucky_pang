@@ -2,12 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/point_controller.dart';
 import '../../controllers/profile_screen_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
 import 'package:image_picker/image_picker.dart';
+
+import '../../routes/base_url.dart';
+import '../widget/endOfScreen.dart';
 
 
 class ProfileScreen extends StatefulWidget {
@@ -26,7 +30,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int totalPoints = 0;
   String? profileImage = '';
   String createdAt = '';
-
 
   final ImagePicker _picker = ImagePicker();
 
@@ -77,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String? imageUrl = profileImage?.isNotEmpty == true ? 'http://192.168.219.107:7778/$profileImage' : null;
+    final String? imageUrl = profileImage?.isNotEmpty == true ? '${BaseUrl.value}:7778/$profileImage' : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -127,9 +130,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 child: CircleAvatar(
                   radius: 40,
-                  backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
                   backgroundColor: Colors.grey.shade200,
+                  backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
+                  child: (imageUrl == null || imageUrl.isEmpty)
+                      ? Icon(Icons.person, size: 50, color: Colors.grey)
+                      : null,
                 ),
+
               ),
             ),
 
@@ -162,14 +169,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(height: 44),
 
             // 🔽 설정 리스트
-            _menuItem('앱 설정', 'assets/icons/profile_icons/profile_setting_icon.png', () => Navigator.pushNamed(context, '/setting')),
-            _menuItem('내 포인트 내역', 'assets/icons/profile_icons/profile_point_icon.png', () => Navigator.pushNamed(context, '/pointInfo')),
-            _menuItem('배송지 관리', 'assets/icons/profile_icons/profile_shipping_icon.png', () => Navigator.pushNamed(context, '/shippingInfo')),
-            _menuItem('친구 초대하기', 'assets/icons/profile_icons/profile_friend_icon.png', () => Navigator.pushNamed(context, '/recommend')),
-            _menuItem('선물코드 입력', 'assets/icons/profile_icons/profile_gift_icon.png', () => Navigator.pushNamed(context, '/giftCode')),
-            _menuItem('쿠폰코드 입력', 'assets/icons/profile_icons/profile_coupon_icon.png', () => Navigator.pushNamed(context, '/couponCode')),
+            _menuItem('앱 설정', 'assets/icons/profile_icons/profile_setting_icon.svg', () => Navigator.pushNamed(context, '/setting')),
+            _menuItem('내 포인트 내역', 'assets/icons/profile_icons/profile_point_icon.svg', () => Navigator.pushNamed(context, '/pointInfo')),
+            _menuItem('배송지 관리', 'assets/icons/profile_icons/profile_shipping_icon.svg', () => Navigator.pushNamed(context, '/shippingInfo')),
+            _menuItem('친구 초대하기', 'assets/icons/profile_icons/profile_friend_icon.svg', () => Navigator.pushNamed(context, '/recommend')),
+            _menuItem('선물코드 입력', 'assets/icons/profile_icons/profile_gift_icon.svg', () => Navigator.pushNamed(context, '/giftCode')),
+            _menuItem('쿠폰코드 입력', 'assets/icons/profile_icons/profile_coupon_icon.svg', () => Navigator.pushNamed(context, '/couponCode')),
             SizedBox(height: 82),
-            Image.asset('assets/images/EndOfScreen.png', width: 172, height: 32),
+            EndOfScreen(),
             SizedBox(height: 102),
           ],
         ),
@@ -220,12 +227,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         ListTile(
           contentPadding: EdgeInsets.symmetric(vertical: 10),
-          leading: Image.asset(assetImagePath, width: 24, height: 24),
+          leading: SvgPicture.asset(
+            assetImagePath,
+            width: 40,
+            height: 40,
+          ),
           title: Text(title, style: TextStyle(fontWeight: FontWeight.w400)),
           trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black),
           onTap: onTap,
         ),
-
       ],
     );
   }

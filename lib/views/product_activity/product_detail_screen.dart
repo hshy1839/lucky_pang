@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:attedance_app/views/widget/endOfScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -177,14 +178,7 @@ class ProductDetailScreen extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 104),
-                      Center(
-                        child: Image.asset(
-                          'assets/images/EndOfScreen.png',
-                          width: 172,
-                          height: 32,
-                          fit: BoxFit.contain, // 이미지가 비율 내에서 잘리지 않도록
-                        ),
-                      ),
+                      Center(child: EndOfScreen()),
                       SizedBox(height: 32), // 하단 여백
 
                     ],

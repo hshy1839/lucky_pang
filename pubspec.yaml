@@ -38,6 +38,7 @@ dependencies:
   webview_flutter: ^4.11.0
   webview_flutter_android: ^4.4.2
   marquee: ^2.3.0
+  flutter_svg: ^2.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -66,17 +67,17 @@ flutter:
     - assets/terms/signup_term_1.txt
     - assets/terms/signup_term_2.txt
     - assets/terms/privacy.txt
-    - assets/icons/footer_icons/home_icon.png
-    - assets/icons/footer_icons/inbox_icon.png
-    - assets/icons/footer_icons/boxButton_icon.png
-    - assets/icons/footer_icons/trophy_icon.png
-    - assets/icons/footer_icons/user-round_icon.png
-    - assets/icons/profile_icons/profile_coupon_icon.png
-    - assets/icons/profile_icons/profile_friend_icon.png
-    - assets/icons/profile_icons/profile_gift_icon.png
-    - assets/icons/profile_icons/profile_point_icon.png
-    - assets/icons/profile_icons/profile_setting_icon.png
-    - assets/icons/profile_icons/profile_shipping_icon.png
+    - assets/icons/footer_icons/home_icon.svg
+    - assets/icons/footer_icons/inbox_icon.svg
+    - assets/icons/footer_icons/boxButton_icon.svg
+    - assets/icons/footer_icons/trophy_icon.svg
+    - assets/icons/footer_icons/user-round_icon.svg
+    - assets/icons/profile_icons/profile_coupon_icon.svg
+    - assets/icons/profile_icons/profile_friend_icon.svg
+    - assets/icons/profile_icons/profile_gift_icon.svg
+    - assets/icons/profile_icons/profile_point_icon.svg
+    - assets/icons/profile_icons/profile_setting_icon.svg
+    - assets/icons/profile_icons/profile_shipping_icon.svg
 
     - assets/images/EndOfScreen.png
     - assets/images/BoxEmptyStateImage.png

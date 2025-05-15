@@ -1,3 +1,4 @@
+import 'package:attedance_app/controllers/order_screen_controller.dart';
 import 'package:attedance_app/controllers/product_controller.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,9 @@ import '../product_activity/product_detail_screen.dart';
 import '../setting_activity/event_activity/event_detail_screen.dart';
 
 class MainScreen extends StatefulWidget {
+  final Function(int)? onTabTapped;
+
+  const MainScreen({super.key, this.onTabTapped});
   @override
   _MainScreenState createState() => _MainScreenState();
 }
@@ -20,6 +24,9 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   List<Map<String, String>> products = [];
   List<Map<String, dynamic>> ads = [];
+  List<Map<String, dynamic>> latestUnboxedLogs = [];
+
+
   String selectedBox = '5,000원 박스';
   int _currentAdIndex = 0;
 
@@ -31,6 +38,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _loadProducts();
     _loadAds();
+    _loadUnboxedLogs();
     _scrollController.addListener(_scrollListener);
   }
 
@@ -45,6 +53,23 @@ class _MainScreenState extends State<MainScreen> {
     if (price == null || price.isEmpty) return '0';
     final formatter = NumberFormat('#,###');
     return formatter.format(int.parse(price));
+  }
+
+  Future<void> _loadUnboxedLogs() async {
+    try {
+      final logs = await OrderScreenController.getAllUnboxedOrders(); // 직접 만든 API 함수
+      final recent = logs
+          .where((order) =>
+      (order['unboxedProduct']?['product']?['consumerPrice'] ?? 0) >= 30000)
+          .toList()
+        ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
+            .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
+      setState(() {
+        latestUnboxedLogs = recent.take(10).toList();
+      });
+    } catch (e) {
+      print('언박싱 기록 로딩 오류: $e');
+    }
   }
 
 
@@ -271,23 +296,38 @@ class _MainScreenState extends State<MainScreen> {
           SliverToBoxAdapter(
             child: Container(
               height: 36,
-              color: Color(0xFF021526), // 배경색
+              color: Color(0xFF021526),
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Marquee(
-                text: "쪼매는 오른손잡이 님이 [루미에르 포슬린 머그] 상품을 획득하셨습니다",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
+              child: GestureDetector(
+                onTap: () {
+                  widget.onTabTapped?.call(1); // ✅ 랭킹 탭으로 이동
+                },
+                child: latestUnboxedLogs.isNotEmpty
+                    ? Marquee(
+                  text: latestUnboxedLogs.map((log) {
+                    final nickname = log['user']?['nickname'] ?? '익명';
+                    final productName =
+                        log['unboxedProduct']?['product']?['name'] ?? '상품';
+                    return "🎉 $nickname 님이 [$productName] 상품을 획득하셨습니다 🎉";
+                  }).join("   "),
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                  scrollAxis: Axis.horizontal,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  blankSpace: 40.0,
+                  velocity: 30.0,
+                  pauseAfterRound: Duration(seconds: 1),
+                  startPadding: 0.0,
+                )
+                    : Center(
+                  child: Text(
+                    "언박싱 기록을 불러오는 중...",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
-                scrollAxis: Axis.horizontal,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                blankSpace: 40.0,
-                velocity: 30.0,
-                pauseAfterRound: Duration(seconds: 1),
-                startPadding: 0.0,
               ),
             ),
           ),
+
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.only(top: 64.0, left: 20.0, right: 20.0),

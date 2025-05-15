@@ -115,7 +115,7 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
                         children: [
                           Text('랭킹전 룰', style: TextStyle(fontSize: 13.sp)),
                           SizedBox(width: 4.w),
-                          Icon(Icons.help_outline, size: 16.sp),
+                          const RankingRuleTooltip(),
                         ],
                       ),
                     ],
@@ -188,4 +188,69 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
       ),
     );
   }
+
+
 }
+
+class RankingRuleTooltip extends StatelessWidget {
+  const RankingRuleTooltip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          barrierColor: Colors.transparent,
+          builder: (context) {
+            return Stack(
+              children: [
+                Positioned(
+                  top: 400.h,
+                  right: 16.w,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      width: 280.w,
+                      padding: EdgeInsets.all(16.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('<참여방법>', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                          SizedBox(height: 4.h),
+                          Text('1) 기간 내 럭키박스를 구매해 상품을 언박싱해요.', style: TextStyle(fontSize: 12.sp)),
+                          Text('2) 획득한 상품의 소비자가로 매겨진 자신의 순위를 확인해요.', style: TextStyle(fontSize: 12.sp)),
+                          SizedBox(height: 10.h),
+                          Text('<보상>', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                          SizedBox(height: 4.h),
+                          Text('1위: 소비자가 총액 2% 포인트', style: TextStyle(fontSize: 12.sp)),
+                          Text('2위: 소비자가 총액 1.5% 포인트', style: TextStyle(fontSize: 12.sp)),
+                          Text('3위: 소비자가 총액 1% 포인트', style: TextStyle(fontSize: 12.sp)),
+                          Text('4위: 소비자가 총액 0.9% 포인트', style: TextStyle(fontSize: 12.sp)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+      child: Icon(Icons.help_outline, size: 16.sp),
+    );
+  }
+}
+

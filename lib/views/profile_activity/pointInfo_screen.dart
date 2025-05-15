@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 import '../../controllers/point_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
@@ -20,6 +21,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
   final PointController _pointController = PointController();
   final UserInfoScreenController _controller = UserInfoScreenController();
 
+  String? profileImage = '';
   final storage = FlutterSecureStorage();
   String nickname = '';
   int totalPoints = 0;
@@ -58,12 +60,16 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
     await _controller.fetchUserInfo(context);
     setState(() {
       nickname = _controller.nickname;
+      profileImage = _controller.profileImage;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
+    final String? imageUrl = profileImage?.isNotEmpty == true
+        ? '${BaseUrl.value}:7778/$profileImage'
+        : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -72,7 +78,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
         leading: const BackButton(color: Colors.black),
         centerTitle: true,
         title: const Text(
-          '전체 포인트 내역',
+          '현재 포인트 내역',
           style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         elevation: 0,
@@ -80,36 +86,158 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // 🔹 상단 카드
             Container(
               width: double.infinity,
-              color: Theme.of(context).primaryColor,
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 50.h),
+              margin: EdgeInsets.all(16.w),
+              padding: EdgeInsets.all(20.w),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0D1121), Color(0xFF0D1121)],
+                ),
+                borderRadius: BorderRadius.circular(20.r),
+                boxShadow: [
+                  BoxShadow(color: Colors.black12, blurRadius: 6.r, offset: Offset(0, 3)),
+                ],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('LUCKY한', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white)),
-                  Text('$nickname 님!', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white)),
-                  SizedBox(height: 12.h),
-                  Text('현재 잔여 포인트는 ${totalPoints.toString()}P 입니다.', style: TextStyle(fontSize: 14.sp, color: Colors.white)),
+                  // 🔹 프로필 이미지 + 닉네임
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey.shade200,
+                          image: (imageUrl != null && imageUrl.isNotEmpty)
+                              ? DecorationImage(
+                            image: NetworkImage(imageUrl),
+                            fit: BoxFit.cover,
+                          )
+                              : null,
+                          boxShadow: [
+                            // 오른쪽 위 방향 그림자 (주황색)
+                            BoxShadow(
+                              color: Color(0xFFFF5722),
+                              offset: Offset(2, -2),
+                              blurRadius: 0,
+                              spreadRadius: 0,
+                            ),
+                            // 왼쪽 아래 방향 그림자 (보라색)
+                            BoxShadow(
+                              color: Color(0xFFC622FF),
+                              offset: Offset(-2, 2),
+                              blurRadius: 0,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: (imageUrl == null || imageUrl.isEmpty)
+                            ? const FittedBox(
+                          fit: BoxFit.cover,
+                          child: Icon(Icons.person, color: Colors.grey),
+                        )
+                            : null,
+                      ),
+                      SizedBox(width: 12.w),
+                      Text(
+                        '$nickname 님',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20.h),
+                  // 🔹 잔여 포인트 텍스트 & 값
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '현재 잔여 포인트',
+                        style: TextStyle(fontSize: 14.sp, color: Colors.white),
+                      ),
+                      Text(
+                        NumberFormat('#,###').format(totalPoints) + ' P',
+                        style: TextStyle(
+                          fontSize: 28.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF5722),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            SizedBox(height: 8.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildTabItem('전체 포인트 내역', 'total', selectedTab == 'total'),
-                SizedBox(width: 24.w),
-                _buildTabItem('소멸예정 포인트', 'scheduled', selectedTab == 'scheduled'),
-              ],
+
+            SizedBox(height: 30.h),
+
+            // 🔹 탭 선택
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => selectedTab = 'total'),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        decoration: BoxDecoration(
+                          color: selectedTab == 'total' ? Theme.of(context).primaryColor : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '현재 포인트 내역',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: selectedTab == 'total' ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => selectedTab = 'scheduled'),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        decoration: BoxDecoration(
+                          color: selectedTab == 'scheduled' ? Theme.of(context).primaryColor : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '소멸예정 포인트',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: selectedTab == 'scheduled' ? Colors.white : Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Divider(height: 1, color: Colors.grey.shade300),
+
+            SizedBox(height: 30.h),
+
+            // 🔹 포인트 내역 리스트
             _buildPointList(),
           ],
         ),
       ),
     );
   }
+
 
   Widget _buildTabItem(String label, String key, bool selected) {
     return GestureDetector(
@@ -143,24 +271,48 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       itemCount: pointLogs.length,
-      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade300),
+      separatorBuilder: (_, __) => SizedBox(height: 8.h),
       itemBuilder: (_, i) {
         final item = pointLogs[i];
         final amount = int.tryParse(item['amount'].toString()) ?? 0;
         final isPlus = item['type'] == '추가' || item['type'] == '환불';
 
-        return ListTile(
-          title: Text(item['description'] ?? '-', style: TextStyle(fontSize: 13.sp)),
-          subtitle: Text(item['createdAt']?.toString().substring(0, 19).replaceAll('T', ' ') ?? '', style: TextStyle(fontSize: 11.sp)),
-          trailing: Text(
-            '${isPlus ? '+' : '-'}${amount.toString()} P',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isPlus ? Colors.orange : Colors.blue,
-            ),
+        final formattedAmount = NumberFormat('#,###').format(amount.abs());
+        final formattedDate = item['createdAt']?.toString().substring(0, 19).replaceAll('T', ' ') ?? '';
+
+        return Container(
+          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item['description'] ?? '-', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500)),
+              SizedBox(height: 4.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(formattedDate, style: TextStyle(fontSize: 11.sp, color: Colors.grey[600])),
+                  Text(
+                    '${isPlus ? '+' : '-'}$formattedAmount P',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold,
+                      color: isPlus ? Colors.blue : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         );
       },
     );
   }
+
 }

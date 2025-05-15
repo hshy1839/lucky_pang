@@ -138,6 +138,10 @@ class MyApp extends StatelessWidget {
 }
 
 class MainScreenWithFooter extends StatefulWidget {
+  final int initialTabIndex;
+
+  const MainScreenWithFooter({Key? key, this.initialTabIndex = 0}) : super(key: key);
+
   @override
   _MainScreenWithFooterState createState() => _MainScreenWithFooterState();
 }
@@ -145,6 +149,15 @@ class MainScreenWithFooter extends StatefulWidget {
 class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialTabIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pageController.jumpToPage(_currentIndex);
+    });
+  }
 
   void _onTabTapped(int index) {
     setState(() {
@@ -167,7 +180,8 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
   Widget build(BuildContext context) {
     // ✅ 여기서 pages 리스트를 빌드 타이밍에 생성
     final List<Widget> pages = [
-      MainScreen(),
+      MainScreen(onTabTapped: _onTabTapped, ),
+
       RankingScreen(),
       OrderScreen(pageController: _pageController,
         onTabChanged: _onTabTapped,),

@@ -1,76 +1,97 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class Footer extends StatelessWidget {
   final Function(int) onTabTapped;
   final int selectedIndex;
 
-  Footer({required this.onTabTapped, required this.selectedIndex});
+  const Footer({
+    super.key,
+    required this.onTabTapped,
+    required this.selectedIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 75, // Footer 전체 높이
+    return IgnorePointer(
+      ignoring: false, // 기본적으로 포인터를 받음
       child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.bottomCenter,
         children: [
-          // 하단 바
-          BottomAppBar(
-            color: Colors.white,
-            child: SizedBox(
-              height: 68,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                Expanded(
-                child:
-                  _buildFooterItem(
-                    context,
-                    imagePath: 'assets/icons/footer_icons/home_icon.png',
-                    label: '홈',
-                    index: 0,
-                  ),
-                ),
-        Expanded(
-          child:  _buildFooterItem(
-                    context,
-                    imagePath: 'assets/icons/footer_icons/trophy_icon.png',
-                    label: '랭킹',
-                    index: 1,
-                  ),
-        ),
-                  SizedBox(width: 70), // 중앙 럭키박스 자리 확보
-              Expanded(
-                child:_buildFooterItem(
-                    context,
-                    imagePath: 'assets/icons/footer_icons/inbox_icon.png',
-                    label: '보관함',
-                    index: 2,
-                  ),
-              ),
-              Expanded(
-                child: _buildFooterItem(
-                    context,
-                    imagePath: 'assets/icons/footer_icons/user-round_icon.png',
-                    label: '내 정보',
-                    index: 3,
-                  ),
-              ),
-                ],
-              ),
+          // ✅ 기본 레이어 (터치 차단용 흰색 박스)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {}, // 이벤트 소비해서 아래로 안 내려감
+            child: Container(
+              height: 75,
+              width: double.infinity,
+              color: Colors.transparent,
             ),
           ),
 
-          // 중앙 럭키박스 (위로 띄우기)
-          Positioned(
-            top: -20, // 96 - 68 = 28 → 위로 튀어나오도록
-            child: GestureDetector(
-              onTap: () => onTabTapped(4),
-              child: Image.asset(
-                'assets/icons/footer_icons/boxButton_icon.png',
-                width: 70,
-                height: 70,
-              ),
+          // ✅ Footer 본체
+          SizedBox(
+            height: 75,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.bottomCenter,
+              children: [
+                BottomAppBar(
+                  color: Colors.white,
+                  child: SizedBox(
+                    height: 68,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildFooterItem(
+                            context,
+                            imagePath: 'assets/icons/footer_icons/home_icon.svg',
+                            label: '홈',
+                            index: 0,
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildFooterItem(
+                            context,
+                            imagePath: 'assets/icons/footer_icons/trophy_icon.svg',
+                            label: '랭킹',
+                            index: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 70), // 중앙 버튼 자리
+                        Expanded(
+                          child: _buildFooterItem(
+                            context,
+                            imagePath: 'assets/icons/footer_icons/inbox_icon.svg',
+                            label: '보관함',
+                            index: 2,
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildFooterItem(
+                            context,
+                            imagePath: 'assets/icons/footer_icons/user-round_icon.svg',
+                            label: '내 정보',
+                            index: 3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ✅ 중앙 럭키박스 버튼
+                Positioned(
+                  top: -10,
+                  child: GestureDetector(
+                    onTap: () => onTabTapped(4),
+                    child: SvgPicture.asset(
+                      'assets/icons/footer_icons/boxButton_icon.svg',
+                      width: 60,
+                      height: 60,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -90,11 +111,18 @@ class Footer extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTabTapped(index),
       child: SizedBox(
-        width: 72, // 디자이너 기준 138/2 or 65~72 사이에서 균형
+        width: 72,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
+            imagePath.endsWith('.svg')
+                ? SvgPicture.asset(
+              imagePath,
+              width: 20,
+              height: 20,
+              color: color,
+            )
+                : Image.asset(
               imagePath,
               width: 25,
               height: 25,
@@ -103,10 +131,7 @@ class Footer extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color,
-              ),
+              style: TextStyle(fontSize: 12, color: color),
             ),
           ],
         ),

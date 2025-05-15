@@ -1,4 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+
+import '../../main.dart';
 
 class LuckyBoxOrderPage extends StatelessWidget {
   const LuckyBoxOrderPage({super.key});
@@ -53,8 +56,8 @@ class LuckyBoxOrderPage extends StatelessWidget {
                     // 👉 보관함 페이지 이동
                     Navigator.pushNamed(context, '/storage');
                   },
-                  child: const Text.rich(
-                    TextSpan(
+                  child: RichText(
+                    text: TextSpan(
                       children: [
                         TextSpan(
                           text: '보관함',
@@ -62,18 +65,24 @@ class LuckyBoxOrderPage extends StatelessWidget {
                             color: Colors.blue,
                             fontWeight: FontWeight.bold,
                           ),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
+                                ),
+                              );
+                            },
                         ),
-                        TextSpan(
+                        const TextSpan(
                           text: '으로 가기',
-                          style: TextStyle(
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(color: Colors.black87),
                         ),
                       ],
                     ),
-                    style: TextStyle(fontSize: 16),
                   ),
-                )
+                  ),
               ],
             ),
           ),
