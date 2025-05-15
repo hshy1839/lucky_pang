@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../../controllers/point_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
+import '../../routes/base_url.dart';
 
 class PointInfoScreen extends StatefulWidget {
   const PointInfoScreen({super.key});
@@ -42,7 +43,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
 
     // 포인트 내역
     final response = await http.get(
-      Uri.parse('http://192.168.219.107:7778/api/points/$userId'),
+      Uri.parse('${BaseUrl.value}:7778/api/points/$userId'),
       headers: { 'Authorization': 'Bearer $token' },
     );
     if (response.statusCode == 200) {

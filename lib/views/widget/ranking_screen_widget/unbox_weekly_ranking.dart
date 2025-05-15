@@ -1,56 +1,162 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class UnboxWeeklyRanking extends StatelessWidget {
-  const UnboxWeeklyRanking({super.key});
+class UnboxWeeklyRanking extends StatefulWidget {
+  final List<Map<String, dynamic>> unboxedOrders;
+
+  const UnboxWeeklyRanking({super.key, required this.unboxedOrders});
+
+  @override
+  State<UnboxWeeklyRanking> createState() => _UnboxWeeklyRankingState();
+}
+
+class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
+  late Timer _timer;
+  late Duration _timeLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTimeLeft();
+    _timer = Timer.periodic(Duration(seconds: 1), (_) {
+      _updateTimeLeft();
+    });
+  }
+
+  void _updateTimeLeft() {
+    final now = DateTime.now();
+    final sunday = now.add(Duration(days: DateTime.sunday - now.weekday));
+    final endTime = DateTime(sunday.year, sunday.month, sunday.day, 23, 59, 59);
+    setState(() {
+      _timeLeft = endTime.difference(now);
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    final days = duration.inDays;
+    final hours = duration.inHours % 24;
+    final minutes = duration.inMinutes % 60;
+    final seconds = duration.inSeconds % 60;
+    return '${days}D ${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')} 🔥';
+  }
+
+  List<Map<String, dynamic>> _getRanking(List<Map<String, dynamic>> orders) {
+    final Map<String, int> userTotals = {};
+
+    final now = DateTime.now();
+    final weekStart = now.subtract(Duration(days: now.weekday - 1)); // 이번주 월요일
+    final startOfWeek = DateTime(weekStart.year, weekStart.month, weekStart.day); // 월요일 00:00
+    final endOfWeek = startOfWeek.add(const Duration(days: 7)).subtract(const Duration(seconds: 1)); // 일요일 23:59:59
+
+    for (var order in orders) {
+      final user = order['user'];
+      final nickname = user?['nickname'] ?? '익명';
+
+      final createdAtStr = order['createdAt'];
+      final createdAt = DateTime.tryParse(createdAtStr ?? '');
+      if (createdAt == null || createdAt.isBefore(startOfWeek) || createdAt.isAfter(endOfWeek)) {
+        continue;
+      }
+
+      final int price = (order['unboxedProduct']?['product']?['consumerPrice'] ?? 0).toInt();
+      userTotals[nickname] = (userTotals[nickname] ?? 0) + price;
+    }
+
+    final rankedList = userTotals.entries
+        .map((e) => {'username': e.key, 'total': e.value})
+        .toList();
+
+    rankedList.sort((a, b) => (b['total'] as int).compareTo(a['total'] as int));
+    return rankedList;
+  }
+
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final rankingList = _getRanking(widget.unboxedOrders);
+
     return Container(
-        color: Colors.white,
-        child: ListView(
-      padding: EdgeInsets.only(bottom: 100.h),
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      children: [
-        Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Container(
+      color: Colors.white,
+      child: ListView(
+        padding: EdgeInsets.only(bottom: 100.h),
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        children: [
+          Padding(
             padding: EdgeInsets.all(16.w),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24.r),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
+            child: Container(
+              padding: EdgeInsets.all(16.w),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24.r),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD54F), Color(0xFFFFA726)],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('랭킹전 종료까지', style: TextStyle(fontSize: 14.sp)),
+                  SizedBox(height: 8.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _formatDuration(_timeLeft),
+                        style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
+                      ),
+                      Row(
+                        children: [
+                          Text('랭킹전 룰', style: TextStyle(fontSize: 13.sp)),
+                          SizedBox(width: 4.w),
+                          Icon(Icons.help_outline, size: 16.sp),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('랭킹전 종료까지', style: TextStyle(fontSize: 14.sp)),
-                SizedBox(height: 8.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('3D 13:02:21 🔥', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Text('랭킹전 룰', style: TextStyle(fontSize: 13.sp)),
-                        SizedBox(width: 4.w),
-                        Icon(Icons.help_outline, size: 16.sp),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
           ),
-        ),
-        _buildUser(rank: '1위', name: '힘드네', amount: '73,289,720원 만큼 획득', point: '1,465,794 P', isFirst: true),
-        _buildUser(rank: '2위', name: '크크크', amount: '39,956,850원 만큼 획득', point: '599,353 P'),
-        _buildUser(rank: '3위', name: '큰것좀', amount: '25,533,320원 만큼 획득', point: '255,333 P'),
-      ],
-    ),
+          for (int i = 0; i < rankingList.length && i < 10; i++)
+            _buildUser(
+              rank: '${i + 1}위',
+              name: rankingList[i]['username'],
+              amount: '${_formatCurrency(rankingList[i]['total'])}원 만큼 획득',
+              point: _calculatePoint(i, rankingList[i]['total']),
+              isFirst: i == 0,
+            ),
+        ],
+      ),
     );
+  }
+
+  String _calculatePoint(int index, int total) {
+    double rate;
+
+    if (index == 0) {
+      rate = 0.02;
+    } else if (index == 1) {
+      rate = 0.015;
+    } else if (index == 2) {
+      rate = 0.01;
+    } else {
+      rate = 0.009;
+    }
+
+    final point = (total * rate).floor(); // 소수점 버림
+    return '${_formatCurrency(point)} P';
+  }
+
+
+  String _formatCurrency(int number) {
+    return number.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
   }
 
   Widget _buildUser({

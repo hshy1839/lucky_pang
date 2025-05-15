@@ -26,7 +26,7 @@ class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
 
     return ClipRRect(
       borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(25.r),
+        topLeft: Radius.circular(15.r),
         topRight: Radius.circular(15.r),
       ),
       child: Container(

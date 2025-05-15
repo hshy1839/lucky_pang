@@ -175,8 +175,8 @@ class _RankingScreenState extends State<RankingScreen> {
                     ? SingleChildScrollView(
                   child: UnboxRealtimeList(unboxedOrders: unboxedOrders),
                 )
-                    : const SingleChildScrollView(
-                  child: UnboxWeeklyRanking(),
+                    : SingleChildScrollView(
+                  child: UnboxWeeklyRanking(unboxedOrders: unboxedOrders),
                 ),
               ),
             ),
@@ -219,7 +219,7 @@ class _RankingScreenState extends State<RankingScreen> {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
           ),
         ),
-        SizedBox(height: 4.h),
+        SizedBox(height: 12.h),
         Text(label, style: TextStyle(color: Colors.white, fontSize: 12.sp)),
       ],
     );
