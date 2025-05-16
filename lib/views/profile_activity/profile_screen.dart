@@ -152,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 🔶 2 x 2 정보 박스
             Row(
               children: [
-                Expanded(child: _infoBox(title: '보유 포인트', value: '${totalPoints.toString()}', valueColor: Color(0xFFFF5C43))),
+                Expanded(child: _infoBox(title: '보유 포인트', value: NumberFormat('#,###').format(totalPoints), valueColor: Color(0xFFFF5C43))),
                 SizedBox(width: 12),
                 Expanded(child: _infoBox(title: '친구 추천인 코드', value: 'ㅋㅋㅋㅋㅋ', valueColor: Color(0xFFFF5C43))),
               ],

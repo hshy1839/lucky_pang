@@ -177,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 구글 버튼
                   _buildSocialButton('assets/icons/google_icon.png', () {
+                    loginController.loginWithGoogle(context);
                   }),
 
                   SizedBox(width: 16),

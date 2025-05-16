@@ -16,6 +16,8 @@ class SignupController extends ChangeNotifier {
   bool eventAgree = false;
   String referralCodeError = '';
   bool referralCodeChecked = false;
+  String provider = 'local';
+  String providerId = '';
 
   String nicknameError = '';
   String emailError = '';
@@ -123,9 +125,10 @@ class SignupController extends ChangeNotifier {
 
 
     if (nicknameController.text.isEmpty ||
-        emailController.text.isEmpty ||
-        passwordController.text.isEmpty ||
-        confirmPasswordController.text.isEmpty) {
+        (provider == 'local' && (
+            emailController.text.isEmpty ||
+                passwordController.text.isEmpty ||
+                confirmPasswordController.text.isEmpty))) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('모든 항목을 입력해주세요'), backgroundColor: Colors.red),
       );
@@ -133,7 +136,7 @@ class SignupController extends ChangeNotifier {
     }
 
     // 닉네임, 이메일 중복확인 필수
-    if (!nicknameChecked || !emailChecked) {
+    if (provider == 'local' && (!nicknameChecked || !emailChecked)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('닉네임과 이메일 중복확인을 완료해주세요.'), backgroundColor: Colors.red),
       );
@@ -158,16 +161,23 @@ class SignupController extends ChangeNotifier {
 
     // 요청 데이터 구성
     final body = {
-      'email': emailController.text.trim(),
+      'provider': provider,
       'nickname': nicknameController.text.trim(),
-      'password': passwordController.text,
       'phoneNumber': phoneController.text.trim(),
       'is_active': true,
       'eventAgree': eventAgree,
     };
 
-    if (kakaoId != null && kakaoId!.isNotEmpty) {
-      body['kakaoId'] = kakaoId;
+    if (provider == 'local') {
+      body['email'] = emailController.text.trim();
+      body['password'] = passwordController.text;
+    } else {
+      body['providerId'] = providerId;
+    }
+
+    if (provider != 'local' && providerId.isNotEmpty) {
+      body['provider'] = provider;
+      body['providerId'] = providerId;
     }
     // 추천인 코드가 있고, 확인까지 완료되었을 경우에만 포함
     if (referralCodeController.text.isNotEmpty && referralCodeChecked) {

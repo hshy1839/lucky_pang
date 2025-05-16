@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'dart:convert';
@@ -19,7 +21,11 @@ class LoginController {
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({
+        'provider': 'local',
+        'email': email,
+        'password': password,
+      }),
     );
 
     if (response.statusCode == 200) {
@@ -65,9 +71,12 @@ class LoginController {
       print('카카오 유저 정보 전체: ${user.toJson()}');
 
       final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/users/kakao-login'),
+        Uri.parse('${BaseUrl.value}:7778/api/users/social-login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'kakaoId': kakaoId}),
+        body: jsonEncode({
+          'provider': 'kakao',
+          'providerId': kakaoId,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -93,6 +102,68 @@ class LoginController {
       print('❌ 로그인 실패: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('카카오 로그인에 실패했어요.')),
+      );
+    }
+
+  }
+  Future<void> loginWithGoogle(BuildContext context) async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        return; // 로그인 취소
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser
+          .authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+          credential);
+      final user = userCredential.user;
+      final googleId = user?.uid ?? '';
+      final nickname = user?.displayName ?? 'Google사용자';
+      final email = user?.email ?? '';
+
+      print('✅ 구글 로그인 성공: $googleId, $nickname, $email');
+
+      final response = await http.post(
+        Uri.parse('${BaseUrl.value}:7778/api/users/social-login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'provider': 'google',
+          'providerId': googleId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final loginSuccess = data['loginSuccess'] == true;
+        final exists = data['exists'] == true;
+
+        if (loginSuccess || exists) {
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'token', value: data['token']);
+          await storage.write(key: 'userId', value: data['userId']);
+
+          Navigator.pushReplacementNamed(context, '/main');
+        } else {
+          Navigator.pushNamed(context, '/signupAgree', arguments: {
+            'googleId': googleId,
+            'nickname': nickname,
+            'email': email,
+          });
+        }
+      } else {
+        throw Exception('서버 오류: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ 구글 로그인 실패: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('구글 로그인에 실패했어요.')),
       );
     }
   }

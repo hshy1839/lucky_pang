@@ -18,7 +18,7 @@ dependencies:
   network_info_plus: ^6.1.1
   provider: ^6.1.2
   intl: ^0.18.0
-  firebase_core: ^3.8.0
+  firebase_core: ^3.13.0
   firebase_messaging: ^15.1.5
   firebase_messaging_web: ^3.9.4
   flutter_local_notifications: ^18.0.1
@@ -39,6 +39,8 @@ dependencies:
   webview_flutter_android: ^4.4.2
   marquee: ^2.3.0
   flutter_svg: ^2.1.0
+  firebase_auth: ^5.5.3
+  google_sign_in: ^6.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

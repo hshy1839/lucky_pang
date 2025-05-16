@@ -1,29 +1,9 @@
 import 'dart:io';
 
 import 'package:attedance_app/routes/app_routes.dart';
-import 'package:attedance_app/views/login_activity/findEmail_screen.dart';
-import 'package:attedance_app/views/login_activity/findPassword_screen.dart';
-import 'package:attedance_app/views/login_activity/singup_agree_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/ranking_activity/ranking_screen.dart';
-import 'package:attedance_app/views/main_activity/account_screen.dart';
-import 'package:attedance_app/views/main_activity/cart_detail_screen.dart';
-import 'package:attedance_app/views/main_activity/2order_screen.dart';
-import 'package:attedance_app/views/setting_activity/QnA_activity/qna_create_screen.dart';
-import 'package:attedance_app/views/setting_activity/QnA_activity/qna_screen.dart';
-import 'package:attedance_app/views/main_activity/search_product_screen.dart';
-import 'package:attedance_app/views/main_activity/userinfo_detail_screen.dart';
-import 'package:attedance_app/views/profile_activity/coupon_code_screen.dart';
-import 'package:attedance_app/views/profile_activity/friends_recommand_screen.dart';
-import 'package:attedance_app/views/profile_activity/gift_code_screen.dart';
-import 'package:attedance_app/views/profile_activity/pointInfo_screen.dart';
-import 'package:attedance_app/views/profile_activity/shipping_activity/shipping_create_screen.dart';
-import 'package:attedance_app/views/profile_activity/shipping_activity/shipping_info_screen.dart';
-import 'package:attedance_app/views/setting_activity/faq_screen.dart';
-import 'package:attedance_app/views/setting_activity/privacy_screen.dart';
-import 'package:attedance_app/views/setting_activity/setting_screen.dart';
-import 'package:attedance_app/views/setting_activity/terms_screen.dart';
-import 'package:attedance_app/views/shopping_screen/shopping_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:provider/provider.dart';
@@ -32,21 +12,20 @@ import 'package:flutter/services.dart';
 
 // 화면들 import
 import 'package:attedance_app/views/login_activity/login.dart';
-import 'package:attedance_app/views/login_activity/signup.dart';
 import 'package:attedance_app/views/main_activity/main_screen.dart';
-import 'package:attedance_app/views/setting_activity/notice_activity/notice_screen.dart';
 import 'package:attedance_app/views/profile_activity/profile_screen.dart';
-import 'package:attedance_app/views/main_activity/2order_detail_screen.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'controllers/box_controller.dart';
 import 'controllers/login/signup_controller.dart';
+import 'firebase_options.dart';
 import 'footer.dart';
 import 'views/order_activity/order_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-
+   Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
