@@ -23,8 +23,10 @@
         final signupController = Provider.of<SignupController>(context, listen: false);
 
         if (args != null) {
-          signupController.kakaoId = args['kakaoId'] ?? ''; // ✅ null 방어
+          signupController.provider = args['provider'] ?? 'local';
+          signupController.providerId = args['providerId'] ?? '';
           signupController.nicknameController.text = args['nickname'] ?? '';
+          signupController.emailController.text = args['email'] ?? '';
         }
 
         _isInitialized = true;
@@ -61,22 +63,22 @@
                   isButtonEnabled: !signupController.nicknameChecked,
                 ),
                 const SizedBox(height: 36),
-                _buildInputWithButton(
-                  context,
-                  '이메일',
-                  signupController.emailController,
-                  '중복검사',
-                      () => signupController.checkEmailDuplicate(context),
-                  errorText: signupController.emailError,
-                  isButtonEnabled: !signupController.emailChecked,
-                ),
-                const SizedBox(height: 36),
-                _buildTextField('비밀번호', signupController.passwordController,
-                    obscureText: true),
-                const SizedBox(height: 36),
-                _buildTextField('비밀번호 확인',
-                    signupController.confirmPasswordController,
-                    obscureText: true),
+                if (signupController.provider == 'local') ...[
+                  _buildInputWithButton(
+                    context,
+                    '이메일',
+                    signupController.emailController,
+                    '중복검사',
+                        () => signupController.checkEmailDuplicate(context),
+                    errorText: signupController.emailError,
+                    isButtonEnabled: !signupController.emailChecked,
+                  ),
+                  const SizedBox(height: 36),
+                  _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
+                  const SizedBox(height: 36),
+                  _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
+                ],
+
                 const SizedBox(height: 36),
                 _buildTextField('휴대폰 번호', signupController.phoneController),
                 const SizedBox(height: 36),

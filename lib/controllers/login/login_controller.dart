@@ -92,7 +92,10 @@ class LoginController {
           Navigator.pushReplacementNamed(context, '/main');
         } else {
           Navigator.pushNamed(context, '/signupAgree', arguments: {
-            'kakaoId': kakaoId,
+            'provider': 'kakao',
+            'providerId': kakaoId,
+            'nickname': nickname,
+            'email': '',
           });
         }
       } else {
@@ -152,9 +155,10 @@ class LoginController {
           Navigator.pushReplacementNamed(context, '/main');
         } else {
           Navigator.pushNamed(context, '/signupAgree', arguments: {
-            'googleId': googleId,
+            'provider': 'google',
+            'providerId': googleId,
             'nickname': nickname,
-            'email': email,
+            'email': '', // email이 없으면 빈 문자열
           });
         }
       } else {

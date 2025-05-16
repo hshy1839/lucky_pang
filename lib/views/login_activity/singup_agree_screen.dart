@@ -137,17 +137,15 @@ class _SignupAgreeScreenState extends State<SignupAgreeScreen> {
                     child: ElevatedButton(
                       onPressed: (agree1 && agree2)
                           ? () {
-                              Navigator.pushNamed(context, '/signup',
-                                  arguments: {
-                                    'kakaoId': ModalRoute.of(context)!
-                                                .settings
-                                                .arguments !=
-                                            null
-                                        ? (ModalRoute.of(context)!
-                                            .settings
-                                            .arguments as Map)['kakaoId']
-                                        : null,
-                                  });
+                        Navigator.pushNamed(context, '/signup',
+                            arguments: ModalRoute.of(context)!.settings.arguments != null
+                                ? {
+                              'provider': (ModalRoute.of(context)!.settings.arguments as Map)['provider'],
+                              'providerId': (ModalRoute.of(context)!.settings.arguments as Map)['providerId'],
+                              'nickname': (ModalRoute.of(context)!.settings.arguments as Map)['nickname'] ?? '',
+                              'email': (ModalRoute.of(context)!.settings.arguments as Map)['email'] ?? '',
+                            }
+                                : {});
                             }
                           : null,
                       style: ElevatedButton.styleFrom(

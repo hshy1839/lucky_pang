@@ -16,7 +16,7 @@ class SignupController extends ChangeNotifier {
   bool eventAgree = false;
   String referralCodeError = '';
   bool referralCodeChecked = false;
-  String provider = 'local';
+  String provider = '';
   String providerId = '';
 
   String nicknameError = '';
