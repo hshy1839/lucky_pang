@@ -14,7 +14,7 @@ dependencies:
   shared_preferences: ^2.3.3
   footer: ^0.0.4
   cached_network_image: ^3.4.1
-  http: ^1.2.2
+  http: ^1.4.0
   network_info_plus: ^6.1.1
   provider: ^6.1.2
   intl: ^0.18.0
@@ -65,10 +65,6 @@ flutter:
     - assets/icons/google_icon.png
     - assets/icons/kakao_icon.png
     - assets/icons/apple_icon.png
-    - assets/terms/terms.txt
-    - assets/terms/signup_term_1.txt
-    - assets/terms/signup_term_2.txt
-    - assets/terms/privacy.txt
     - assets/icons/footer_icons/home_icon.svg
     - assets/icons/footer_icons/inbox_icon.svg
     - assets/icons/footer_icons/boxButton_icon.svg
@@ -87,6 +83,7 @@ flutter:
     - assets/images/present_image.png
     - assets/images/coupon_code_image.png
     - assets/images/shipping_missing.png
+    - assets/images/ErrorImage.svg
     - assets/images/ranking_images/unboxing_high.png
     - assets/images/ranking_images/unboxing_max.png
     - assets/images/ranking_images/unboxing_try.png

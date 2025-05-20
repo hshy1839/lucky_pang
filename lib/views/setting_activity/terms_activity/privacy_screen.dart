@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import '../../../controllers/term_controller.dart'; // TermController 가져오기
 
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 
-  Future<String> _loadTermsText() async {
-    return await rootBundle.loadString('assets/terms/privacy.txt');
+  Future<String?> _loadPrivacyTerm() async {
+    return await TermController.getTermByCategory('privacyTerm');
   }
 
   @override
@@ -23,19 +23,19 @@ class PrivacyScreen extends StatelessWidget {
           fontSize: 16,
         ),
       ),
-      body: FutureBuilder(
-        future: _loadTermsText(),
+      body: FutureBuilder<String?>(
+        future: _loadPrivacyTerm(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
+          } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
             return const Center(child: Text('개인정보처리방침을 불러오는 중 오류가 발생했습니다.'));
           } else {
             return Padding(
               padding: const EdgeInsets.all(16.0),
               child: SingleChildScrollView(
                 child: Text(
-                  snapshot.data ?? '',
+                  snapshot.data!,
                   style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.6),
                 ),
               ),

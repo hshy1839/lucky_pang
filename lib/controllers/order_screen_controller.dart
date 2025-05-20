@@ -421,5 +421,31 @@ class OrderScreenController {
   }
 
 
+  static Future<void> updateOrderStatus({
+    required String orderId,
+    required String status,
+  }) async {
+    final storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'token');
+    if (token == null) return;
+
+    final response = await http.patch(
+      Uri.parse('${BaseUrl.value}:7778/api/order/$orderId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'status': status}),
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint('❌ 주문 상태 업데이트 실패: ${response.statusCode}');
+    } else {
+      debugPrint('✅ 주문 상태 업데이트 성공');
+    }
+  }
+
+
+
 
 }

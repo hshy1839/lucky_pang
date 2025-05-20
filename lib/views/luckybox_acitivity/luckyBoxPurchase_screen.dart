@@ -227,16 +227,26 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
               ),
 
               CheckboxListTile(
-                title: Text('구매 확인 동의'),
+                title: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/purchase_term'),
+                  child: const Text(
+                    '구매 확인 동의',
+                    style: TextStyle(color: Colors.blue),
+                  ),
+                ),
                 value: purchaseConfirmed,
-                onChanged: (val) =>
-                    setState(() => purchaseConfirmed = val ?? false),
+                onChanged: (val) => setState(() => purchaseConfirmed = val ?? false),
               ),
               CheckboxListTile(
-                title: Text('교환/환불 정책 동의'),
+                title: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/refund_term'),
+                  child: const Text(
+                    '교환/환불 정책 동의',
+                    style: TextStyle(color: Colors.blue),
+                  ),
+                ),
                 value: refundPolicyAgreed,
-                onChanged: (val) =>
-                    setState(() => refundPolicyAgreed = val ?? false),
+                onChanged: (val) => setState(() => refundPolicyAgreed = val ?? false),
               ),
               SizedBox(height: 20),
               Text(

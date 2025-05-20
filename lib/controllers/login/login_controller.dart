@@ -158,8 +158,9 @@ class LoginController {
             'provider': 'google',
             'providerId': googleId,
             'nickname': nickname,
-            'email': '', // email이 없으면 빈 문자열
+            'email': email,
           });
+
         }
       } else {
         throw Exception('서버 오류: ${response.statusCode}');
@@ -216,4 +217,6 @@ class LoginController {
       ),
     );
   }
+
+
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/shipping_controller.dart';
-import '../../../controllers/shipping_order_controller.dart';
 import '../../../controllers/order_screen_controller.dart';
 import '../../routes/base_url.dart';
 import '../widget/shipping_card.dart';
@@ -19,6 +18,8 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
   bool agreedAll = false;
   bool agreedPurchase = false;
   bool agreedReturn = false;
+  final TextEditingController _pointsController = TextEditingController();
+
 
   Map<String, dynamic>? selectedShipping;
   bool isLoading = true;
@@ -151,11 +152,18 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 children: [
                   Expanded(
                     child: TextField(
+                      controller: _pointsController,
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(hintText: '0'),
                       onChanged: (val) {
                         setState(() {
-                          usedPoints = int.tryParse(val) ?? 0;
+                          int input = int.tryParse(val) ?? 0;
+                          final shippingFee = product['shippingFee'] ?? 0;
+                          usedPoints = input.clamp(0, totalPoints);
+                          if (usedPoints > shippingFee) {
+                            usedPoints = shippingFee;
+                            _pointsController.text = usedPoints.toString();
+                          }
                         });
                       },
                     ),
@@ -166,6 +174,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       setState(() {
                         final shippingFee = product['shippingFee'] ?? 0;
                         usedPoints = totalPoints >= shippingFee ? shippingFee : totalPoints;
+                        _pointsController.text = usedPoints.toString();
                       });
                     },
                     style: ElevatedButton.styleFrom(
@@ -175,6 +184,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                   ),
                 ],
               ),
+
               SizedBox(height: 24.h),
               Text('결제수단', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
               Wrap(
@@ -221,7 +231,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('총 결제금액', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-                  Text('${product['shippingFee'] ?? 0}원',
+                  Text('${totalAmount}원',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
                 ],
               ),
@@ -237,16 +247,13 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                         builder: (_) => AlertDialog(
                           title: Text('안내'),
                           content: Text('모든 약관에 동의해주세요.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: Text('확인'),
-                            )
-                          ],
+                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'))],
                         ),
                       );
                       return;
                     }
+
+
 
                     if (selectedShippingId == null) {
                       showDialog(
@@ -254,29 +261,19 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                         builder: (_) => AlertDialog(
                           title: Text('안내'),
                           content: Text('배송지를 선택해주세요.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: Text('확인'),
-                            )
-                          ],
+                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'))],
                         ),
                       );
                       return;
                     }
 
-                    if (selectedPayment.isEmpty) {
+                    if (totalAmount > 0 && selectedPayment.isEmpty) {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
                           title: Text('안내'),
                           content: Text('결제 수단을 선택해주세요.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: Text('확인'),
-                            )
-                          ],
+                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'))],
                         ),
                       );
                       return;
@@ -299,49 +296,27 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                         : selectedPayment == '카카오페이'
                         ? 'kakaopay'
                         : 'point';
+    await OrderScreenController.updateOrderStatus(
+    orderId: orderId,
+    status: 'shipped',
+    );
+    showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+    title: Text('결제 완료'),
+    content: Text('결제가 완료되었습니다!'),
+    actions: [
+    TextButton(
+    onPressed: () {
+    Navigator.of(context).pop();
+    Navigator.of(context).pushReplacementNamed('/main');
+    },
+    child: Text('확인'),
+    ),
+    ],
+    ),
+    );
 
-                    final success = await ShippingOrderController.createShippingOrder(
-                      productId: product['_id'],
-                      shippingId: selectedShippingId!,
-                      orderId: orderId,
-                      paymentType: mappedPaymentType,
-                      shippingFee: product['shippingFee'] ?? 0,
-                      pointUsed: usedPoints,
-                      paymentAmount: totalAmount,
-                    );
-
-                    if (success) {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Text('결제 완료'),
-                          content: Text('결제가 완료되었습니다!'),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                                Navigator.of(context).pushReplacementNamed('/main');
-                              },
-                              child: Text('확인'),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: Text('결제 실패'),
-                          content: Text('결제 처리 중 오류가 발생했습니다.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: Text('확인'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: Text('결제하기', style: TextStyle(color: Colors.white)),

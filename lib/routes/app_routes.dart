@@ -1,7 +1,10 @@
 import 'package:attedance_app/main.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
+import 'package:attedance_app/views/main_activity/error_screen.dart';
 import 'package:attedance_app/views/order_activity/delivery_request_screen.dart';
 import 'package:attedance_app/views/setting_activity/event_activity/event_detail_screen.dart';
+import 'package:attedance_app/views/setting_activity/terms_activity/purchaseTerm_screen.dart';
+import 'package:attedance_app/views/setting_activity/terms_activity/refundTerm_screen.dart';
 import 'package:flutter/material.dart';
 import '../views/login_activity/login.dart';
 import '../views/login_activity/signup.dart';
@@ -25,9 +28,9 @@ import '../views/profile_activity/gift_code_screen.dart';
 import '../views/profile_activity/friends_recommand_screen.dart';
 import '../views/profile_activity/shipping_activity/shipping_info_screen.dart';
 import '../views/profile_activity/shipping_activity/shipping_create_screen.dart';
-import '../views/setting_activity/setting_screen.dart';
-import '../views/setting_activity/privacy_screen.dart';
-import '../views/setting_activity/terms_screen.dart';
+import '../views/setting_activity/terms_activity/setting_screen.dart';
+import '../views/setting_activity/terms_activity/privacy_screen.dart';
+import '../views/setting_activity/terms_activity/terms_screen.dart';
 import '../views/setting_activity/QnA_activity/qna_screen.dart';
 import '../views/setting_activity/QnA_activity/qna_create_screen.dart';
 import '../views/setting_activity/faq_screen.dart';
@@ -59,11 +62,14 @@ class AppRoutes {
     '/shippingCreate': (_) => ShippingCreateScreen(),
     '/setting': (_) => SettingScreen(),
     '/privacy': (_) => PrivacyScreen(),
+    '/error': (_) => ErrorScreen(),
+    '/purchase_term': (_) => PurchasetermScreen(),
+    '/refund_term': (_) => RefundTermScreen(),
     '/giftcode/create': (context) {
       final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return CreateGiftCodeScreen(boxId: args['boxId'], orderId:  args['orderId'], productId: args['productId'], type: args['type'],);
     },
-    '/terms': (_) => TermsOfServicePage(),
+    '/serviceTerm': (_) => TermsOfServicePage(),
     '/faq': (_) => FaqScreen(),
     '/searchProduct': (context) {
       final args = ModalRoute.of(context)!.settings.arguments as Map<String, String>?;

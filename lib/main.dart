@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:attedance_app/routes/app_routes.dart';
@@ -20,30 +21,49 @@ import 'firebase_options.dart';
 import 'footer.dart';
 import 'views/order_activity/order_screen.dart';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+// void _navigateToErrorScreen(BuildContext context) {
+//   WidgetsBinding.instance.addPostFrameCallback((_) {
+//     Navigator.of(context).pushNamedAndRemoveUntil('/error', (route) => false);
+//   });
+// }
 
-   Firebase.initializeApp(
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-  ));
-  KakaoSdk.init(nativeAppKey: '89857ed78c6e2c92bab47311bbea5546', loggingEnabled: true);
+  // FlutterError.onError = (FlutterErrorDetails details) {
+  //   FlutterError.presentError(details);
+  //   _navigateToErrorScreen(); // ✅ Flutter 프레임워크 오류 발생 시
+  // };
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SignupController()),
         ChangeNotifierProvider(create: (_) => BoxController()),
-        // 필요한 Provider 더 추가 가능
       ],
-
       child: MyApp(),
     ),
   );
+//   runZonedGuarded(
+//         () {
+//       runApp(
+//         MultiProvider(
+//           providers: [
+//             ChangeNotifierProvider(create: (_) => SignupController()),
+//             ChangeNotifierProvider(create: (_) => BoxController()),
+//           ],
+//           child: MyApp(),
+//         ),
+//       );
+//     },
+//         (error, stack) {
+//       print('🔴 Uncaught async error: $error');
+//       _navigateToErrorScreen(); // ✅ 비동기 오류 발생 시
+//     },
+//   );
 }
 
 
@@ -51,6 +71,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'luckytang',
       theme: ThemeData(
         primaryColor: const Color(0xFFF24E1E),
@@ -88,15 +109,18 @@ class MyApp extends StatelessWidget {
       future: _checkLoginStatus(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         } else if (snapshot.hasError) {
-          return Center(child: Text('Error occurred'));
+          // ✅ ErrorScreen으로 강제 이동
+          // WidgetsBinding.instance.addPostFrameCallback((_) {
+          //   _navigateToErrorScreen();
+          // });
+          return const SizedBox(); // 임시 위젯 (필수)
         } else {
-          // 로그인 상태에 맞는 화면 반환
           if (snapshot.data is LoginScreen) {
-            return LoginScreen(); // 로그인 화면 반환
+            return  LoginScreen();
           } else {
-            return MainScreenWithFooter(); // 로그인 후 메인 화면
+            return const MainScreenWithFooter();
           }
         }
       },
@@ -114,6 +138,8 @@ class MyApp extends StatelessWidget {
     }
     return MainScreenWithFooter(); // 로그인 후 메인 화면
   }
+
+
 }
 
 class MainScreenWithFooter extends StatefulWidget {

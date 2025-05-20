@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
-class FindPasswordScreen extends StatelessWidget {
+import '../../controllers/login/reset_password_controller.dart';
+
+class FindPasswordScreen extends StatefulWidget {
   const FindPasswordScreen({super.key});
+
+  @override
+  State<FindPasswordScreen> createState() => _FindPasswordScreenState();
+}
+
+class _FindPasswordScreenState extends State<FindPasswordScreen> {
+  final TextEditingController _emailController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +38,9 @@ class FindPasswordScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // 이메일 입력 필드
-            const TextField(
-              decoration: InputDecoration(
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(
                 hintText: '이메일을 입력하세요',
                 hintStyle: TextStyle(color: Colors.grey),
                 enabledBorder: UnderlineInputBorder(
@@ -35,43 +51,6 @@ class FindPasswordScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 30),
-
-            // 인증 문구 + 버튼
-            Row(
-              children: [
-                const Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: '인증을 진행해주세요',
-                      hintStyle: TextStyle(color: Colors.grey),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.black),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(
-                  onPressed: () {
-                    // 인증 로직
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey.shade400),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: const Text(
-                    '휴대폰번호 인증',
-                    style: TextStyle(fontSize: 12, color: Colors.black),
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: 100),
 
             // 비밀번호 찾기 버튼
@@ -80,7 +59,21 @@ class FindPasswordScreen extends StatelessWidget {
               height: 48,
               child: ElevatedButton(
                 onPressed: () {
-                  // 비밀번호 찾기 로직
+                  final email = _emailController.text.trim();
+                  if (email.isEmpty) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => const AlertDialog(
+                        title: Text('입력 필요'),
+                        content: Text('이메일을 입력해주세요.'),
+                      ),
+                    );
+                    return;
+                  }
+                  ResetPasswordController.sendTemporaryPassword(
+                    email: email,
+                    context: context,
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,

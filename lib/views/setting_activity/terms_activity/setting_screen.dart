@@ -29,7 +29,7 @@ class SettingScreen extends StatelessWidget {
           _divider(),
           _buildListTile(context, title: 'FAQ', route: '/faq'),
           _divider(),
-          _buildListTile(context, title: '이용약관', route: '/terms'),
+          _buildListTile(context, title: '이용약관', route: '/serviceTerm'),
           _divider(),
           _buildListTile(context, title: '개인정보처리방침', route: '/privacy'),
           SizedBox(height: 20),
@@ -40,7 +40,7 @@ class SettingScreen extends StatelessWidget {
                 onPressed: () => _logout(context),
                 child: const Text('로그아웃', style: TextStyle(color: Colors.black)),
               ),
-              SizedBox(width: 20.w),
+              SizedBox(width: 20),
               TextButton(
                 onPressed: () {},
                 child: const Text('회원탈퇴', style: TextStyle(color: Colors.black)),
