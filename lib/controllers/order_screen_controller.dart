@@ -176,12 +176,7 @@ class OrderScreenController {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final orders = List<Map<String, dynamic>>.from(data['orders']);
-
-        // ✅ 'paid' 상태이면서 아직 언박싱되지 않은 주문만 반환
-        return orders.where((order) =>
-        order['status'] == 'paid' &&
-            (order['unboxedProduct'] == null || order['unboxedProduct']['product'] == null)
-        ).toList();
+        return orders; // ✅ 모든 주문 반환
       } else {
         debugPrint('❌ 주문 불러오기 실패: ${response.statusCode}');
         return [];
@@ -191,6 +186,7 @@ class OrderScreenController {
       return [];
     }
   }
+
 
 
   static void handleBoxOpen(
