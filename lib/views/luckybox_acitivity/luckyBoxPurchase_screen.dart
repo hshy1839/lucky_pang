@@ -31,7 +31,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   int get boxPrice {
     final boxController = Provider.of<BoxController>(context, listen: false);
     final selectedBox = boxController.boxes.firstWhere(
-      (b) => b['_id'] == selectedBoxId,
+          (b) => b['_id'] == selectedBoxId,
       orElse: () => null,
     );
     return selectedBox != null ? (selectedBox['price'] as int) : 0;
@@ -55,10 +55,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
 
   void loadUserPoints() async {
     final userId = await storage.read(key: 'userId');
-    if (userId == null) {
-      print('userId not found in secure storage');
-      return;
-    }
+    if (userId == null) return;
 
     int fetchedPoints = await pointController.fetchUserTotalPoints(userId);
     setState(() {
@@ -78,11 +75,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
     final maxUsable = boxPrice * quantity;
 
     setState(() {
-      if (availablePoints >= maxUsable) {
-        pointsUsed = maxUsable;
-      } else {
-        pointsUsed = availablePoints;
-      }
+      pointsUsed = availablePoints >= maxUsable ? maxUsable : availablePoints;
       pointsController.text = pointsUsed.toString();
     });
   }
@@ -90,280 +83,270 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: Text('럭키박스 구매',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                  '두근두근 럭키타임!\n특별한 상품들이 당신을 기다리고 있어요.',
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFFF5E3A), Color(0xFFFF2A68)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(vertical: 60),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    '두근두근 럭키타임!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+
+                ),
+          SizedBox(height: 10,),
+          Center(
+            child:  Text(
+                  '특별한 상품들이 당신을 기다리고 있어요.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 14,  color: Colors.white),
                 ),
-              ),
-              SizedBox(height: 30),
-              Consumer<BoxController>(
-                builder: (context, boxController, _) {
-                  if (boxController.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (boxController.error != null) {
-                    return Text('에러: ${boxController.error}');
-                  }
-
-                  return Wrap(
-                    spacing: 8,
-                    children: boxController.boxes.map<Widget>((box) {
-                      final isSelected = selectedBoxId == box['_id'];
-                      return ChoiceChip(
-                        label: Text('${box['name']}'),
-                        selected: isSelected,
-                        onSelected: (_) {
-                          setState(() {
-                            selectedBoxId = box['_id'];
-                            applyMaxUsablePoints();
-                            // 필요하면 price 등도 box['price']로 저장
-                          });
-                        },
-                        selectedColor: Theme.of(context).primaryColor,
-                      );
-                    }).toList(),
-                  );
-                },
-              ),
-              SizedBox(height: 20),
-              Text('구매수량'),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Wrap(
-                    spacing: 1,
-                    children: [
-                      quickButton('+5', 5),
-                      quickButton('+10', 10),
-                      quickButton('+50', 50),
-                      quickButton('MAX', 999 - quantity),
-                    ],
+          ),
+                const SizedBox(height: 60),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                          onPressed: () => changeQuantity(-1),
-                          icon: Icon(Icons.remove)),
-                      Text(quantity.toString()),
-                      IconButton(
-                          onPressed: () => changeQuantity(1),
-                          icon: Icon(Icons.add)),
-                    ],
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              Text(
-                '상품 금액  \t  ${price.toString()}원',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 20),
-              Text('보유 포인트 : $availablePoints P',
-                  style: TextStyle(
-                      color: Colors.black, fontWeight: FontWeight.w500)),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: pointsController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (val) {
-                        int input = int.tryParse(val) ?? 0;
-                        setState(() {
-                          pointsUsed =
-                              input > availablePoints ? availablePoints : input;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: '0',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: applyMaxUsablePoints,
-                    child: Text('전액사용'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 30),
-              Text('결제수단'),
-              Wrap(
-                spacing: 10,
-                children: [
-                  paymentOption('계좌이체'),
-                  paymentOption('신용/체크카드'),
-                  paymentOption('카카오페이'),
-                ],
-              ),
-              SizedBox(height: 20),
-              CheckboxListTile(
-                title: Text('모든 내용을 확인하였으며 결제에 동의합니다.'),
-                value: allAgreed,
-                onChanged: (val) {
-                  setState(() {
-                    allAgreed = val ?? false;
-                    purchaseConfirmed = val ?? false;      // ✅ 함께 체크
-                    refundPolicyAgreed = val ?? false;     // ✅ 함께 체크
-                  });
-                },
-              ),
-
-              CheckboxListTile(
-                title: GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/purchase_term'),
-                  child: const Text(
-                    '구매 확인 동의',
-                    style: TextStyle(color: Colors.blue),
-                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: buildContent(context),
                 ),
-                value: purchaseConfirmed,
-                onChanged: (val) => setState(() => purchaseConfirmed = val ?? false),
-              ),
-              CheckboxListTile(
-                title: GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/refund_term'),
-                  child: const Text(
-                    '교환/환불 정책 동의',
-                    style: TextStyle(color: Colors.blue),
-                  ),
-                ),
-                value: refundPolicyAgreed,
-                onChanged: (val) => setState(() => refundPolicyAgreed = val ?? false),
-              ),
-              SizedBox(height: 20),
-              Text(
-                '총 결제금액  \t  ${totalAmount.toString()}원',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  minimumSize: Size(double.infinity, 50),
-                ),
-                onPressed: () {
-                  if (!allAgreed || !purchaseConfirmed || !refundPolicyAgreed) {
-                    showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        backgroundColor: Colors.white,
-                        title: Text('안내'),
-                        content: Text('모든 약관에 동의해주세요.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('확인',
-                                style: TextStyle(
-                                    color: Theme.of(context).primaryColor)),
-                          ),
-                        ],
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (totalAmount > 0 && paymentMethod.isEmpty) {
-                    showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        backgroundColor: Colors.white,
-                        title: Text('안내'),
-                        content: Text('결제 수단을 선택해주세요!'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('확인',
-                                style: TextStyle(
-                                    color: Theme.of(context).primaryColor)),
-                          ),
-                        ],
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (paymentMethod == '신용/체크카드') {
-                    final boxController = Provider.of<BoxController>(context, listen: false);
-                    final selectedBox = boxController.boxes.firstWhere(
-                          (b) => b['_id'] == selectedBoxId,
-                      orElse: () => null,
-                    );
-
-                    if (selectedBox == null) {
-                      showDialog(
-                        context: context,
-                        builder: (_) => const AlertDialog(
-                          title: Text('박스 선택 오류'),
-                          content: Text('박스를 선택해주세요.'),
-                        ),
-                      );
-                      return;
-                    }
-
-                     OrderScreenController.requestCardPayment(
-                      context: context,
-                      boxId: selectedBox['_id'],
-                      boxName: selectedBox['name'],
-                      amount: totalAmount,
-                    );
-                    return;
-                  }
-                  // ✅ 주문 요청 함수 호출
-                  OrderScreenController.submitOrder(
-                    context: context,
-                    selectedBoxId: selectedBoxId,
-                    quantity: quantity,
-                    totalAmount: totalAmount,
-                    pointsUsed: pointsUsed,
-                    paymentMethod: paymentMethod,
-                  );
-                },
-                child: Text('결제하기', style: TextStyle(color: Colors.white)),
-              ),
-              SizedBox(height: 100,),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-
     );
   }
 
-  Widget boxSelector(String price) {
-    final isSelected = selectedBox == price;
+  Widget buildContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Consumer<BoxController>(
+          builder: (context, boxController, _) {
+            if (boxController.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-    return ChoiceChip(
-      label: Text(
-        '${int.parse(price).toStringAsFixed(0)}원 박스',
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black,
+            if (boxController.error != null) {
+              return Text('에러: ${boxController.error}');
+            }
+            return Center( // 중앙 정렬 추가
+              child: Wrap(
+                spacing: 10,
+                children: boxController.boxes.map<Widget>((box) {
+                  final isSelected = selectedBoxId == box['_id'];
+                  return GestureDetector(
+                    onTap: () => setState(() => selectedBoxId = box['_id']),
+                    child: Container(
+                      width: 150,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text(
+                          box['name'],
+                          style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontSize: 18, fontWeight: FontWeight.bold),
+
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+
+          },
         ),
-      ),
-      selected: isSelected,
-      onSelected: (_) => setState(() {
-        selectedBox = price;
-        applyMaxUsablePoints(); // 박스 변경 시에도 포인트 자동 적용
-      }),
-      selectedColor: Theme.of(context).primaryColor,
-      backgroundColor: Colors.white,
+
+        const SizedBox(height: 20),
+        Text('구매수량'),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Wrap(
+              spacing: 10,
+              children: [
+                quickButton('+5개 추가하기', 5),
+                quickButton('+10개 추가하기', 10),
+                quickButton('+50개 추가하기', 50),
+                quickButton('MAX', 999 - quantity),
+              ],
+            ),
+            Row(
+              children: [
+                IconButton(onPressed: () => changeQuantity(-1), icon: Icon(Icons.remove)),
+                Text(quantity.toString()),
+                IconButton(onPressed: () => changeQuantity(1), icon: Icon(Icons.add)),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Text('상품 금액  \t  ${price.toString()}원',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 20),
+        Text('보유 포인트 : $availablePoints P',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: pointsController,
+                keyboardType: TextInputType.number,
+                onChanged: (val) {
+                  int input = int.tryParse(val) ?? 0;
+                  setState(() {
+                    pointsUsed = input > availablePoints ? availablePoints : input;
+                  });
+                },
+                decoration: const InputDecoration(
+                  hintText: '0',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(onPressed: applyMaxUsablePoints, child: Text('전액사용')),
+          ],
+        ),
+        const SizedBox(height: 30),
+        Text('결제수단'),
+        Wrap(
+          spacing: 10,
+          children: [
+            paymentOption('계좌이체'),
+            paymentOption('신용/체크카드'),
+            paymentOption('카카오페이'),
+          ],
+        ),
+        CheckboxListTile(
+          title: const Text('모든 내용을 확인하였으며 결제에 동의합니다.'),
+          value: allAgreed,
+          onChanged: (val) {
+            setState(() {
+              allAgreed = val ?? false;
+              purchaseConfirmed = val ?? false;
+              refundPolicyAgreed = val ?? false;
+            });
+          },
+        ),
+        CheckboxListTile(
+          title: GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/purchase_term'),
+            child: const Text('구매 확인 동의', style: TextStyle(color: Colors.blue)),
+          ),
+          value: purchaseConfirmed,
+          onChanged: (val) => setState(() => purchaseConfirmed = val ?? false),
+        ),
+        CheckboxListTile(
+          title: GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/refund_term'),
+            child: const Text('교환/환불 정책 동의', style: TextStyle(color: Colors.blue)),
+          ),
+          value: refundPolicyAgreed,
+          onChanged: (val) => setState(() => refundPolicyAgreed = val ?? false),
+        ),
+        const SizedBox(height: 20),
+        Text('총 결제금액  \t  ${totalAmount.toString()}원',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).primaryColor,
+            minimumSize: const Size(double.infinity, 50),
+          ),
+          onPressed: handleSubmit,
+          child: const Text('결제하기', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
+
+  void handleSubmit() {
+    if (!allAgreed || !purchaseConfirmed || !refundPolicyAgreed) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text('안내'),
+          content: const Text('모든 약관에 동의해주세요.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (totalAmount > 0 && paymentMethod.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('안내'),
+          content: const Text('결제 수단을 선택해주세요!'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final boxController = Provider.of<BoxController>(context, listen: false);
+    final selectedBox = boxController.boxes.firstWhere(
+          (b) => b['_id'] == selectedBoxId,
+      orElse: () => null,
+    );
+
+    if (selectedBox == null) {
+      showDialog(
+        context: context,
+        builder: (_) => const AlertDialog(
+          title: Text('박스 선택 오류'),
+          content: Text('박스를 선택해주세요.'),
+        ),
+      );
+      return;
+    }
+
+    if (paymentMethod == '신용/체크카드') {
+      OrderScreenController.requestCardPayment(
+        context: context,
+        boxId: selectedBox['_id'],
+        boxName: selectedBox['name'],
+        amount: totalAmount,
+      );
+      return;
+    }
+
+    OrderScreenController.submitOrder(
+      context: context,
+      selectedBoxId: selectedBoxId,
+      quantity: quantity,
+      totalAmount: totalAmount,
+      pointsUsed: pointsUsed,
+      paymentMethod: paymentMethod,
     );
   }
 
@@ -371,19 +354,18 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
     return ElevatedButton(
       onPressed: () => changeQuantity(change),
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.white,
         padding: EdgeInsets.zero,
-        minimumSize: Size(40, 40),
+        minimumSize: Size(150, 50),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(15),
+          side: BorderSide(color: Colors.black), // ✅ 테두리 색상 추가
         ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(color: Colors.white),
-      ),
+      child: Text(label, style: TextStyle(color: Colors.black)),
     );
   }
+
 
   Widget paymentOption(String method) {
     final isSelected = paymentMethod == method;

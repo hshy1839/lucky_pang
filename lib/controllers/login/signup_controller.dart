@@ -1,9 +1,14 @@
+import 'package:bootpay/bootpay.dart';
+import 'package:bootpay/model/extra.dart';
+import 'package:bootpay/model/payload.dart';
+import 'package:bootpay/model/user.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import '../../routes/base_url.dart';
+import '../../views/login_activity/bootpay_auth_webview.dart';
 import '../../views/login_activity/login.dart';
-import '../../views/widget/danal_auth_webview.dart';
 
 class SignupController extends ChangeNotifier {
   final nicknameController = TextEditingController();
@@ -224,27 +229,42 @@ class SignupController extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> startDanalAuth(BuildContext context) async {
-    try {
-      final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/users/danal/request-auth'),
-      );
+  Future<void> startBootpayAuth(BuildContext context) async {
+    Payload payload = Payload();
 
-      if (response.statusCode == 200) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DanalAuthWebView(htmlContent: response.body),
-          ),
-        );
-      } else {
-        throw Exception('서버 오류');
-      }
-    } catch (e) {
-      debugPrint('❌ 본인인증 요청 실패: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('본인인증 요청에 실패했습니다.')),
-      );
-    }
+    payload.pg = '다날';
+    payload.method = '본인인증';
+    payload.authenticationId = DateTime.now().millisecondsSinceEpoch.toString();
+    payload.orderName = '럭키탕 본인인증';
+    payload.price = 0; // 본인인증은 금액 0
+    payload.webApplicationId = '61e7c9c9e38c30001f7b8247';
+    payload.androidApplicationId = '61e7c9c9e38c30001f7b8248';
+    payload.iosApplicationId = '61e7c9c9e38c30001f7b8249';
+
+    payload.user = User()
+      ..username = '사용자 이름' // 실명 인증 시 보여질 이름
+      ..phone = phoneController.text.trim()
+      ..area = '대한민국';
+
+
+    Bootpay().requestAuthentication(
+      context: context,
+      payload: payload,
+      showCloseButton: true,
+      onCancel: (data) {
+        print('❌ 본인인증 취소: $data');
+      },
+      onError: (data) {
+        print('❌ 본인인증 에러: $data');
+      },
+      onClose: () {
+        print('🔒 본인인증 창 닫힘');
+        Bootpay().dismiss(context);
+      },
+      onDone: (data) {
+        print('✅ 본인인증 완료: $data');
+        // data 안에 receipt_id 있음 → 서버로 보내서 인증 결과 조회 가능
+      },
+    );
   }
 }

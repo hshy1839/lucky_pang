@@ -34,6 +34,11 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  KakaoSdk.init(
+    nativeAppKey: '89857ed78c6e2c92bab47311bbea5546', // 👉 카카오 개발자 콘솔에서 복사
+  );
+
+
   // FlutterError.onError = (FlutterErrorDetails details) {
   //   FlutterError.presentError(details);
   //   _navigateToErrorScreen(); // ✅ Flutter 프레임워크 오류 발생 시

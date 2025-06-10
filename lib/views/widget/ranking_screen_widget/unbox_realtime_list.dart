@@ -21,7 +21,10 @@ class UnboxRealtimeList extends StatelessWidget {
       ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
           .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
 
-    final List<Map<String, dynamic>> latest20Orders = filteredOrders.take(20).toList();
+    final List<Map<String, dynamic>> latest20Orders = filteredOrders
+        .where((order) => (order['unboxedProduct']?['product']?['price'] ?? 0) < 100000)
+        .take(20)
+        .toList();
 
     final highValueOrders = unboxedOrders
         .where((order) => (order['unboxedProduct']?['product']?['price'] ?? 0) >= 100000)

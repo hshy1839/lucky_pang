@@ -71,7 +71,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 36),
 
-              if (signupController.provider == 'local') ...[
+              if (signupController.provider == 'local'|| signupController.provider == 'kakao') ...[
                 _buildInputWithButton(
                   context,
                   '이메일',
@@ -81,7 +81,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   errorText: signupController.emailError,
                   isButtonEnabled: !signupController.emailChecked,
                 ),
-                const SizedBox(height: 36),
+                ],
+              if (signupController.provider == 'local') ...[
                 _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
                 const SizedBox(height: 36),
                 _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
@@ -93,7 +94,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 '휴대폰 번호',
                 signupController.phoneController,
                 '본인인증하기',
-                    () => signupController.startDanalAuth(context),
+                    () => signupController.startBootpayAuth(context),
               ),
               const SizedBox(height: 36),
               _buildInputWithButton(

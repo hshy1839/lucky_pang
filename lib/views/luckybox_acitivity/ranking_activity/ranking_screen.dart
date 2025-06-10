@@ -87,6 +87,7 @@ class _RankingScreenState extends State<RankingScreen> {
 
     return Scaffold(
         backgroundColor: Color(0xFFFF5C43),
+
       body: SafeArea(
         child: CustomScrollView(
           controller: _scrollController,
@@ -102,6 +103,7 @@ class _RankingScreenState extends State<RankingScreen> {
                   return FlexibleSpaceBar(
                     background: Padding(
                       padding: EdgeInsets.only(top: 40.h),
+
                       child: isCollapsed
                           ? _buildCompactStatHeader()
                           : Column(

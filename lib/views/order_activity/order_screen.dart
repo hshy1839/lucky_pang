@@ -40,7 +40,14 @@ class _OrderScreenState extends State<OrderScreen> {
     final userId = await storage.read(key: 'userId');
     if (userId == null) return;
     final result = await OrderScreenController.getUnboxedProducts(userId);
-    setState(() => unboxedProducts = (result ?? []).where((o) => o['status'] != 'shipped').toList());
+    setState(() {
+      unboxedProducts = (result ?? [])
+          .where((o) =>
+      o['status'] != 'shipped' &&
+          (o['refunded']?['point'] ?? 0) == 0 // 환급된 상품은 숨김
+      )
+          .toList();
+    });
   }
   Future<void> loadUnboxedShippedProducts() async {
     final userId = await storage.read(key: 'userId');
@@ -202,9 +209,104 @@ class _OrderScreenState extends State<OrderScreen> {
                         brand: '${product['brand']}',
                         dDay: 'D-90',
                         isLocked: false,
-                        onRefundPressed: () {},
-                        onGiftPressed: () {},
-                        onDeliveryPressed: () {},
+                        onRefundPressed: () {
+                          final refundRateStr = product['refundProbability']?.toString() ?? '0';
+                          final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+                          final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
+                          final refundAmount = (purchasePrice * refundRate / 100).floor();
+
+                          // ✅ 현재 context 저장
+                          final dialogContext = context;
+
+                          showDialog(
+                            context: dialogContext,
+                            builder: (context) => AlertDialog(
+                              title: Text('포인트 환급'),
+                              content: Text('$refundAmount원으로 환급하시겠습니까?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('아니요'),
+                                ),
+                                TextButton(
+                                  onPressed: () async {
+                                    Navigator.pop(context);
+
+                                    final refunded = await OrderScreenController.refundOrder(
+                                      order['_id'],
+                                      refundRate,
+                                      description: '[${product['brand']}] ${product['name']} 포인트 환급',
+                                    );
+                                    debugPrint('✅ refundOrder 응답: $refunded');
+
+                                    // ✅ context 유효성 검사 후 다이얼로그 표시
+                                    if (refunded != null && dialogContext.mounted) {
+                                      await showDialog(
+                                        context: dialogContext,
+                                        builder: (_) => AlertDialog(
+                                          title: Text('환급 완료'),
+                                          content: Text('$refunded원이 환급되었습니다!'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(dialogContext);
+                                                setState(() {
+                                                  unboxedProducts.removeWhere((o) => o['_id'] == order['_id']);
+                                                });
+                                              },
+                                              child: Text('확인'),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                    } else if (dialogContext.mounted) {
+                                      await showDialog(
+                                        context: dialogContext,
+                                        builder: (_) => AlertDialog(
+                                          title: Text('환급 실패'),
+                                          content: Text('서버 오류로 환급이 처리되지 않았습니다.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(dialogContext),
+                                              child: Text('확인'),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Text('예'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        onGiftPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/giftcode/create',
+                            arguments: {
+                              'type': 'product',
+                              'productId': product['_id'],
+                              'orderId': order['_id'],
+                            },
+                          ).then((_) {
+                            loadUnboxedProducts();
+                          });
+                        },
+                        onDeliveryPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/deliveryscreen',
+                            arguments: {
+                              'product': product,
+                              'orderId': order['_id'],
+                              'decidedAt': order['unboxedProduct']['decidedAt'],
+                              'box': order['box'],
+                            },
+                          );
+                        },
+
                       );
                     },
                   ),
@@ -316,7 +418,31 @@ class _OrderScreenState extends State<OrderScreen> {
                       paymentAmount: order['paymentAmount'] ?? 0,
                       paymentType: order['paymentType'] ?? 'point',
                       pointUsed: order['pointUsed'] ?? 0,
-                      onOpenPressed: () {},
+                      onOpenPressed: () {
+                        // TODO: 박스 열기 처리
+                        OrderScreenController.handleBoxOpen(context, order['_id'], (updatedOrder) {
+                          showDialog(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('🎉 박스 열림!'),
+                              content: Text(
+                                '당첨된 상품: ${updatedOrder['unboxedProduct']['product']['name']}',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    setState(() {
+                                      paidOrders.removeWhere((o) => o['_id'] == order['_id']);
+                                    });
+                                  },
+                                  child: const Text('확인'),
+                                )
+                              ],
+                            ),
+                          );
+                        });
+                      },
                       onGiftPressed: () {},
                     );
                   },
@@ -510,14 +636,25 @@ class _OrderScreenState extends State<OrderScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => setState(() => selectedTab = key),
+          onTap: () async {
+            setState(() => selectedTab = key);
+
+            // 탭 변경 후 해당 데이터 다시 로딩
+            if (key == 'box') {
+              await loadOrders();
+            } else if (key == 'product') {
+              await loadUnboxedProducts();
+            } else if (key == 'shipped') {
+              await loadUnboxedShippedProducts();
+            }
+          },
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
           child: Container(
             height: 50.h,
             margin: EdgeInsets.symmetric(horizontal: 4.w),
             decoration: BoxDecoration(
-              color: isSelected ? Theme.of(context).primaryColor : Color(0xFFF5F6F6),
+              color: isSelected ? Theme.of(context).primaryColor : const Color(0xFFF5F6F6),
               borderRadius: BorderRadius.circular(10.r),
             ),
             alignment: Alignment.center,
@@ -526,7 +663,7 @@ class _OrderScreenState extends State<OrderScreen> {
               style: TextStyle(
                 fontSize: 14.sp,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : Color(0xFF8D969D),
+                color: isSelected ? Colors.white : const Color(0xFF8D969D),
               ),
             ),
           ),
@@ -534,4 +671,5 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
   }
+
 }
