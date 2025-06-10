@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import '../../routes/base_url.dart';
-import '../../views/login_activity/bootpay_auth_webview.dart';
 import '../../views/login_activity/login.dart';
 
 class SignupController extends ChangeNotifier {
@@ -23,6 +22,8 @@ class SignupController extends ChangeNotifier {
   bool referralCodeChecked = false;
   String provider = '';
   String providerId = '';
+  bool isPhoneVerified = false;
+
 
   String nicknameError = '';
   String emailError = '';
@@ -30,6 +31,31 @@ class SignupController extends ChangeNotifier {
   bool emailChecked = false;
 
   String errorMessage = '';
+
+  void reset() {
+    nicknameController.clear();
+    emailController.clear();
+    passwordController.clear();
+    confirmPasswordController.clear();
+    phoneController.clear();
+    referralCodeController.clear();
+
+    kakaoId = '';
+    provider = 'local';
+    providerId = '';
+    eventAgree = false;
+    isPhoneVerified = false;
+    referralCodeChecked = false;
+    emailChecked = false;
+    nicknameChecked = false;
+    referralCodeError = '';
+    emailError = '';
+    nicknameError = '';
+    errorMessage = '';
+
+    notifyListeners();
+  }
+
 
   SignupController({String? initialEmail}) {
     if (initialEmail != null && initialEmail.isNotEmpty) {
@@ -128,6 +154,7 @@ class SignupController extends ChangeNotifier {
   }
 
   Future<void> submitData(BuildContext context) async {
+    final phone = phoneController.text.trim();
     if (nicknameController.text.isEmpty ||
         (provider == 'local' && (
             emailController.text.isEmpty ||
@@ -152,7 +179,12 @@ class SignupController extends ChangeNotifier {
       );
       return;
     }
-
+    if (!isPhoneVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('휴대폰 본인인증을 완료해주세요.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.'), backgroundColor: Colors.red),
@@ -181,7 +213,7 @@ class SignupController extends ChangeNotifier {
     final body = {
       'provider': provider,
       'nickname': nicknameController.text.trim(),
-      'phoneNumber': phoneController.text.trim(),
+      'phoneNumber': phone,
       'is_active': true,
       'eventAgree': eventAgree,
     };
@@ -236,16 +268,15 @@ class SignupController extends ChangeNotifier {
     payload.method = '본인인증';
     payload.authenticationId = DateTime.now().millisecondsSinceEpoch.toString();
     payload.orderName = '럭키탕 본인인증';
-    payload.price = 0; // 본인인증은 금액 0
+    payload.price = 0;
     payload.webApplicationId = '61e7c9c9e38c30001f7b8247';
     payload.androidApplicationId = '61e7c9c9e38c30001f7b8248';
     payload.iosApplicationId = '61e7c9c9e38c30001f7b8249';
 
     payload.user = User()
-      ..username = '사용자 이름' // 실명 인증 시 보여질 이름
+      ..username = '사용자 이름'
       ..phone = phoneController.text.trim()
       ..area = '대한민국';
-
 
     Bootpay().requestAuthentication(
       context: context,
@@ -261,10 +292,38 @@ class SignupController extends ChangeNotifier {
         print('🔒 본인인증 창 닫힘');
         Bootpay().dismiss(context);
       },
-      onDone: (data) {
+      onDone: (data) async {
         print('✅ 본인인증 완료: $data');
-        // data 안에 receipt_id 있음 → 서버로 보내서 인증 결과 조회 가능
+        final parsed = jsonDecode(data);
+        final receiptId = parsed['data']['receipt_id'];
+
+        final res = await http.post(
+          Uri.parse('${BaseUrl.value}:7778/api/users/bootpay/verify-auth'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'receipt_id': receiptId}),
+        );
+
+        if (res.statusCode == 200) {
+          print('🎉 서버 인증 성공: ${res.body}');
+          final resData = jsonDecode(res.body);
+          final phone = resData['user']['phone'];
+          final name = resData['user']['name'];
+
+          print('🎉 본인인증 성공: $name, $phone');
+          isPhoneVerified = true;
+          phoneController.text = phone;
+          notifyListeners();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('본인인증이 완료되었습니다.')),
+          );
+        } else {
+          print('❌ 서버 인증 실패: ${res.body}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('본인인증에 실패했습니다.'), backgroundColor: Colors.red),
+          );
+        }
       },
     );
   }
+
 }

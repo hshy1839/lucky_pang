@@ -22,7 +22,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       if (args is Map) {
         final signupController = Provider.of<SignupController>(context, listen: false);
-
+        signupController.reset();
         signupController.provider =
         (args['provider']?.toString().isEmpty ?? true) ? 'local' : args['provider'];
         print('📌 provider: ${signupController.provider}');
@@ -93,9 +93,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 context,
                 '휴대폰 번호',
                 signupController.phoneController,
-                '본인인증하기',
-                    () => signupController.startBootpayAuth(context),
+                signupController.isPhoneVerified ? '본인인증 완료' : '본인인증하기',
+                signupController.isPhoneVerified ? () {} : () => signupController.startBootpayAuth(context),
+                isButtonEnabled: !signupController.isPhoneVerified,
               ),
+
               const SizedBox(height: 36),
               _buildInputWithButton(
                 context,
@@ -160,8 +162,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         String? errorText,
         bool isButtonEnabled = true,
       }) {
-    final buttonColor = isButtonEnabled ? Theme.of(context).primaryColor : Colors.grey;
-
+    final buttonColor = isButtonEnabled
+        ? Theme.of(context).primaryColor
+        : (buttonText == '본인인증 완료' ? Colors.green : Colors.grey);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
