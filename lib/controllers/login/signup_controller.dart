@@ -179,12 +179,12 @@ class SignupController extends ChangeNotifier {
       );
       return;
     }
-    if (!isPhoneVerified) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('휴대폰 본인인증을 완료해주세요.'), backgroundColor: Colors.red),
-      );
-      return;
-    }
+    // if (!isPhoneVerified) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     SnackBar(content: Text('휴대폰 본인인증을 완료해주세요.'), backgroundColor: Colors.red),
+    //   );
+    //   return;
+    // }
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('비밀번호가 일치하지 않습니다.'), backgroundColor: Colors.red),
