@@ -30,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int totalPoints = 0;
   String? profileImage = '';
   String createdAt = '';
-
+  String referralCode = '';
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -75,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       nickname = _controller.nickname;
       profileImage = _controller.profileImage;
       createdAt = _controller.createdAt;
+      referralCode = _controller.referralCode;
     });
   }
 
@@ -154,7 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(child: _infoBox(title: '보유 포인트', value: NumberFormat('#,###').format(totalPoints), valueColor: Color(0xFFFF5C43))),
                 SizedBox(width: 12),
-                Expanded(child: _infoBox(title: '친구 추천인 코드', value: 'ㅋㅋㅋㅋㅋ', valueColor: Color(0xFFFF5C43))),
+                Expanded(child: _infoBox(title: '친구 추천인 코드',value: referralCode.isNotEmpty ? referralCode : '-', valueColor: Color(0xFFFF5C43))),
               ],
             ),
             SizedBox(height: 12),
