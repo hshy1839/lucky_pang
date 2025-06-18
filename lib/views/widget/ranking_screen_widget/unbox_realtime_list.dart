@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import '../../../../routes/base_url.dart';
 
 class UnboxRealtimeList extends StatelessWidget {
@@ -33,6 +34,7 @@ class UnboxRealtimeList extends StatelessWidget {
           DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
 
     final recentHighValueOrders = highValueOrders.take(30).toList();
+    final formatCurrency = NumberFormat('#,###');
 
     return Container(
       color: Colors.white,
@@ -76,70 +78,99 @@ class UnboxRealtimeList extends StatelessWidget {
                         ],
                       ),
                       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            backgroundImage: NetworkImage(product?['mainImage'] != null && product['mainImage'].isNotEmpty
-                                ? '${BaseUrl.value}:7778${product['mainImage']}'
-                                : 'https://via.placeholder.com/50'),
-                            radius: 24.r,
-                          ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
+                   child: Row(
+                    children: [
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 닉네임 + 프로필 사진
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 24.r,
+                                  backgroundColor: Colors.grey[300],
+                                  child: userProfileImage != null
+                                      ? ClipOval(
+                                    child: Image.network(
+                                      userProfileImage,
+                                      fit: BoxFit.cover,
+                                      width: 48.r,
+                                      height: 48.r,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Icon(Icons.person, size: 28.r, color: Colors.grey[600]);
+                                      },
+                                    ),
+                                  )
+                                      : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
+                                ),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Text(
+                                    user?['nickname'] ?? '익명',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.sp, color: Colors.white),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 20.h), // 여기로 이동!
+
+                            // 상품명 + 가격 + 날짜
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    userProfileImage != null
-                                        ? CircleAvatar(radius: 12.r, backgroundImage: NetworkImage(userProfileImage))
-                                        : const Icon(Icons.account_circle, size: 24, color: Colors.grey),
-                                    SizedBox(width: 6.w),
-                                    Expanded(
-                                      child: Text(
-                                        user?['nickname'] ?? 'unknown',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp, color: Colors.white),
+                                // 상품 정보
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product?['name'] ?? '상품명 없음',
+                                        style: TextStyle(fontSize: 15.sp, color: Colors.white),
                                         overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
                                       ),
-                                    ),
-                                  ],
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        '정가: ${formatCurrency.format(consumerPrice)}원',
+                                        style: TextStyle(fontSize: 15.sp, color: Colors.white70),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                SizedBox(height: 6.h),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                SizedBox(width: 12.w),
+                                // 박스 정보
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(product?['name'] ?? '상품명 없음', style: TextStyle(fontSize: 13.sp, color: Colors.white)),
-                                        SizedBox(height: 4.h),
-                                        Text('정가 ${consumerPrice}원', style: TextStyle(fontSize: 12.sp, color: Colors.white70)),
-                                      ],
+                                    Text(
+                                      '${formatCurrency.format(box?['price'] ?? 0)}원 박스',
+                                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
                                     ),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text('${box?['price'] ?? 0}원 박스', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: Colors.white)),
-                                        SizedBox(height: 4.h),
-                                        Text(
-                                          DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
-                                              ?.toLocal()
-                                              .toString()
-                                              .substring(0, 16) ??
-                                              '',
-                                          style: TextStyle(fontSize: 11.sp, color: Colors.white70),
-                                        ),
-                                      ],
+                                    SizedBox(height: 4.h),
+                                    Text(
+                                      DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
+                                          ?.toLocal()
+                                          .toString()
+                                          .substring(0, 16) ??
+                                          '',
+                                      style: TextStyle(fontSize: 13.sp, color: Colors.white54),
                                     ),
                                   ],
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+
+                    ],
+                  ),
+
+                  ),
                   );
                 },
               ),
@@ -177,53 +208,89 @@ class UnboxRealtimeList extends StatelessWidget {
                     ],
                   ),
                   child: ListTile(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                    leading: CircleAvatar(
-                      backgroundImage: NetworkImage(product?['mainImage'] != null && product['mainImage'].isNotEmpty
-                          ? '${BaseUrl.value}:7778${product['mainImage']}'
-                          : 'https://via.placeholder.com/50'),
-                      radius: 24.r,
-                    ),
+
                     title: Row(
                       children: [
-                        userProfileImage != null
-                            ? CircleAvatar(radius: 12.r, backgroundImage: NetworkImage(userProfileImage))
-                            : const Icon(Icons.account_circle, size: 24, color: Colors.grey),
-                        SizedBox(width: 6.w),
+                        CircleAvatar(
+                          radius: 24.r,
+                          backgroundColor: Colors.grey[300],
+                          child: userProfileImage != null
+                              ? ClipOval(
+                            child: Image.network(
+                              userProfileImage,
+                              fit: BoxFit.cover,
+                              width: 48.r,
+                              height: 48.r,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Icon(Icons.person, size: 28.r, color: Colors.grey[600]);
+                              },
+                            ),
+                          )
+                              : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
+                        ),
+                        SizedBox(width: 12.w),
                         Expanded(
                           child: Text(
                             user?['nickname'] ?? '익명',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.sp),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
+
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(product?['name'] ?? '상품명 없음', style: TextStyle(fontSize: 13.sp)),
-                        SizedBox(height: 4.h),
-                        Text('정가 $consumerPrice원',
-                            style: TextStyle(fontSize: 12.sp, color: Colors.black54)),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('${box?['price'] ?? 0}원 박스',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-                        SizedBox(height: 4.h),
-                        Text(
-                          DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
-                              ?.toLocal()
-                              .toString()
-                              .substring(0, 16) ??
-                              '',
-                          style: TextStyle(fontSize: 11.sp, color: Colors.black45),
+                        SizedBox(height: 20.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: double.infinity,
+                                    child:Text(
+                                      product?['name'] ?? '상품명 없음',
+                                      style: TextStyle(fontSize: 15.sp, color: Colors.black),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    '정가: ${formatCurrency.format(consumerPrice)}원',
+                                    style: TextStyle(fontSize: 15.sp, color: Color(0xFF465461)),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                            Text('${formatCurrency.format(box?['price'] ?? 0)}원 박스',
+                                    style: TextStyle(color: Colors.black, fontSize: 14.sp)),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
+                                      ?.toLocal()
+                                      .toString()
+                                      .substring(0, 16) ??
+                                      '',
+                                  style: TextStyle(fontSize: 13.sp, color: Colors.black45),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
+
+
+
                   ),
                 ),
               );

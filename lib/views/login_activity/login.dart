@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import '../../controllers/login/login_controller.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,27 +18,67 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Widget _buildSocialButton(String assetPath, VoidCallback onTap) {
+  Widget _buildSocialLoginButton({
+    required String assetPath,
+    required String text,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          border: Border.all( // ✅ 테두리 추가
-            color: Colors.grey.shade300,
-            width: 1.5,
+      child: Center(
+        child: Container(
+          width: 300,
+          height: 60,
+          margin: EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
-          image: DecorationImage(
-            image: AssetImage(assetPath),
-            fit: BoxFit.cover,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 1. 텍스트: 완전 중앙
+              Center(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              // 2. 아이콘: 같은 위치에서 시작 + 수직 중앙
+              Positioned(
+                left: 24, // 모든 버튼에서 동일한 시작 위치
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: SvgPicture.asset(
+                    assetPath,
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+
+
+
+
 
 
   @override
@@ -46,17 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text(
-          '회원가입 및 로그인',
-          style: TextStyle(color: Colors.black,
-          fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.black),
-        centerTitle: true,
-        elevation: 0,
-      ),
+
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -68,27 +99,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
 
-                  SizedBox(height: 10),
+                  SizedBox(height: 80),
                   Image.asset(
-                    'assets/icons/app_icon.jpg',
-                    width: 150,
-                    height: 150,
+                    'assets/icons/app_icon.png',
+                    width: 60,
+                    height: 60,
                     fit: BoxFit.contain,
                   ),
 
                   SizedBox(height: 30),
                   Text(
-                    '어서오세요, 뜨끈뜨끈 럭키탕',
-                    style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
+                    '당신의 행운을 테스트해보세요. 럭키탕',
+                    style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 10,),
                   Text(
                     '핫한 상품들이 기다리고있어요',
-                    style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w500),
+                    style: TextStyle(color: Colors.grey[700], fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
               SizedBox(height: 30,),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Text(
+                    '이메일',
+                    style: TextStyle(fontSize: 13,  color: Colors.black),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 6),
               SizedBox(
                 width: 350, // 원하는 너비 설정
                 child: TextField(
@@ -110,7 +153,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 5),
+              SizedBox(height: 40),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 10),
+                  child: Text(
+                    '비밀번호',
+                    style: TextStyle(fontSize: 13,  color: Colors.black),
+                  ),
+                ),
+              ),
+              SizedBox(height: 6),
         SizedBox(
           width: 350, // 원하는 너비 설정
           child: TextField(
@@ -133,7 +187,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
         ),
-              SizedBox(height: 50),
+              SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '럭키탕 회원이 아니신가요?',
+                    style: TextStyle(color: Colors.black87, fontSize: 13),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/signupAgree');
+                    },
+                    child: Text(
+                      '회원가입',
+                      style: TextStyle(
+                        color: Theme.of(context).primaryColor,
+                        fontSize: 13,
+                        decoration: TextDecoration.underline,             // ✅ 밑줄
+                        decorationColor: Theme.of(context).primaryColor,  // ✅ 밑줄 색상 지정
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+
           SizedBox(
             width: 350, // 원하는 너비 설정
             child: ElevatedButton(
@@ -153,41 +232,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+
                 child: Text(
-                  '시작하기',
+                  '로그인',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
                 ),
               ),
           ),
-              SizedBox(height: 30),
-              Text(
-                '소셜 로그인',
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 카카오톡 버튼
-                  _buildSocialButton('assets/icons/kakao_icon.png', () {
-                    loginController.loginWithKakao(context);  // ✅ 인스턴스로 호출
-                  }),
-
-                  SizedBox(width: 16),
-
-                  // 구글 버튼
-                  _buildSocialButton('assets/icons/google_icon.png', () {
-                    loginController.loginWithGoogle(context);
-                  }),
-
-                  SizedBox(width: 16),
-
-                  // 애플 버튼
-                  _buildSocialButton('assets/icons/apple_icon.png', () {
-                  }),
-                ],
-              ),
-              SizedBox(height: 30,),
+              SizedBox(height: 26),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -195,24 +247,96 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.pushNamed(context, '/findEmail');
                     },
-                    child: Text('이메일 찾기', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    child: Text(
+                      '이메일 찾기',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.black,
+                      ),
+                    ),
                   ),
-                  Text('|', style: TextStyle(color: Colors.grey[400])),
+                  SizedBox(width: 10),
                   TextButton(
                     onPressed: () {
                       Navigator.pushNamed(context, '/findPassword');
                     },
-                    child: Text('비밀번호 찾기', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                  ),
-                  Text('|', style: TextStyle(color: Colors.grey[400])),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/signupAgree');
-                    },
-                    child: Text('회원가입', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    child: Text(
+                      '비밀번호 찾기',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        decoration: TextDecoration.underline,
+                        decorationColor: Colors.black,
+                      ),
+                    ),
                   ),
                 ],
               ),
+              SizedBox(height: 40),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 140, // 왼쪽 선 길이
+                    child: Divider(
+                      thickness: 1,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'or',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 140, // 오른쪽 선 길이
+                    child: Divider(
+                      thickness: 1,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+
+
+              SizedBox(height: 20),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // 카카오톡 버튼
+                  _buildSocialLoginButton(
+                    assetPath: 'assets/icons/kakao_icon.svg',
+                    text: '카카오 로그인',
+                    onTap: () => loginController.loginWithKakao(context),
+                  ),
+
+                  SizedBox(width: 16),
+
+                  // 구글 버튼
+                  _buildSocialLoginButton(
+                    assetPath: 'assets/icons/google_icon.svg',
+                    text: '구글 로그인',
+                    onTap: () => loginController.loginWithGoogle(context),
+                  ),
+
+                  SizedBox(width: 16),
+
+                  // 애플 버튼
+                  _buildSocialLoginButton(
+                    assetPath: 'assets/icons/apple_icon.svg',
+                    text: '애플 로그인',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+
               SizedBox(height: 50,)
             ],
           ),
@@ -221,3 +345,5 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
+

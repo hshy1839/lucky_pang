@@ -419,29 +419,13 @@ class _OrderScreenState extends State<OrderScreen> {
                       paymentType: order['paymentType'] ?? 'point',
                       pointUsed: order['pointUsed'] ?? 0,
                       onOpenPressed: () {
-                        // TODO: 박스 열기 처리
-                        OrderScreenController.handleBoxOpen(context, order['_id'], (updatedOrder) {
-                          showDialog(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: const Text('🎉 박스 열림!'),
-                              content: Text(
-                                '당첨된 상품: ${updatedOrder['unboxedProduct']['product']['name']}',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    setState(() {
-                                      paidOrders.removeWhere((o) => o['_id'] == order['_id']);
-                                    });
-                                  },
-                                  child: const Text('확인'),
-                                )
-                              ],
-                            ),
-                          );
-                        });
+                        Navigator.pushNamed(
+                          context,
+                          '/boxOpen',
+                          arguments: {
+                            'orderId': order['_id'],
+                          },
+                        );
                       },
                       onGiftPressed: () {},
                     );

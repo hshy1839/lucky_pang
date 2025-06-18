@@ -226,8 +226,10 @@ class OrderScreenController {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('🎁 언박싱 결과: ${jsonEncode(data)}');
         return data['order'];
       } else {
+        debugPrint('❌ 언박싱 실패: ${response.body}');
         return null;
       }
     } catch (e) {

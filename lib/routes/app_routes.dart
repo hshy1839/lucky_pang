@@ -11,6 +11,7 @@ import '../views/login_activity/signup.dart';
 import '../views/login_activity/findEmail_screen.dart';
 import '../views/login_activity/findPassword_screen.dart';
 import '../views/login_activity/singup_agree_screen.dart';
+import '../views/luckybox_acitivity/boxOpen_screen.dart';
 import '../views/luckybox_acitivity/createGiftCode_screen.dart';
 import '../views/main_activity/main_screen.dart';
 import '../views/setting_activity/event_activity/event_screen.dart';
@@ -80,5 +81,6 @@ class AppRoutes {
       return ShoppingScreen(category: category);
     },
     '/deliveryscreen': (_) => DeliveryRequestScreen(),
+      '/boxOpen': (context) => BoxOpenScreen(),
   };
 }

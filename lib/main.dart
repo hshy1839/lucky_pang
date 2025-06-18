@@ -6,6 +6,7 @@ import 'package:attedance_app/views/luckybox_acitivity/luckyBoxPurchase_screen.d
 import 'package:attedance_app/views/luckybox_acitivity/ranking_activity/ranking_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -105,6 +106,16 @@ class MyApp extends StatelessWidget {
       ),
       home: _determineInitialScreen(),
       routes: AppRoutes.routes,
+      onGenerateRoute: (settings) {
+        if (settings.name == '/main') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          final index = args?['initialTabIndex'] ?? 0;
+          return MaterialPageRoute(
+            builder: (_) => MainScreenWithFooter(initialTabIndex: index),
+          );
+        }
+        return null; // 그 외는 기본 route로 처리
+      },
     );
   }
 
@@ -125,7 +136,7 @@ class MyApp extends StatelessWidget {
           if (snapshot.data is LoginScreen) {
             return  LoginScreen();
           } else {
-            return const MainScreenWithFooter();
+            return MainScreenWithFooter();
           }
         }
       },
@@ -133,17 +144,15 @@ class MyApp extends StatelessWidget {
   }
 
   Future<Widget> _checkLoginStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final token = prefs.getString('token'); // 토큰을 확인
+    final storage = FlutterSecureStorage();
+    final isLoggedIn = await storage.read(key: 'isLoggedIn') == 'true';
+    final token = await storage.read(key: 'token');
 
-    // 로그인 안 된 경우 로그인 화면
     if (!isLoggedIn || token == null) {
       return LoginScreen();
     }
-    return MainScreenWithFooter(); // 로그인 후 메인 화면
+    return MainScreenWithFooter();
   }
-
 
 }
 
