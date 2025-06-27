@@ -75,27 +75,21 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                 '당첨을 축하드립니다!',
                 style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 8.h),
-              Text(
-                '아쉽게도 당첨금액 랭킹엔 들지 못했어요',
-                style: TextStyle(fontSize: 14.sp, color: Colors.black54),
-              ),
+
               SizedBox(height: 40.h),
 
               // 상품 이미지
               ClipRRect(
-                borderRadius: BorderRadius.circular(20.r),
+                borderRadius: BorderRadius.circular(50.r),
                 child: Image.network(
                   imageUrl,
                   width: 260.w,
                   height: 260.w,
-                  fit: BoxFit.fill,
+                  fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Image.asset(
                       'assets/images/default_product.png',
-                      width: 260.w,
-                      height: 260.w,
-                      fit: BoxFit.fill,
+                      fit: BoxFit.cover,
                     );
                   },
                 ),

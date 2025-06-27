@@ -1,6 +1,6 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/box_controller.dart';
 import '../../controllers/order_screen_controller.dart';
@@ -21,8 +21,8 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   bool allAgreed = false;
   bool purchaseConfirmed = false;
   bool refundPolicyAgreed = false;
-  List<dynamic> boxes = [];
   String? selectedBoxId;
+  bool _isFirstBuild = true;
 
   final pointController = PointController();
   final storage = FlutterSecureStorage();
@@ -30,6 +30,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
 
   int get boxPrice {
     final boxController = Provider.of<BoxController>(context, listen: false);
+    if (selectedBoxId == null) return 0;
     final selectedBox = boxController.boxes.firstWhere(
           (b) => b['_id'] == selectedBoxId,
       orElse: () => null,
@@ -39,19 +40,39 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
 
   int get price => (boxPrice * quantity).clamp(0, double.infinity).toInt();
 
+
   int get totalAmount {
     final calculated = price - pointsUsed;
     return calculated < 0 ? 0 : calculated;
   }
-
-  @override
-  void initState() {
-    super.initState();
-    loadUserPoints();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<BoxController>(context, listen: false).fetchBoxes();
-    });
+  String formatCurrency(int number) {
+    return NumberFormat.decimalPattern().format(number);
   }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isFirstBuild) {
+      final boxController = Provider.of<BoxController>(context, listen: false);
+      boxController.fetchBoxes(); // 🧨 이거 반드시 있어야 함!!
+
+      setState(() {
+        selectedBox = '5000';
+        quantity = 1;
+        pointsUsed = 0;
+        paymentMethod = '';
+        allAgreed = false;
+        purchaseConfirmed = false;
+        refundPolicyAgreed = false;
+        selectedBoxId = null;
+        pointsController.text = '0';
+      });
+
+      loadUserPoints();
+      _isFirstBuild = false;
+    }
+  }
+
+
 
   void loadUserPoints() async {
     final userId = await storage.read(key: 'userId');
@@ -73,57 +94,66 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
 
   void applyMaxUsablePoints() {
     final maxUsable = boxPrice * quantity;
+    final applied = availablePoints >= maxUsable ? maxUsable : availablePoints;
+    final formatted = formatCurrency(applied);
 
-    setState(() {
-      pointsUsed = availablePoints >= maxUsable ? maxUsable : availablePoints;
-      pointsController.text = pointsUsed.toString();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        pointsUsed = applied;
+        pointsController.value = TextEditingValue(
+          text: formatted,
+          selection: TextSelection.collapsed(offset: formatted.length),
+        );
+      });
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFFF5E3A), Color(0xFFFF2A68)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFF5722),
+              Color(0xFFC622FF),
+            ],
+            stops: [0.0, 0.7],
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 60),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    '두근두근 럭키타임!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-
-                ),
-          SizedBox(height: 10,),
-          Center(
-            child:  Text(
-                  '특별한 상품들이 당신을 기다리고 있어요.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14,  color: Colors.white),
-                ),
-          ),
-                const SizedBox(height: 60),
-                Container(
+          child: Column(
+            children: [
+              const SizedBox(height: 80),
+              const Text(
+                '두근두근 럭키타임!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '특별한 상품들이 당신을 기다리고 있어요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.white),
+              ),
+              const SizedBox(height: 50),
+              Expanded(
+                child: Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                   ),
                   padding: const EdgeInsets.all(20),
-                  child: buildContent(context),
+                  child: SingleChildScrollView(
+                    child: buildContent(context),
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -131,19 +161,30 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   }
 
   Widget buildContent(BuildContext context) {
+    final boxController = Provider.of<BoxController>(context, listen: false);
+
+    // 🔥 박스가 로드됐고 selectedBoxId가 아직 null이면 첫 박스를 기본 선택
+    if (selectedBoxId == null && boxController.boxes.isNotEmpty) {
+      selectedBoxId = boxController.boxes.first['_id'];
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 20),
         Consumer<BoxController>(
           builder: (context, boxController, _) {
             if (boxController.isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
-
             if (boxController.error != null) {
               return Text('에러: ${boxController.error}');
             }
-            return Center( // 중앙 정렬 추가
+            if (boxController.boxes.isEmpty) {
+              return const Text('박스가 없습니다.');
+            }
+
+            return Center(
               child: Wrap(
                 spacing: 10,
                 children: boxController.boxes.map<Widget>((box) {
@@ -155,13 +196,16 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(15),
                       ),
                       child: Center(
                         child: Text(
                           box['name'],
-                          style: TextStyle(color: isSelected ? Colors.white : Colors.grey, fontSize: 18, fontWeight: FontWeight.bold),
-
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.grey,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -169,17 +213,52 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                 }).toList(),
               ),
             );
-
           },
         ),
 
-        const SizedBox(height: 20),
-        Text('구매수량'),
+        const SizedBox(height: 40),
+        const Center(
+          child: Text(
+            '구매 박스 수량',
+            style: TextStyle(
+              fontSize: 16,
+            ),
+          ),
+        ),
+        SizedBox(height: 20,),
         Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
           children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => changeQuantity(-1),
+                  icon: const Icon(Icons.remove),
+                  iconSize: 22,
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      quantity.toString(),
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => changeQuantity(1),
+                  icon: const Icon(Icons.add),
+                  iconSize: 22,
+                ),
+              ],
+            ),
+            SizedBox(height: 40,),
             Wrap(
               spacing: 10,
+              runSpacing: 10,
               children: [
                 quickButton('+5개 추가하기', 5),
                 quickButton('+10개 추가하기', 10),
@@ -187,55 +266,147 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                 quickButton('MAX', 999 - quantity),
               ],
             ),
-            Row(
-              children: [
-                IconButton(onPressed: () => changeQuantity(-1), icon: Icon(Icons.remove)),
-                Text(quantity.toString()),
-                IconButton(onPressed: () => changeQuantity(1), icon: Icon(Icons.add)),
-              ],
+
+          ],
+        ),
+        const SizedBox(height: 50),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '보유 포인트',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+            Text(
+              '${formatCurrency(availablePoints)} P',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: Theme.of(context).primaryColor,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        Text('상품 금액  \t  ${price.toString()}원',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 20),
-        Text('보유 포인트 : $availablePoints P',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
-        Row(
+        SizedBox(height: 30,),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: TextField(
-                controller: pointsController,
-                keyboardType: TextInputType.number,
-                onChanged: (val) {
-                  int input = int.tryParse(val) ?? 0;
+            TextField(
+              controller: pointsController,
+              keyboardType: TextInputType.number,
+              cursorColor: Colors.black, // 커서 색상
+              style: const TextStyle( // 👉 텍스트 스타일
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+              onChanged: (val) {
+                // 1. 모든 숫자만 남기고 파싱
+                String numeric = val.replaceAll(RegExp(r'[^0-9]'), '');
+                int input = int.tryParse(numeric) ?? 0;
+                if (input > availablePoints) input = availablePoints;
+                if (input > boxPrice * quantity) input = boxPrice * quantity; // 구매금액 초과 방지
+
+                final formatted = formatCurrency(input);
+
+                // 2. 포인트 값 반영
+                if (pointsUsed != input) {
                   setState(() {
-                    pointsUsed = input > availablePoints ? availablePoints : input;
+                    pointsUsed = input;
                   });
-                },
-                decoration: const InputDecoration(
-                  hintText: '0',
-                  border: OutlineInputBorder(),
+                }
+
+                // 3. 텍스트필드에 포맷 적용 (루프 방지)
+                if (val != formatted) {
+                  pointsController.value = TextEditingValue(
+                    text: formatted,
+                    selection: TextSelection.collapsed(offset: formatted.length),
+                  );
+                }
+              },
+              decoration: InputDecoration(
+                hintText: '0',
+                suffixText: 'P',
+                suffixStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 18,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.black),
+                ),
+                enabledBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(onPressed: applyMaxUsablePoints, child: Text('전액사용')),
+
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: applyMaxUsablePoints,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor, // 배경색
+                  foregroundColor: Colors.white, // 텍스트 색
+                  padding: const EdgeInsets.symmetric(vertical: 16), // 상하 패딩
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10), // radius
+                  ),
+                ),
+                child: const Text('전액사용', style: TextStyle(fontSize: 16)),
+              ),
+            ),
+
           ],
         ),
-        const SizedBox(height: 30),
-        Text('결제수단'),
-        Wrap(
-          spacing: 10,
-          children: [
-            paymentOption('계좌이체'),
-            paymentOption('신용/체크카드'),
-            paymentOption('카카오페이'),
-          ],
+
+        const SizedBox(height: 50),
+        const Center(
+          child: Text(
+            '결제 수단',
+            style: TextStyle(
+              fontSize: 16,
+            ),
+          ),
         ),
+        SizedBox(height: 30,),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20), // 바깥 패딩
+          child:Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48, // 높이 맞추고 싶으면 추가
+                  child: paymentOption('계좌이체'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  width: double.infinity,
+
+                  height: 48,
+                  child: paymentOption('신용/체크카드'),
+                ),
+              ),
+            ],
+          )
+
+        ),
+        SizedBox(height: 40,),
         CheckboxListTile(
-          title: const Text('모든 내용을 확인하였으며 결제에 동의합니다.'),
+          activeColor: Colors.black,
+          checkColor: Colors.white,
+          title: const Text('모든 내용을 확인하였으며 결제에 동의합니다.',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.black
+          ),),
           value: allAgreed,
           onChanged: (val) {
             setState(() {
@@ -246,6 +417,8 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
           },
         ),
         CheckboxListTile(
+          activeColor: Colors.black,
+          checkColor: Colors.white,
           title: GestureDetector(
             onTap: () => Navigator.pushNamed(context, '/purchase_term'),
             child: const Text('구매 확인 동의', style: TextStyle(color: Colors.blue)),
@@ -254,6 +427,8 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
           onChanged: (val) => setState(() => purchaseConfirmed = val ?? false),
         ),
         CheckboxListTile(
+          activeColor: Colors.black,
+          checkColor: Colors.white,
           title: GestureDetector(
             onTap: () => Navigator.pushNamed(context, '/refund_term'),
             child: const Text('교환/환불 정책 동의', style: TextStyle(color: Colors.blue)),
@@ -261,10 +436,30 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
           value: refundPolicyAgreed,
           onChanged: (val) => setState(() => refundPolicyAgreed = val ?? false),
         ),
-        const SizedBox(height: 20),
-        Text('총 결제금액  \t  ${totalAmount.toString()}원',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 50),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              '총 결제금액',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            Text(
+              '${formatCurrency(totalAmount)}원',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 30),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).primaryColor,
@@ -273,6 +468,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
           onPressed: handleSubmit,
           child: const Text('결제하기', style: TextStyle(color: Colors.white)),
         ),
+        const SizedBox(height: 40),
       ],
     );
   }
@@ -356,33 +552,43 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         padding: EdgeInsets.zero,
-        minimumSize: Size(150, 50),
+        minimumSize: const Size(150, 50),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15),
-          side: BorderSide(color: Colors.black), // ✅ 테두리 색상 추가
+          side: const BorderSide(color: Colors.black),
         ),
       ),
-      child: Text(label, style: TextStyle(color: Colors.black)),
+      child: Text(label, style: const TextStyle(color: Colors.black)),
     );
   }
-
 
   Widget paymentOption(String method) {
     final isSelected = paymentMethod == method;
 
-    return ChoiceChip(
-      label: Text(
-        method,
-        style: TextStyle(color: isSelected ? Colors.white : Colors.black),
-      ),
-      selected: isSelected,
-      onSelected: (_) => setState(() => paymentMethod = method),
-      backgroundColor: Colors.white,
-      selectedColor: Theme.of(context).primaryColor,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: Colors.grey.shade400),
-        borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          paymentMethod = isSelected ? '' : method; // 이미 선택돼 있으면 해제
+        });
+      },
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade400),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          method,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
+
+
 }

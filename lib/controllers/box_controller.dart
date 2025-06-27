@@ -36,6 +36,8 @@ class BoxController with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print("✅ 박스 응답 확인: ${response.body}");
+
         if (data['success'] == true && data['boxes'] is List) {
           _boxes = data['boxes'];
         } else {

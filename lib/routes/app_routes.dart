@@ -1,4 +1,5 @@
 import 'package:attedance_app/main.dart';
+import 'package:attedance_app/views/login_activity/findEmail_result_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
 import 'package:attedance_app/views/main_activity/error_screen.dart';
 import 'package:attedance_app/views/order_activity/delivery_request_screen.dart';
@@ -44,6 +45,7 @@ class AppRoutes {
     '/signup': (_) => SignUpScreen(),
     '/signupAgree': (_) => SignupAgreeScreen(),
     '/findEmail': (_) => FindEmailScreen(),
+    '/findEmailResult' : (_) => FindEmailResultScreen(email: '',),
     '/findPassword': (_) => FindPasswordScreen(),
     '/notice': (_) => NoticeScreen(),
     '/event': (_) => EventScreen(),

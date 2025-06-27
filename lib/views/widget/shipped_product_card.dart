@@ -65,8 +65,8 @@ class _ShippedProductCardState extends State<ShippedProductCard> {
                 borderRadius: BorderRadius.circular(15.r),
                 child: Image.network(
                   widget.mainImageUrl,
-                  width: 170.w,
-                  height: 224.w,
+                  width: 85.w,
+                  height: 112.h,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -75,53 +75,60 @@ class _ShippedProductCardState extends State<ShippedProductCard> {
               // 텍스트 + 가격
               Expanded(
                 child: SizedBox(
-                  height: 224.w, // 이미지 높이와 맞춤
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 브랜드 + 상품명
-                      SizedBox(height: 15.h,),
+                      SizedBox(height: 15.h),
                       Text(
                         widget.brand,
-                        style: TextStyle(fontSize: 14.sp, color: Colors.black),
+                        style: TextStyle(fontSize: 12.sp, color: Colors.black),
                       ),
                       SizedBox(height: 8.h),
                       Text(
                         widget.productName,
-                        style: TextStyle(fontSize: 13.sp, color: Color(0xFF465461)),
+                        style: TextStyle(fontSize: 14.sp, color: Color(0xFF465461)),
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Spacer(), // 👈 가격을 아래로 밀어냄
-                      Text(
-                        '5,000 원',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          color: Color(0xFFFF5722),
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
-                        style: TextStyle(
-                          fontSize: 17.sp,
-                          color: Color(0xFF8D969D),
-                          decoration: TextDecoration.lineThrough,
-                        ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Text(
+                            '${NumberFormat('#,###').format(widget.purchasePrice)} 원',
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              color: Color(0xFFFF5722),
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
+                            style: TextStyle(
+                              fontSize: 17.sp,
+                              color: Color(0xFF8D969D),
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ),
+
             ],
           ),
-          SizedBox(height: 20,),
+          SizedBox(height: 25.h,),
           // 버튼들
-          Column(
+          Row(
             children: [
-              _buildOutlinedButton(context, text: '운송장 복사', onPressed: widget.onCopyPressed),
-              SizedBox(height: 8.h),
-              _buildElevatedButton(context, text: '운송장 조회', onPressed: widget.onTrackPressed),
+              Expanded(
+                child: _buildOutlinedButton(context, text: '운송장 복사', onPressed: widget.onCopyPressed),
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: _buildElevatedButton(context, text: '운송장 조회', onPressed: widget.onTrackPressed),
+              ),
             ],
           ),
 

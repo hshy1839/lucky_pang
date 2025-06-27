@@ -42,10 +42,17 @@ dependencies:
   firebase_auth: ^5.5.3
   google_sign_in: ^6.3.0
   bootpay: ^5.0.13
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+
 dependency_overrides:
   js: 0.6.4
   uuid: ^3.0.7
@@ -73,6 +80,9 @@ flutter:
     - assets/icons/apple_icon.svg
     - assets/icons/kakao_icon.svg
     - assets/icons/google_icon.svg
+    - assets/icons/app_logo.svg
+    - assets/icons/app_logo.png
+    - assets/icons/smartphone.svg
     - assets/icons/footer_icons/home_icon.svg
     - assets/icons/footer_icons/inbox_icon.svg
     - assets/icons/footer_icons/boxButton_icon.svg

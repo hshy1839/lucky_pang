@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/shipping_controller.dart';
 import '../../../controllers/order_screen_controller.dart';
+import '../../controllers/point_controller.dart';
 import '../../routes/base_url.dart';
 import '../widget/shipping_card.dart';
 
@@ -19,7 +22,8 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
   bool agreedPurchase = false;
   bool agreedReturn = false;
   final TextEditingController _pointsController = TextEditingController();
-
+  final PointController _pointController = PointController();
+  final numberFormat = NumberFormat('#,###');
 
   Map<String, dynamic>? selectedShipping;
   bool isLoading = true;
@@ -40,6 +44,28 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
   void initState() {
     super.initState();
     _fetchShipping();
+    _fetchUserPoints();
+  }
+
+  void _fetchUserPoints() async {
+    // userId를 어디서 가져오는지에 맞춰 아래 코드 수정
+    // 예시: SharedPreferences 사용
+    // final prefs = await SharedPreferences.getInstance();
+    // final userId = prefs.getString('userId');
+    // or
+    // String userId = ...; // 네가 관리하는 방식대로
+    final userId = await _getUserId(); // 커스텀 함수로 구현한다고 가정
+
+    if (userId != null) {
+      final total = await _pointController.fetchUserTotalPoints(userId);
+      setState(() {
+        totalPoints = total;
+      });
+    }
+  }
+  Future<String?> _getUserId() async {
+     const _storage = FlutterSecureStorage();
+    return await _storage.read(key: 'userId');
   }
 
   Future<void> _fetchShipping() async {
@@ -108,14 +134,18 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 onPressed: () {
                   Navigator.pushNamed(context, '/shippingCreate');
                 },
-                icon: Icon(Icons.add),
-                label: Text('배송지 추가하기'),
+                icon: Icon(Icons.add, color: Colors.white), // 아이콘도 흰색으로
+                label: Text('배송지 추가하기', style: TextStyle(color: Colors.white)), // 텍스트 흰색!
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 48.h),
-                  backgroundColor: Colors.grey.shade300,
-                  foregroundColor: Colors.black,
+                  backgroundColor: Theme.of(context).primaryColor, // 배경 프라이머리 컬러
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r), // 라운드 radius 확실히 줄임
+                  ),
                 ),
               ),
+
               if (shippingList.isNotEmpty) ...[
                 SizedBox(height: 16.h),
                 SizedBox(
@@ -127,7 +157,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       final shipping = shippingList[index];
                       final id = shipping['_id'];
                       return Container(
-                        width: 250.w,
+                        width: 300.w,
                         margin: EdgeInsets.only(right: 12.w),
                         child: ShippingCard(
                           shipping: shipping,
@@ -139,15 +169,26 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                             });
                           },
                           onEdit: () {},
-                          onDelete: () {},
+                          onDeleted: () async {
+                            // 삭제 후 목록 새로고침
+                            await _fetchShipping();
+                            // 혹시 선택 배송지가 삭제됐다면 선택값도 리셋
+                            if (selectedShippingId == id) {
+                              setState(() {
+                                selectedShippingId = shippingList.isNotEmpty ? shippingList.first['_id'] : null;
+                                selectedShipping = shippingList.isNotEmpty ? shippingList.first : null;
+                              });
+                            }
+                          },
                         ),
+
                       );
                     },
                   ),
                 ),
               ],
-              SizedBox(height: 24.h),
-              Text('보유 포인트: ${totalPoints.toString()} P', style: TextStyle(fontSize: 14.sp)),
+              SizedBox(height: 40.h),
+              Text('보유 포인트: ${numberFormat.format(totalPoints)} P', style: TextStyle(fontSize: 14.sp)),
               Row(
                 children: [
                   Expanded(
@@ -211,6 +252,9 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                     agreedReturn = val!;
                   });
                 },
+                activeColor: Colors.black, // 체크됐을 때 체크박스 배경색
+                checkColor: Colors.white, // 체크(✔) 색상
+                // tileColor는 필요없으면 생략 가능
               ),
               CheckboxListTile(
                 title: Text.rich(TextSpan(
@@ -218,6 +262,8 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 )),
                 value: agreedPurchase,
                 onChanged: (val) => setState(() => agreedPurchase = val ?? false),
+                activeColor: Colors.black,
+                checkColor: Colors.white,
               ),
               CheckboxListTile(
                 title: Text.rich(TextSpan(
@@ -225,6 +271,8 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 )),
                 value: agreedReturn,
                 onChanged: (val) => setState(() => agreedReturn = val ?? false),
+                activeColor: Colors.black,
+                checkColor: Colors.white,
               ),
               SizedBox(height: 24.h),
               Row(

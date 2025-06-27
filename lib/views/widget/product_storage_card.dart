@@ -73,15 +73,15 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 이미지
               ClipRRect(
                 borderRadius: BorderRadius.circular(15.r),
                 child: Image.network(
                   widget.mainImageUrl,
-                  width: 170.w,
-                  height: 224.w,
+                  width: 85.w,
+                  height: 112.h,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -90,39 +90,43 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
               // 텍스트 + 가격
               Expanded(
                 child: SizedBox(
-                  height: 224.w, // 이미지 높이와 맞춤
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // 브랜드 + 상품명
-                      SizedBox(height: 15.h,),
+                      SizedBox(height: 15.h),
                       Text(
                         widget.brand,
-                        style: TextStyle(fontSize: 14.sp, color: Colors.black),
+                        style: TextStyle(fontSize: 12.sp, color: Colors.black),
                       ),
                       SizedBox(height: 8.h),
                       Text(
                         widget.productName,
-                        style: TextStyle(fontSize: 13.sp, color: Color(0xFF465461)),
+                        style: TextStyle(fontSize: 14.sp, color: Color(0xFF465461)),
                         maxLines: 4,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Spacer(), // 👈 가격을 아래로 밀어냄
-                      Text(
-                        '5,000 원',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          color: Color(0xFFFF5722),
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
-                        style: TextStyle(
-                          fontSize: 17.sp,
-                          color: Color(0xFF8D969D),
-                          decoration: TextDecoration.lineThrough,
-                        ),
+                      // 1. 상품명 밑에 금액 바로 추가!
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Text(
+                            '${NumberFormat('#,###').format(widget.purchasePrice)} 원',
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              color: Color(0xFFFF5722),
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
+                            style: TextStyle(
+                              fontSize: 17.sp,
+                              color: Color(0xFF8D969D),
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -130,34 +134,41 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
               ),
             ],
           ),
-          SizedBox(height: 20,),
-          // 버튼들
-          // 버튼들
-          Column(
+          SizedBox(height: 25.h,),
+          Row(
             children: [
-              _buildOutlinedButton(
-                context,
-                text: '포인트발급',
-                onPressed: !_giftCodeExists ? widget.onRefundPressed : null,
-                enabled: !_giftCodeExists,
+              // 포인트발급
+              Expanded(
+                child: _buildOutlinedButton(
+                  context,
+                  text: '포인트발급',
+                  onPressed: !_giftCodeExists ? widget.onRefundPressed : null,
+                  enabled: !_giftCodeExists,
+                ),
               ),
-
-              SizedBox(height: 8.h),
-              _buildOutlinedButton(
-                context,
-                text: _giftCodeExists ? '선물코드 확인' : '선물하기',
-                onPressed: widget.onGiftPressed, // ✅ 항상 클릭 가능
-                enabled: true, // ✅ 항상 활성화 상태
+              SizedBox(width: 8.w),
+              // 선물하기
+              Expanded(
+                child: _buildOutlinedButton(
+                  context,
+                  text: _giftCodeExists ? '선물코드 확인' : '선물하기',
+                  onPressed: widget.onGiftPressed,
+                  enabled: true,
+                ),
               ),
-              SizedBox(height: 8.h),
-              _buildElevatedButton(
-                context,
-                text: '배송신청',
-                onPressed: widget.onDeliveryPressed,
-                enabled: !_giftCodeExists && !_loading, // ✅ 선물코드 있으면 비활성화
+              SizedBox(width: 8.w),
+              // 배송신청
+              Expanded(
+                child: _buildElevatedButton(
+                  context,
+                  text: '배송신청',
+                  onPressed: widget.onDeliveryPressed,
+                  enabled: !_giftCodeExists && !_loading,
+                ),
               ),
             ],
           ),
+
 
         ],
       ),
@@ -170,22 +181,27 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     required bool enabled,
   }) {
     return SizedBox(
-      width: double.infinity,
-      height: 52,
+      width: double.infinity, // ✅ 가로 꽉 차게
+      height: 42,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
+          padding: EdgeInsets.zero, // ✅ 패딩 없앰
           side: BorderSide(
-            color: enabled ? Theme.of(context).primaryColor :Theme.of(context).primaryColor.withOpacity(0.3),
+            color: enabled
+                ? Theme.of(context).primaryColor
+                : Theme.of(context).primaryColor.withOpacity(0.3),
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15), // ✅ radius 15
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
         child: Text(
           text,
           style: TextStyle(
-            color: enabled ? Theme.of(context).primaryColor : Theme.of(context).primaryColor.withOpacity(0.3),
+            color: enabled
+                ? Theme.of(context).primaryColor
+                : Theme.of(context).primaryColor.withOpacity(0.3),
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -195,35 +211,36 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
   }
 
 
-
   Widget _buildElevatedButton(BuildContext context, {
     required String text,
     required VoidCallback onPressed,
     required bool enabled,
   }) {
     return SizedBox(
-      width: double.infinity,
-      height: 52,
+      width: double.infinity, // ✅ 가로 꽉 차게
+      height: 42,
       child: ElevatedButton(
-        onPressed: enabled ? onPressed : null, // ✅ 선택 불가 처리
+        onPressed: enabled ? onPressed : null,
         style: ButtonStyle(
           backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
             if (states.contains(MaterialState.disabled)) {
-              return Theme.of(context).primaryColor.withOpacity(0.3); // ✅ 흐릿한 색
+              return Theme.of(context).primaryColor.withOpacity(0.3);
             }
-            return Theme.of(context).primaryColor; // ✅ 일반 색
+            return Theme.of(context).primaryColor;
           }),
           shape: MaterialStateProperty.all<RoundedRectangleBorder>(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
+          padding: MaterialStateProperty.all<EdgeInsets>(EdgeInsets.zero), // ✅ 패딩 없앰
         ),
         child: Text(
           text,
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: 14,
           ),
         ),
       ),

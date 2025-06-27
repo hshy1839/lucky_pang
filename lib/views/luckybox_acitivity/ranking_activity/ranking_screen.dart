@@ -121,7 +121,6 @@ class _RankingScreenState extends State<RankingScreen> {
                       backgroundColor: Colors.transparent,
                       flexibleSpace: LayoutBuilder(
                         builder: (context, constraints) {
-                          final top = constraints.biggest.height;
                           return FlexibleSpaceBar(
                             background: Padding(
                               padding: EdgeInsets.only(top: 40.h),
@@ -202,6 +201,15 @@ class _RankingScreenState extends State<RankingScreen> {
                           setState(() {
                             showRealtimeLog = selected;
                             fetchUnboxedLogs();
+                            if (_scrollController.hasClients) {
+                              _scrollController.animateTo(
+                                0.0,
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.ease,
+                              );
+                            }
+                            // 그리고 무조건 카드형(사각형)으로 복구!
+                            isCollapsed = false;
                           });
                         },
                       ),

@@ -160,7 +160,7 @@ class _ShippingInfoScreenState extends State<ShippingInfoScreen> {
                       });
                     },
                     onEdit: () {},
-                    onDelete: () {},
+                    onDeleted: () { fetchShippings(); },
                   ),
                 );
               },

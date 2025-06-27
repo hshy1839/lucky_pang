@@ -38,7 +38,7 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
               Column(
                 children: [
                   Image.asset(
-                    'assets/icons/app_icon.png',
+                    'assets/icons/app_logo.png',
                     width: 60,
                     height: 60,
                   ),

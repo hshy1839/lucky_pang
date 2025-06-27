@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
   final bool isSelected;
   final void Function(bool) onTap;
+  final ScrollController _scrollController = ScrollController();
 
   RankingTabBarHeader({
     required this.isSelected,

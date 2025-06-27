@@ -132,11 +132,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: CircleAvatar(
                   radius: 40,
                   backgroundColor: Colors.grey.shade200,
-                  backgroundImage: (imageUrl != null && imageUrl.isNotEmpty) ? NetworkImage(imageUrl) : null,
-                  child: (imageUrl == null || imageUrl.isEmpty)
-                      ? Icon(Icons.person, size: 50, color: Colors.grey)
-                      : null,
+                  child: (imageUrl != null && imageUrl.isNotEmpty)
+                      ? ClipOval(
+                    child: Image.network(
+                      imageUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(Icons.person, size: 60, color: Colors.grey.shade400);
+                      },
+                    ),
+                  )
+                      : Icon(Icons.person, size: 80, color: Colors.grey.shade400),
                 ),
+
+
 
               ),
             ),

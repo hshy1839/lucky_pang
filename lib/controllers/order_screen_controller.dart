@@ -125,19 +125,33 @@ class OrderScreenController {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('결제 완료'),
-          content: Text('$orderCount개의 박스가 성공적으로 구매되었습니다.'),
+          backgroundColor: Colors.white,
+          title: const Text(
+            '결제 완료',
+            style: TextStyle(
+              fontSize: 18,           // 👉 글씨 크기 줄이고
+              fontWeight: FontWeight.bold, // 👉 Bold 적용
+              color: Colors.black,
+            ),
+          ),
+          content: Text(
+            '$orderCount개의 박스가 성공적으로 구매되었습니다.',
+            style: const TextStyle(color: Colors.black),
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/luckyboxOrder');
               },
-              child: const Text('확인'),
-            )
+              child: const Text(
+                '확인',
+                style: TextStyle(color: Colors.blue), // 👉 확인 버튼 파란색
+              ),
+            ),
           ],
         ),
-      );
+    );
     } else {
       showDialog(
         context: context,
