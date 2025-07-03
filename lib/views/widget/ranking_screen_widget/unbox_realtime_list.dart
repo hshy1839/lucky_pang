@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -93,18 +94,24 @@ class UnboxRealtimeList extends StatelessWidget {
                                   backgroundColor: Colors.grey[300],
                                   child: userProfileImage != null
                                       ? ClipOval(
-                                    child: Image.network(
-                                      userProfileImage,
+                                    child: CachedNetworkImage(
+                                      imageUrl: userProfileImage,
                                       fit: BoxFit.cover,
                                       width: 48.r,
                                       height: 48.r,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Icon(Icons.person, size: 28.r, color: Colors.grey[600]);
-                                      },
+                                      placeholder: (context, url) => Center(
+                                        child: CircularProgressIndicator(
+                                          color: Theme.of(context).primaryColor,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
                                     ),
                                   )
                                       : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
                                 ),
+
                                 SizedBox(width: 12.w),
                                 Expanded(
                                   child: Text(
@@ -216,18 +223,24 @@ class UnboxRealtimeList extends StatelessWidget {
                           backgroundColor: Colors.grey[300],
                           child: userProfileImage != null
                               ? ClipOval(
-                            child: Image.network(
-                              userProfileImage,
+                            child: CachedNetworkImage(
+                              imageUrl: userProfileImage,
                               fit: BoxFit.cover,
                               width: 48.r,
                               height: 48.r,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Icon(Icons.person, size: 28.r, color: Colors.grey[600]);
-                              },
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(
+                                  color: Theme.of(context).primaryColor,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
                             ),
                           )
                               : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
                         ),
+
                         SizedBox(width: 12.w),
                         Expanded(
                           child: Text(

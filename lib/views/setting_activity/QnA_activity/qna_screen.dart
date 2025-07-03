@@ -67,7 +67,9 @@ class _QnaScreenState extends State<QnaScreen> {
 
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator()) // 로딩 중일 때 표시
+          ? Center(child: CircularProgressIndicator(
+        color: Theme.of(context).primaryColor,
+      )) // 로딩 중일 때 표시
           : qnaQuestions.isEmpty
           ? Center(child: Text('문의 내역이 없습니다.')) // 데이터가 없을 때 표시
           : ListView.builder(

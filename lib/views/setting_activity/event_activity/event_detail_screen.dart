@@ -23,7 +23,9 @@ class EventDetailScreen extends StatelessWidget {
         future: controller.fetchEventById(eventId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator(
+              color: Theme.of(context).primaryColor,
+            ));
           }
           if (!snapshot.hasData || snapshot.data == null) {
             return Center(child: Text('이벤트를 불러오지 못했습니다.'));

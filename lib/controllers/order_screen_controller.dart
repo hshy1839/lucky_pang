@@ -1,5 +1,8 @@
 // controllers/order_screen_controller.dart
 import 'dart:convert';
+import 'package:bootpay/bootpay.dart';
+import 'package:bootpay/model/item.dart';
+import 'package:bootpay/model/payload.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -59,48 +62,30 @@ class OrderScreenController {
       return;
     }
 
-    // ✅ Payletter PG 결제일 경우
-    if (totalAmount > 0 && paymentMethod == '신용/체크카드') {
-      final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/payletter'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          "box": selectedBox['_id'],
-          "boxCount": quantity,
-          "paymentAmount": totalAmount,
-          "amount" : selectedBox['price'],
-          "pointUsed": pointsUsed,
-          "orderNo": DateTime.now().millisecondsSinceEpoch.toString(),
-          "productName": selectedBox['name'],
-          "callbackUrl": "https://yourdomain.com/payletter/callback",
-          "returnUrl": "https://yourdomain.com/payletter/return",
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final paymentUrl = data['paymentUrl'];
-
-        if (paymentUrl != null) {
-          Navigator.pushNamed(context, '/webview', arguments: paymentUrl);
-          return;
-        }
-      }
-
-      showDialog(
+    // 💡 카드/계좌 결제: 부트페이 결제 → 성공 시 서버로 포인트/결제금액/수량 한번에 전송(혼합결제 포함)
+    if (totalAmount > 0 && (paymentMethod == '신용/체크카드' || paymentMethod == '계좌이체')) {
+      final String orderId = DateTime.now().millisecondsSinceEpoch.toString();
+      await launchBootpayPayment(
         context: context,
-        builder: (_) => const AlertDialog(
-          title: Text('결제 실패'),
-          content: Text('PG 결제 URL을 가져오지 못했습니다.'),
-        ),
+        boxId: selectedBox['_id'],
+        boxName: selectedBox['name'],
+        amount: totalAmount,
+        orderId: orderId,
+        userPhone: '', // 필요시
+        payMethod: paymentMethod == '계좌이체' ? 'bank' : 'card',
+        pointsUsed: pointsUsed,  // 👈 필수!
+        quantity: quantity,      // 👈 필수!
+        onSuccess: () {
+          Navigator.pushNamed(context, '/luckyboxOrder');
+        },
+        onError: (errMsg) {
+          // 필요시 에러 처리
+        },
       );
       return;
     }
 
-    // ✅ 포인트 결제 또는 무통장 등의 일반 처리
+    // ✅ 포인트 결제만
     final response = await http.post(
       Uri.parse('${BaseUrl.value}:7778/api/order'),
       headers: {
@@ -110,8 +95,8 @@ class OrderScreenController {
       body: json.encode({
         "box": selectedBox['_id'],
         "boxCount": quantity,
-        "paymentType": totalAmount == 0 ? "point" : "mixed",
-        "paymentAmount": totalAmount,
+        "paymentType": "point",
+        "paymentAmount": 0,
         "pointUsed": pointsUsed,
         "deliveryFee": {"point": 0, "cash": 0}
       }),
@@ -128,11 +113,7 @@ class OrderScreenController {
           backgroundColor: Colors.white,
           title: const Text(
             '결제 완료',
-            style: TextStyle(
-              fontSize: 18,           // 👉 글씨 크기 줄이고
-              fontWeight: FontWeight.bold, // 👉 Bold 적용
-              color: Colors.black,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
           ),
           content: Text(
             '$orderCount개의 박스가 성공적으로 구매되었습니다.',
@@ -144,14 +125,11 @@ class OrderScreenController {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/luckyboxOrder');
               },
-              child: const Text(
-                '확인',
-                style: TextStyle(color: Colors.blue), // 👉 확인 버튼 파란색
-              ),
+              child: const Text('확인', style: TextStyle(color: Colors.blue)),
             ),
           ],
         ),
-    );
+      );
     } else {
       showDialog(
         context: context,
@@ -168,6 +146,7 @@ class OrderScreenController {
       );
     }
   }
+
 
 
 
@@ -432,6 +411,100 @@ class OrderScreenController {
     }
   }
 
+  static Future<void> launchBootpayPayment({
+    required BuildContext context,
+    required String boxName,
+    required String boxId,
+    required int amount,
+    required String orderId,
+    required String userPhone,
+    required String payMethod,
+    required int pointsUsed,        // 👈 추가
+    required int quantity,          // 👈 추가
+    required Function() onSuccess,
+    Function(String error)? onError,
+  }) async {
+    Payload payload = Payload();
+    payload.pg = '페이레터';
+    payload.method = payMethod;
+    payload.orderName = boxName;
+    payload.price = amount.toDouble();
+    payload.orderId = orderId;
+    payload.webApplicationId = '61e7c9c9e38c30001f7b8247';
+    payload.androidApplicationId = '61e7c9c9e38c30001f7b8248';
+    payload.iosApplicationId = '61e7c9c9e38c30001f7b8249';
+
+    payload.items = [
+      Item(
+        name: boxName,
+        qty: quantity,
+        id: orderId,
+        price: amount.toDouble(),
+      ),
+    ];
+
+    Bootpay().requestPayment(
+      context: context,
+      payload: payload,
+      showCloseButton: true,
+      onCancel: (data) {
+        if (onError != null) onError('결제 취소');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('결제가 취소되었습니다.'), backgroundColor: Colors.red),
+        );
+      },
+      onError: (data) {
+        if (onError != null) onError(data.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('결제 중 오류가 발생했습니다.'), backgroundColor: Colors.red),
+        );
+      },
+      onClose: () {
+        Bootpay().dismiss(context);
+      },
+      onDone: (data) async {
+        try {
+          final parsed = data is String ? jsonDecode(data) : data;
+          final receiptId = parsed['data']['receipt_id'];
+          final token = await _storage.read(key: 'token');
+
+          // 서버에 결제검증+주문생성 요청(혼합결제 가능)
+          final res = await http.post(
+            Uri.parse('${BaseUrl.value}:7778/api/bootpay/verify'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'receipt_id': receiptId,
+              'boxId': boxId,
+              'amount': amount,
+              'paymentType': payMethod == 'card' ? 'card' : 'bank',
+              'pointUsed': pointsUsed,
+              'boxCount': quantity,
+            }),
+          );
+
+          if (res.statusCode == 200) {
+            onSuccess();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('결제 성공!')),
+            );
+          } else {
+            if (onError != null) onError('결제 검증 실패');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('결제 검증에 실패했습니다.'), backgroundColor: Colors.red),
+            );
+          }
+        } catch (e) {
+          if (onError != null) onError('결제 검증 중 예외 발생');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('결제 검증 중 오류'), backgroundColor: Colors.red),
+          );
+        }
+      },
+    );
+  }
 
   static Future<void> updateOrderStatus({
     required String orderId,

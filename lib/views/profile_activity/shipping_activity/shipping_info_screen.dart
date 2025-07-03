@@ -53,7 +53,9 @@ class _ShippingInfoScreenState extends State<ShippingInfoScreen> {
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ?  Center(child: CircularProgressIndicator(
+        color: Theme.of(context).primaryColor,
+      ))
           : shippingList.isEmpty
           ? buildEmptyState(context)
           : buildShippingCards(context),
@@ -127,30 +129,15 @@ class _ShippingInfoScreenState extends State<ShippingInfoScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(context, '/shippingCreate');
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('배송지 추가하기'),
-            style: ElevatedButton.styleFrom(
-              minimumSize: Size(double.infinity, 48.h),
-              backgroundColor: Colors.grey.shade300,
-              foregroundColor: Colors.black,
-            ),
-          ),
-          SizedBox(height: 16.h),
-          SizedBox(
-            height: 150.h,
+          // 배송지 리스트 (스크롤)
+          Expanded(
             child: ListView.builder(
-              scrollDirection: Axis.horizontal,
               itemCount: shippingList.length,
               itemBuilder: (context, index) {
                 final shipping = shippingList[index];
                 final id = shipping['_id'];
                 return Container(
-                  width: 250.w,
-                  margin: EdgeInsets.only(right: 12.w),
+                  margin: EdgeInsets.only(bottom: 12.h),
                   child: ShippingCard(
                     shipping: shipping,
                     isSelected: selectedShippingId == id,
@@ -166,8 +153,31 @@ class _ShippingInfoScreenState extends State<ShippingInfoScreen> {
               },
             ),
           ),
+          SizedBox(height: 16.h),
+          SafeArea(
+            child: SizedBox(
+              width: double.infinity,
+              height: 65.h,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/shippingCreate');
+                },
+                icon: const Icon(Icons.add, color: Colors.white,),
+                label: const Text('배송지 추가하기'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 48.h),
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+
 }

@@ -70,7 +70,9 @@ class _FaqScreenState extends State<FaqScreen> with SingleTickerProviderStateMix
         title: const Text('FAQ', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(
+          color: Theme.of(context).primaryColor,
+      ))
           : Column(
         children: [
           Container(

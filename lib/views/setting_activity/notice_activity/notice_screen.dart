@@ -49,11 +49,10 @@ class _NoticeScreenState extends State<NoticeScreen> {
 
       body: ListView.separated(
         itemCount: notices.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade300),
+        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[300]),
         itemBuilder: (context, index) {
           final notice = notices[index];
-
-          return InkWell( // ✅ return 추가
+          return InkWell(
             onTap: () {
               Navigator.push(
                 context,
@@ -81,8 +80,11 @@ class _NoticeScreenState extends State<NoticeScreen> {
               ),
             ),
           );
-        }
+        },
       ),
+
+
     );
   }
 }
+

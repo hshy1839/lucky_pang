@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -20,6 +21,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
   String selectedTab = 'total';
   final PointController _pointController = PointController();
   final UserInfoScreenController _controller = UserInfoScreenController();
+  bool isLoading = true;
 
   String? profileImage = '';
   final storage = FlutterSecureStorage();
@@ -35,6 +37,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
   }
 
   Future<void> loadData() async {
+    setState(() => isLoading = true);
     final userId = await storage.read(key: 'userId');
     final token = await storage.read(key: 'token');
 
@@ -53,14 +56,16 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
       pointLogs = data['points'] ?? [];
     }
 
-    setState(() {});
+    setState(() => isLoading = false);
   }
 
   Future<void> loadUserInfo() async {
+    setState(() => isLoading = true);
     await _controller.fetchUserInfo(context);
     setState(() {
       nickname = _controller.nickname;
       profileImage = _controller.profileImage;
+      isLoading = false;
     });
   }
 
@@ -70,7 +75,26 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
     final String? imageUrl = profileImage?.isNotEmpty == true
         ? '${BaseUrl.value}:7778/$profileImage'
         : null;
-
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          leading: const BackButton(color: Colors.black),
+          centerTitle: true,
+          title: const Text(
+            '현재 포인트 내역',
+            style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          elevation: 0,
+        ),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).primaryColor,
+          ), // 여기만 바꿔주면 됨!
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -83,7 +107,9 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
         ),
         elevation: 0,
       ),
+
       body: SingleChildScrollView(
+
         child: Column(
           children: [
             // 🔹 상단 카드
@@ -111,22 +137,13 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
                         height: 40,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.grey.shade200,
-                          image: (imageUrl != null && imageUrl.isNotEmpty)
-                              ? DecorationImage(
-                            image: NetworkImage(imageUrl),
-                            fit: BoxFit.cover,
-                          )
-                              : null,
                           boxShadow: [
-                            // 오른쪽 위 방향 그림자 (주황색)
                             BoxShadow(
                               color: Color(0xFFFF5722),
                               offset: Offset(2, -2),
                               blurRadius: 0,
                               spreadRadius: 0,
                             ),
-                            // 왼쪽 아래 방향 그림자 (보라색)
                             BoxShadow(
                               color: Color(0xFFC622FF),
                               offset: Offset(-2, 2),
@@ -135,12 +152,24 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
                             ),
                           ],
                         ),
-                        child: (imageUrl == null || imageUrl.isEmpty)
-                            ? const FittedBox(
-                          fit: BoxFit.cover,
-                          child: Icon(Icons.person, color: Colors.grey),
-                        )
-                            : null,
+                        child: ClipOval(
+                          child: (imageUrl != null && imageUrl.isNotEmpty)
+                              ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Center(
+                              child: CircularProgressIndicator(
+                                color: Theme.of(context).primaryColor,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.person, color: Colors.grey, size: 24),
+                          )
+                              : Icon(Icons.person, color: Colors.grey, size: 24),
+                        ),
                       ),
                       SizedBox(width: 12.w),
                       Text(
@@ -266,6 +295,25 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
   }
 
   Widget _buildPointList() {
+
+    List<dynamic> scheduledPoints = pointLogs
+        .where((item) => (item['expired_at'] != null && item['expired_at'].toString().isNotEmpty))
+        .toList();
+
+    List<dynamic> dataToShow = selectedTab == 'scheduled' ? scheduledPoints : pointLogs;
+
+    if (selectedTab == 'scheduled' && scheduledPoints.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Text(
+            '소멸예정 포인트가 없습니다',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -280,8 +328,15 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
         final formattedAmount = NumberFormat('#,###').format(amount.abs());
         final formattedDate = item['createdAt']?.toString().substring(0, 19).replaceAll('T', ' ') ?? '';
 
+        String? expiredAt = item['expired_at'];
+        String expiredText = '';
+        if (selectedTab == 'scheduled' && expiredAt != null && expiredAt.isNotEmpty) {
+          expiredText = '소멸 예정일: ' + expiredAt.substring(0, 10);
+        }
+
+
         return Container(
-          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+          padding: EdgeInsets.symmetric(vertical: 25.h, horizontal: 16.w),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16.r),
@@ -293,6 +348,10 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(item['description'] ?? '-', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500)),
+              if (expiredText.isNotEmpty) ...[
+                SizedBox(height: 4.h),
+                Text(expiredText, style: TextStyle(fontSize: 12.sp, color: Colors.red)),
+              ],
               SizedBox(height: 4.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

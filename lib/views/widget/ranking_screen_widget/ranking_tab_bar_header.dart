@@ -33,7 +33,7 @@ class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
       child: Container(
         color: Colors.white,
         alignment: Alignment.topCenter,
-        padding: EdgeInsets.only(top: 50.h),
+        padding: EdgeInsets.only(top: 40.h, ),
         child: Transform.scale(
           scale: scale,
           alignment: Alignment.center,
@@ -48,7 +48,7 @@ class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
                   _tabButton(context, '위클리 랭킹', !isSelected, () => onTap(false)),
                 ],
               ),
-              SizedBox(height: 40.h),
+              SizedBox(height: 50.h),
 
               Text(
                 "당첨을 축하드립니다!",
@@ -59,6 +59,7 @@ class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
                 ),
                 textAlign: TextAlign.center,
               ),
+              SizedBox(height: 0.h),
             ],
           ),
         ),

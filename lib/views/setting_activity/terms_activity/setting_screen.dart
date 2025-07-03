@@ -25,8 +25,7 @@ class SettingScreen extends StatelessWidget {
           _divider(),
           _buildListTile(context, title: '이벤트', route: '/event'),
           _divider(),
-          _buildListTile(context, title: '알림 설정', route: '/notifications'),
-          _divider(),
+
           _buildListTile(context, title: 'FAQ', route: '/faq'),
           _divider(),
           _buildListTile(context, title: '이용약관', route: '/serviceTerm'),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../controllers/coupon_controller.dart';
 
 class CouponCodeScreen extends StatefulWidget {
   const CouponCodeScreen({super.key});
@@ -9,31 +10,81 @@ class CouponCodeScreen extends StatefulWidget {
 }
 
 class _CouponCodeScreenState extends State<CouponCodeScreen> {
-  final TextEditingController _couponController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
+  bool _isLoading = false;
+  bool _isInvalidCode = false;
   bool _isButtonEnabled = false;
-
+  final couponController = CouponController();
   @override
   void initState() {
     super.initState();
-    _couponController.addListener(() {
-      final isValid = _couponController.text.trim().length >= 2 &&
-          _couponController.text.trim().length <= 12;
+    _codeController.addListener(() {
+      final isValid = _codeController.text.trim().length >= 2 &&
+          _codeController.text.trim().length <= 12;
       if (_isButtonEnabled != isValid) {
-        setState(() => _isButtonEnabled = isValid);
+        setState(() {
+          _isButtonEnabled = isValid;
+        });
       }
     });
   }
 
+  Future<void> _submitCode() async {
+    final code = _codeController.text.trim();
+
+    if (code.length < 2 || code.length > 12) {
+      setState(() => _isInvalidCode = true);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _isInvalidCode = false;
+    });
+
+    final result = await couponController.useCoupon(code);
+
+    setState(() => _isLoading = false);
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? '쿠폰 적용 성공!')));
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? '쿠폰 적용 실패')));
+    }
+  }
+
   @override
   void dispose() {
-    _couponController.dispose();
+    _codeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: const BackButton(color: Colors.black),
+          centerTitle: true,
+          title: const Text(
+            '쿠폰코드 입력',
+            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -43,11 +94,7 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
         centerTitle: true,
         title: const Text(
           '쿠폰코드 입력',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),
       body: SingleChildScrollView(
@@ -56,27 +103,21 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: 30.h),
-            Container(
-              width: double.infinity,
-              child: Image.asset(
-                'assets/images/coupon_code_image.png',
-                fit: BoxFit.contain,
-              ),
-            ),
+            // 이미지는 필요하면 추가
             SizedBox(height: 30.h),
             Text(
-              '쿠폰번호를 입력하면 럭키박스를 받을 수 있어요',
+              '쿠폰 코드를 입력하면 포인트가 지급됩니다!',
               style: TextStyle(
                 fontSize: 14.sp,
                 color: Colors.black,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 30.h,),
+            SizedBox(height: 30.h),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '   쿠폰코드 입력',
+                '    쿠폰코드 입력',
                 style: TextStyle(
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w400,
@@ -92,7 +133,7 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
                 borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x1F000000), // #0000001F
+                    color: Color(0x1F000000),
                     offset: Offset(0, 1),
                     blurRadius: 3,
                   ),
@@ -100,7 +141,7 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
               ),
               padding: EdgeInsets.symmetric(horizontal: 12.w),
               child: TextField(
-                controller: _couponController,
+                controller: _codeController,
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   hintText: '2~12자 쿠폰코드를 입력해 주세요',
@@ -111,16 +152,25 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
                 ),
               ),
             ),
+            if (_isInvalidCode) ...[
+              SizedBox(height: 8.h),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '쿠폰 코드는 2~12자입니다.',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ],
             SizedBox(height: 36.h),
             SizedBox(
               width: double.infinity,
               height: 56.h,
               child: ElevatedButton(
-                onPressed: _isButtonEnabled
-                    ? () {
-                  // 실제 제출 처리 로직
-                }
-                    : null,
+                onPressed: (_isButtonEnabled && !_isLoading) ? _submitCode : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _isButtonEnabled
                       ? const Color(0xFFFF5C43)
@@ -129,7 +179,9 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
                     borderRadius: BorderRadius.circular(15.r),
                   ),
                 ),
-                child: Text(
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
                   '쿠폰코드 입력하기',
                   style: TextStyle(
                     fontSize: 16.sp,

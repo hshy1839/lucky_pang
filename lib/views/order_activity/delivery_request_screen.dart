@@ -16,7 +16,7 @@ class DeliveryRequestScreen extends StatefulWidget {
 
 class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
   int usedPoints = 0;
-  int totalPoints = 17000;
+  int totalPoints = 0;
   String selectedPayment = '';
   bool agreedAll = false;
   bool agreedPurchase = false;
@@ -48,14 +48,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
   }
 
   void _fetchUserPoints() async {
-    // userId를 어디서 가져오는지에 맞춰 아래 코드 수정
-    // 예시: SharedPreferences 사용
-    // final prefs = await SharedPreferences.getInstance();
-    // final userId = prefs.getString('userId');
-    // or
-    // String userId = ...; // 네가 관리하는 방식대로
-    final userId = await _getUserId(); // 커스텀 함수로 구현한다고 가정
-
+    final userId = await _getUserId();
     if (userId != null) {
       final total = await _pointController.fetchUserTotalPoints(userId);
       setState(() {
@@ -63,8 +56,9 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
       });
     }
   }
+
   Future<String?> _getUserId() async {
-     const _storage = FlutterSecureStorage();
+    const _storage = FlutterSecureStorage();
     return await _storage.read(key: 'userId');
   }
 
@@ -76,6 +70,19 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
           ? (list.firstWhere((s) => s['is_default'] == true, orElse: () => list.first))['_id']
           : null;
       isLoading = false;
+    });
+  }
+
+  void applyMaxUsablePoints() {
+    final shippingFee = product['shippingFee'] ?? 0;
+    final applied = totalPoints >= shippingFee ? shippingFee : totalPoints;
+    final formatted = numberFormat.format(applied);
+    setState(() {
+      usedPoints = applied;
+      _pointsController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
     });
   }
 
@@ -93,7 +100,6 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
 
     product = args['product'];
     orderId = args['orderId'];
-    final decidedAt = args['decidedAt'];
     box = args['box'];
 
     return Scaffold(
@@ -111,8 +117,8 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 children: [
                   Image.network(
                     '${BaseUrl.value}:7778${product['mainImage']}',
-                    width: 80.w,
-                    height: 80.w,
+                    width: 100.w,
+                    height: 100.w,
                   ),
                   SizedBox(width: 12.w),
                   Expanded(
@@ -129,23 +135,23 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: 50.h),
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pushNamed(context, '/shippingCreate');
                 },
-                icon: Icon(Icons.add, color: Colors.white), // 아이콘도 흰색으로
-                label: Text('배송지 추가하기', style: TextStyle(color: Colors.white)), // 텍스트 흰색!
+                icon: Icon(Icons.add, color: Colors.white),
+                label: Text('배송지 추가하기', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 48.h),
-                  backgroundColor: Theme.of(context).primaryColor, // 배경 프라이머리 컬러
+                  backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r), // 라운드 radius 확실히 줄임
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                 ),
               ),
-
+              SizedBox(height: 20),
               if (shippingList.isNotEmpty) ...[
                 SizedBox(height: 16.h),
                 SizedBox(
@@ -170,9 +176,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                           },
                           onEdit: () {},
                           onDeleted: () async {
-                            // 삭제 후 목록 새로고침
                             await _fetchShipping();
-                            // 혹시 선택 배송지가 삭제됐다면 선택값도 리셋
                             if (selectedShippingId == id) {
                               setState(() {
                                 selectedShippingId = shippingList.isNotEmpty ? shippingList.first['_id'] : null;
@@ -181,43 +185,95 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                             }
                           },
                         ),
-
                       );
                     },
                   ),
                 ),
               ],
               SizedBox(height: 40.h),
-              Text('보유 포인트: ${numberFormat.format(totalPoints)} P', style: TextStyle(fontSize: 14.sp)),
+
+              /// 💡 [아래부터 완전히 LuckyBoxPurchasePage 스타일] 💡
+              // 1. 보유포인트 (Row)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '보유 포인트',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 18.sp,
+                    ),
+                  ),
+                  Text(
+                    '${numberFormat.format(totalPoints)} P',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                      fontSize: 18.sp,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 30),
+              // 2. 포인트 입력창 & 전액사용 버튼 (Row)
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _pointsController,
                       keyboardType: TextInputType.number,
-                      decoration: InputDecoration(hintText: '0'),
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        hintText: '0',
+                        suffixText: 'P',
+                        suffixStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                          fontSize: 16.sp,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 16.h),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10.r),
+                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                        ),
+                      ),
                       onChanged: (val) {
-                        setState(() {
-                          int input = int.tryParse(val) ?? 0;
-                          final shippingFee = product['shippingFee'] ?? 0;
-                          usedPoints = input.clamp(0, totalPoints);
-                          if (usedPoints > shippingFee) {
-                            usedPoints = shippingFee;
-                            _pointsController.text = usedPoints.toString();
-                          }
-                        });
+                        String numeric = val.replaceAll(RegExp(r'[^0-9]'), '');
+                        int input = int.tryParse(numeric) ?? 0;
+                        if (input > totalPoints) input = totalPoints;
+                        if (input > (product['shippingFee'] ?? 0)) input = product['shippingFee'] ?? 0;
+
+                        final formatted = numberFormat.format(input);
+
+                        if (usedPoints != input) {
+                          setState(() {
+                            usedPoints = input;
+                          });
+                        }
+                        if (val != formatted) {
+                          _pointsController.value = TextEditingValue(
+                            text: formatted,
+                            selection: TextSelection.collapsed(offset: formatted.length),
+                          );
+                        }
                       },
                     ),
                   ),
                   SizedBox(width: 8.w),
                   ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        final shippingFee = product['shippingFee'] ?? 0;
-                        usedPoints = totalPoints >= shippingFee ? shippingFee : totalPoints;
-                        _pointsController.text = usedPoints.toString();
-                      });
-                    },
+                    onPressed: applyMaxUsablePoints,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                     ),
@@ -226,67 +282,101 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                 ],
               ),
 
-              SizedBox(height: 24.h),
-              Text('결제수단', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-              Wrap(
-                spacing: 10.w,
-                children: [
-                  _buildPaymentOption('계좌이체'),
-                  _buildPaymentOption('신용/체크카드'),
-                  _buildPaymentOption('카카오페이'),
-                ],
+              SizedBox(height: 40),
+
+              // 3. 결제수단 (ChoiceChip)
+              const Text(
+                '결제 수단',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.black,
+                ),
               ),
-              SizedBox(height: 24.h),
-              Text(
-                '상품은 2~7 영업일 이내에 받아보실 수 있습니다.\n단, 상품의 종류나 신청 시기, 지역 등의 원인에 의해 배송이 지연될 수 있다는 점 참고 부탁드립니다.',
-                style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+              SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: _paymentOption('계좌이체'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: _paymentOption('신용/체크카드'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              SizedBox(height: 24.h),
+
+              SizedBox(height: 40),
               CheckboxListTile(
-                title: Text('모든 내용을 확인하였으며 결제에 동의합니다.'),
+                activeColor: Colors.black,
+                checkColor: Colors.white,
+                title: const Text('모든 내용을 확인하였으며 결제에 동의합니다.',
+                    style: TextStyle(fontSize: 16, color: Colors.black)),
                 value: agreedAll,
                 onChanged: (val) {
                   setState(() {
                     agreedAll = val ?? false;
-                    agreedPurchase = val!;
-                    agreedReturn = val!;
+                    agreedPurchase = val ?? false;
+                    agreedReturn = val ?? false;
                   });
                 },
-                activeColor: Colors.black, // 체크됐을 때 체크박스 배경색
-                checkColor: Colors.white, // 체크(✔) 색상
-                // tileColor는 필요없으면 생략 가능
               ),
               CheckboxListTile(
-                title: Text.rich(TextSpan(
-                  children: [TextSpan(text: '구매 확인 동의', style: TextStyle(color: Colors.blue))],
-                )),
+                activeColor: Colors.black,
+                checkColor: Colors.white,
+                title: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/purchase_term'),
+                  child: const Text('구매 확인 동의', style: TextStyle(color: Colors.blue)),
+                ),
                 value: agreedPurchase,
                 onChanged: (val) => setState(() => agreedPurchase = val ?? false),
-                activeColor: Colors.black,
-                checkColor: Colors.white,
               ),
               CheckboxListTile(
-                title: Text.rich(TextSpan(
-                  children: [TextSpan(text: '교환/환불 정책 동의', style: TextStyle(color: Colors.blue))],
-                )),
-                value: agreedReturn,
-                onChanged: (val) => setState(() => agreedReturn = val ?? false),
                 activeColor: Colors.black,
                 checkColor: Colors.white,
+                title: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/refund_term'),
+                  child: const Text('교환/환불 정책 동의', style: TextStyle(color: Colors.blue)),
+                ),
+                value: agreedReturn,
+                onChanged: (val) => setState(() => agreedReturn = val ?? false),
               ),
-              SizedBox(height: 24.h),
+
+              SizedBox(height: 50),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('총 결제금액', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-                  Text('${totalAmount}원',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
+                  const Text(
+                    '총 결제금액',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    '${numberFormat.format(totalAmount)}원',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
                 ],
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
-                height: 56.h,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: () async {
                     if (!agreedAll || !agreedPurchase || !agreedReturn) {
@@ -300,9 +390,6 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       );
                       return;
                     }
-
-
-
                     if (selectedShippingId == null) {
                       showDialog(
                         context: context,
@@ -314,7 +401,6 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       );
                       return;
                     }
-
                     if (totalAmount > 0 && selectedPayment.isEmpty) {
                       showDialog(
                         context: context,
@@ -327,7 +413,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       return;
                     }
 
-                    if (selectedPayment == '신용/체크카드') {
+                    if (totalAmount > 0 && selectedPayment == '신용/체크카드') {
                       await OrderScreenController.requestCardPayment(
                         context: context,
                         boxId: box['_id'],
@@ -337,39 +423,34 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       return;
                     }
 
-                    final mappedPaymentType = selectedPayment == '신용/체크카드'
-                        ? 'card'
-                        : selectedPayment == '계좌이체'
-                        ? 'bank'
-                        : selectedPayment == '카카오페이'
-                        ? 'kakaopay'
-                        : 'point';
-    await OrderScreenController.updateOrderStatus(
-    orderId: orderId,
-    status: 'shipped',
-    );
-    showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-    title: Text('결제 완료'),
-    content: Text('결제가 완료되었습니다!'),
-    actions: [
-    TextButton(
-    onPressed: () {
-    Navigator.of(context).pop();
-    Navigator.of(context).pushReplacementNamed('/main');
-    },
-    child: Text('확인'),
-    ),
-    ],
-    ),
-    );
-
+                    await OrderScreenController.updateOrderStatus(
+                      orderId: orderId,
+                      status: 'shipped',
+                    );
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: Text('결제 완료'),
+                        content: Text('결제가 완료되었습니다!'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).pushReplacementNamed('/main');
+                            },
+                            child: Text('확인'),
+                          ),
+                        ],
+                      ),
+                    );
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  child: Text('결제하기', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                  ),
+                  child: Text('결제하기', style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ),
+              SizedBox(height: 40),
             ],
           ),
         ),
@@ -377,19 +458,30 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
     );
   }
 
-  Widget _buildPaymentOption(String title) {
+  Widget _paymentOption(String title) {
     final isSelected = selectedPayment == title;
-    return ChoiceChip(
-      label: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Theme.of(context).primaryColor,
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedPayment = isSelected ? '' : title;
+        });
+      },
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade400),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-      selected: isSelected,
-      selectedColor: Theme.of(context).primaryColor,
-      onSelected: (_) => setState(() => selectedPayment = title),
-      backgroundColor: Colors.white,
     );
   }
 }

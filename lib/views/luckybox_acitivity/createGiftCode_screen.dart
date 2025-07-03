@@ -114,14 +114,14 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
           _buildGiftBoxIcon(),
           SizedBox(height: 32.h),
           Text(widget.type == 'box' ? '럭키박스' : '상품', style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
-          SizedBox(height: 8.h),
+          SizedBox(height: 18.h),
           Text(
             widget.type == 'box'
-                ? '너에겐 어떤 행운이 등장할까?… 🥲'
+                ? '선물 코드를 생성하세요!'
                 : '이 선물을 누군가에게 전달해보세요!',
-            style: TextStyle(fontSize: 14.sp, color: Colors.black),
+            style: TextStyle(fontSize: 18.sp, color: Colors.black, ),
           ),
-          SizedBox(height: 60.h),
+          SizedBox(height: 30.h),
 
           if (giftCode == null)
             Padding(
@@ -141,10 +141,10 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
 
           if (giftCode != null)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 40.w),
+              padding: EdgeInsets.symmetric(horizontal: 30.w),
               child: Column(
                 children: [
-                  Text('선물 코드가 생성되었습니다:', style: TextStyle(fontSize: 14.sp)),
+                  Text('선물 코드가 생성되었습니다', style: TextStyle(fontSize: 15.sp, color: Colors.green)),
                   SizedBox(height: 12.h),
                   Container(
                     padding: EdgeInsets.all(16.w),
@@ -185,15 +185,19 @@ class _CreateGiftCodeScreenState extends State<CreateGiftCodeScreen> {
   Widget _buildGiftBoxIcon() {
     return Center(
       child: Container(
-        width: 150.w,
-        height: 150.w,
+        width: 300.w,
+        height: 300.w,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF5C43),
-          borderRadius: BorderRadius.circular(40.r),
+          borderRadius: BorderRadius.circular(10.r),
         ),
-        child: Icon(Icons.card_giftcard, size: 120.sp, color: Colors.white),
+        clipBehavior: Clip.antiAlias,
+        child: Image.asset(
+          'assets/images/present_image.png',
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
+
 }
 

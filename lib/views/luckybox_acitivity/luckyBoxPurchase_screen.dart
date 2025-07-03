@@ -175,7 +175,9 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
         Consumer<BoxController>(
           builder: (context, boxController, _) {
             if (boxController.isLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return Center(child: CircularProgressIndicator(
+                color: Theme.of(context).primaryColor,
+              ));
             }
             if (boxController.error != null) {
               return Text('에러: ${boxController.error}');
@@ -474,6 +476,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   }
 
   void handleSubmit() {
+    print('🟢 결제 시도: pointsUsed = $pointsUsed, totalAmount = $totalAmount, quantity = $quantity');
     if (!allAgreed || !purchaseConfirmed || !refundPolicyAgreed) {
       showDialog(
         context: context,
@@ -527,11 +530,13 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
     }
 
     if (paymentMethod == '신용/체크카드') {
-      OrderScreenController.requestCardPayment(
+      OrderScreenController.submitOrder(
         context: context,
-        boxId: selectedBox['_id'],
-        boxName: selectedBox['name'],
-        amount: totalAmount,
+        selectedBoxId: selectedBoxId,
+        quantity: quantity,
+        totalAmount: totalAmount,
+        pointsUsed: pointsUsed,
+        paymentMethod: paymentMethod,
       );
       return;
     }

@@ -12,6 +12,7 @@ class ProductDetailScreen extends StatelessWidget {
   final Map<String, dynamic> product;
   final String productId;
 
+
   ProductDetailScreen({required this.product, required this.productId});
 
   String formatPrice(int price) {
@@ -213,13 +214,17 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
   Map<String, int> sizeQuantity = {};
   Map<String, int> sizeStock = {};
   String userId = '';
+  bool isLoading = true;
+
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      setState(() => isLoading = true);
       await fetchProductInfo();
       await fetchUserId();
+      setState(() => isLoading = false);
     });
   }
 
@@ -251,6 +256,13 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).primaryColor, // 프라이머리 컬러
+        ),
+      );
+    }
     final availableSizes =
     sizeStock.entries.where((entry) => entry.value > 0).toList();
 
@@ -511,46 +523,4 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
 }
 
 
-class _SizeOptionButton extends StatelessWidget {
-  final String size;
-  final bool isSelected;
-  final bool isDisabled;
-  final VoidCallback onTap;
 
-  _SizeOptionButton({
-    required this.size,
-    required this.isSelected,
-    required this.isDisabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isDisabled ? null : onTap,
-      child: Container(
-        margin: EdgeInsets.only(right: 8.0),
-        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        decoration: BoxDecoration(
-          color: isDisabled
-              ? Colors.grey.shade300
-              : isSelected
-              ? Colors.blue
-              : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          size,
-          style: TextStyle(
-            color: isDisabled
-                ? Colors.grey
-                : isSelected
-                ? Colors.white
-                : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-}

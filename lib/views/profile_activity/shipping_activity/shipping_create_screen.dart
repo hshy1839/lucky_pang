@@ -13,6 +13,7 @@ class ShippingCreateScreen extends StatefulWidget {
 
 class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
   bool isDefault = false;
+  bool isLoading = false;
 
   final TextEditingController recipientController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
@@ -20,11 +21,37 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
   final TextEditingController addressController = TextEditingController();
   final TextEditingController zipcodeController = TextEditingController();
   final TextEditingController detailAddressController = TextEditingController();
+  final List<String> memoOptions = [
+    '부재시 경비실에 맡겨주세요.',
+    '부재시 택배함에 넣어주세요.',
+    '부재시 집 앞에 놔주세요.',
+    '배송 전 연락 바랍니다.',
+    '파손의 위험이 있는 상품입니다. 배송 시 유의해주세요.',
+    '직접입력'
+  ];
+  String? selectedMemoOption;
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('배송지 수정/배송지 추가',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          centerTitle: true,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: const BackButton(color: Colors.black),
+        ),
+        backgroundColor: Colors.white,
+        body:  Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('배송지 수정/배송지 추가',
@@ -60,9 +87,41 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
             SizedBox(height: 20.h),
             _buildLabeledField(
               '메모',
-              TextField(
-                controller: memoController,
-                decoration: _inputDecoration(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Theme(
+              data: Theme.of(context).copyWith(
+                canvasColor: Colors.white, // 드롭다운 전체 배경
+              ),
+              child: DropdownButtonFormField<String>(
+                value: selectedMemoOption,
+                isExpanded: true,
+                decoration: _inputDecoration().copyWith(
+                  hintText: '메모를 선택해 주세요',
+                ),
+                items: memoOptions.map((option) => DropdownMenuItem(
+                  value: option,
+                  child: Text(
+                    option,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.black),
+                  ),
+                )).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedMemoOption = value;
+                    if (value != '직접입력') {
+                      memoController.text = value ?? '';
+                    } else {
+                      memoController.clear();
+                    }
+                  });
+                },
+              ),
+            )
+
+                ],
               ),
             ),
             SizedBox(height: 24.h),
@@ -83,7 +142,9 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                 onPressed: () async {
                   final recipient = recipientController.text.trim();
                   final phone = phoneController.text.trim();
-                  final memo = memoController.text.trim();
+                  final memo = (selectedMemoOption == '직접입력')
+                      ? memoController.text.trim()
+                      : (selectedMemoOption ?? '');
                   final postcode = zipcodeController.text.trim();
                   final address = addressController.text.trim();
                   final address2 = detailAddressController.text.trim();

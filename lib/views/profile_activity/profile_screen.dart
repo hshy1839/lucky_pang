@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/point_controller.dart';
 import '../../controllers/profile_screen_controller.dart';
+import '../../controllers/shipping_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -32,12 +34,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String createdAt = '';
   String referralCode = '';
   final ImagePicker _picker = ImagePicker();
+  int shippingCount = 0;
+  bool hasShipping = false;
+  bool isLoading= false;
 
   @override
   void initState() {
     super.initState();
     loadUserInfo();
     loadUserPoints();
+    loadShippingInfo();
+  }
+
+  Future<void> loadShippingInfo() async {
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      final list = await ShippingController.getUserShippings();
+      setState(() {
+        shippingCount = list.length;
+        hasShipping = list.isNotEmpty;
+      });
+    } catch (_) {
+      setState(() {
+        shippingCount = 0;
+        hasShipping = false;
+        isLoading = false;
+      });
+    }
   }
 
   String formatJoinDate(String createdAt) {
@@ -50,11 +75,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> loadUserPoints() async {
+    setState(() {
+      isLoading = true;
+    });
     final userId = await _pointController.storage.read(key: 'userId'); // ✅ userId 가져오기
     if (userId != null) {
       final points = await _pointController.fetchUserTotalPoints(userId);
       setState(() {
         totalPoints = points;
+        isLoading = false;
       });
     }
   }
@@ -70,19 +99,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> loadUserInfo() async {
+    setState(() {
+      isLoading = true;
+    });
     await _controller.fetchUserInfo(context);
     setState(() {
       nickname = _controller.nickname;
       profileImage = _controller.profileImage;
       createdAt = _controller.createdAt;
       referralCode = _controller.referralCode;
+      isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final String? imageUrl = profileImage?.isNotEmpty == true ? '${BaseUrl.value}:7778/$profileImage' : null;
-
+    if (isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            '내 정보',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+        ),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).primaryColor,
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -134,17 +189,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundColor: Colors.grey.shade200,
                   child: (imageUrl != null && imageUrl.isNotEmpty)
                       ? ClipOval(
-                    child: Image.network(
-                      imageUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.person, size: 60, color: Colors.grey.shade400);
-                      },
+                      placeholder: (context, url) => Center(
+                        child: CircularProgressIndicator(
+                          color: Theme.of(context).primaryColor,
+                          strokeWidth: 0.5,
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.person, size: 60, color: Colors.grey.shade400),
                     ),
                   )
                       : Icon(Icons.person, size: 80, color: Colors.grey.shade400),
+
                 ),
 
 
@@ -174,7 +234,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(child: _infoBox(title: '', value: '본인인증 완료', valueColor: Color(0xFF2EB520), border: true)),
                 SizedBox(width: 12),
-                Expanded(child: _infoBox(title: '', value: '배송지 등록완료', valueColor: Color(0xFF2EB520), border: true)),
+                Expanded(
+                  child: _infoBox(
+                    title: '',
+                    value: hasShipping ? '배송지 등록완료' : '배송지 없음',
+                    valueColor: hasShipping ? Color(0xFF2EB520) : Colors.red,
+                    border: true,
+                  ),
+                ),
               ],
             ),
 
@@ -184,7 +251,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _menuItem('앱 설정', 'assets/icons/profile_icons/profile_setting_icon.svg', () => Navigator.pushNamed(context, '/setting')),
             _menuItem('내 포인트 내역', 'assets/icons/profile_icons/profile_point_icon.svg', () => Navigator.pushNamed(context, '/pointInfo')),
             _menuItem('배송지 관리', 'assets/icons/profile_icons/profile_shipping_icon.svg', () => Navigator.pushNamed(context, '/shippingInfo')),
-            _menuItem('친구 초대하기', 'assets/icons/profile_icons/profile_friend_icon.svg', () => Navigator.pushNamed(context, '/recommend')),
             _menuItem('선물코드 입력', 'assets/icons/profile_icons/profile_gift_icon.svg', () => Navigator.pushNamed(context, '/giftCode')),
             _menuItem('쿠폰코드 입력', 'assets/icons/profile_icons/profile_coupon_icon.svg', () => Navigator.pushNamed(context, '/couponCode')),
             SizedBox(height: 82),

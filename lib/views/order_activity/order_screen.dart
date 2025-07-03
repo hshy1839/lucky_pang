@@ -37,6 +37,7 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
   Future<void> loadUnboxedProducts() async {
+    setState(() { isLoading = true; });
     final userId = await storage.read(key: 'userId');
     if (userId == null) return;
     final result = await OrderScreenController.getUnboxedProducts(userId);
@@ -47,16 +48,20 @@ class _OrderScreenState extends State<OrderScreen> {
           (o['refunded']?['point'] ?? 0) == 0 // 환급된 상품은 숨김
       )
           .toList();
+      isLoading = false;
     });
   }
   Future<void> loadUnboxedShippedProducts() async {
+    setState(() { isLoading = true; });
     final userId = await storage.read(key: 'userId');
     if (userId == null) return;
     final result = await OrderScreenController.getUnboxedProducts(userId);
     setState(() => unboxedShippedProducts = (result ?? []).where((o) => o['status'] == 'shipped').toList());
+    isLoading = false;
   }
 
   Future<void> loadOrders() async {
+    setState(() { isLoading = true; });
     final userId = await storage.read(key: 'userId');
     if (userId == null) {
       print('userId not found in secure storage');
@@ -97,7 +102,15 @@ class _OrderScreenState extends State<OrderScreen> {
               ),
             ),
             SizedBox(height: 8.h),
-            if (selectedTab == 'product') ...[
+            if (isLoading)
+              Expanded(
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              )
+            else if (selectedTab == 'product') ...[
               if (unboxedProducts.isEmpty) ...[
                 Expanded(
                   child: Center(
@@ -314,7 +327,9 @@ class _OrderScreenState extends State<OrderScreen> {
               ],
             ] else if (selectedTab == 'box') ...[
               isLoading
-                  ? CircularProgressIndicator()
+                  ? CircularProgressIndicator(
+                color: Theme.of(context).primaryColor,
+              )
                   : paidOrders.isEmpty
                   ? Expanded(
                 child: Center(

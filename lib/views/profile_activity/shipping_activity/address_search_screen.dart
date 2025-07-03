@@ -4,12 +4,23 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../routes/base_url.dart';
 
-class AddressSearchScreen extends StatelessWidget {
+class AddressSearchScreen extends StatefulWidget {
   const AddressSearchScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = WebViewController()
+  State<AddressSearchScreen> createState() => _AddressSearchScreenState();
+}
+
+class _AddressSearchScreenState extends State<AddressSearchScreen> {
+  bool isLoading = true;
+
+  late final WebViewController controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel(
         'FlutterPostMessage',
@@ -18,9 +29,22 @@ class AddressSearchScreen extends StatelessWidget {
           Navigator.pop(context, result); // zonecode, address 전달
         },
       )
-      ..loadRequest(Uri.parse('${BaseUrl.value}:7778/kakao_postcode.html')); // 🔥 변경된 부분
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) {
+            setState(() {
+              isLoading = false; // 페이지 로딩 끝
+            });
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse('${BaseUrl.value}:7778/kakao_postcode.html'));
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('주소 검색'),
         backgroundColor: Colors.white,
@@ -28,7 +52,18 @@ class AddressSearchScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
-      body: WebViewWidget(controller: controller),
+      body: Stack(
+        children: [
+          Container(color: Colors.white),
+          WebViewWidget(controller: controller),
+          if (isLoading)
+            const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF5C43),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

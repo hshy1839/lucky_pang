@@ -62,7 +62,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
         elevation: 0,
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(
+        color: Theme.of(context).primaryColor,
+      ))
           : filteredProducts.isEmpty
           ? Center(
         child: Text(
@@ -116,7 +118,9 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                           },
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
-                            return Center(child: CircularProgressIndicator());
+                            return Center(child: CircularProgressIndicator(
+                              color: Theme.of(context).primaryColor,
+                            ));
                           },
                         ),
                       ),

@@ -108,7 +108,9 @@ class _QnaDetailScreenState extends State<QnaDetailScreen> {
             SizedBox(height: 150),
             // 답변 섹션
             isLoading
-                ? Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator(
+              color: Theme.of(context).primaryColor,
+            ))
                 : answers.isEmpty
                 ? Text(
               '아직 답변이 없습니다.',
