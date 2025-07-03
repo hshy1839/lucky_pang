@@ -1,24 +1,69 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:get/get.dart';
-
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../controllers/login/signup_controller.dart';
+import 'findEmail_result_screen.dart';
 
-class FindEmailScreen extends StatelessWidget {
+class FindEmailScreen extends StatefulWidget {
   const FindEmailScreen({super.key});
+
+  @override
+  State<FindEmailScreen> createState() => _FindEmailScreenState();
+}
+
+class _FindEmailScreenState extends State<FindEmailScreen> {
+  final SignupController _controller = SignupController();
+  bool _loading = false;
+
+  Future<void> _authAndFindEmail() async {
+    setState(() => _loading = true);
+
+    // 1. 본인인증 진행
+    await _controller.startBootpayAuth(context);
+
+    // 2. 인증 성공시 이메일 조회 및 이동
+    if (_controller.isPhoneVerified && _controller.phoneController.text.isNotEmpty) {
+      final email = await _controller.findEmailByPhone(_controller.phoneController.text.trim());
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      if (email != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FindEmailResultScreen(email: email),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이메일을 찾을 수 없습니다.')),
+        );
+      }
+    } else {
+      setState(() => _loading = false);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('본인인증이 완료되지 않았습니다.')),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
       backgroundColor: Colors.white,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
-
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            SizedBox(height: 100),
+            const SizedBox(height: 100),
             Image.asset(
               'assets/icons/app_logo.png',
               width: 72,
@@ -57,7 +102,8 @@ class FindEmailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 100),
-            // 인증 버튼 (가로 전체 + border 없음 + shadow)
+
+            // 인증 버튼
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -72,20 +118,50 @@ class FindEmailScreen extends StatelessWidget {
                 ],
               ),
               child: ElevatedButton(
-                onPressed: () {
-                  SignupController().startBootpayAuth(context);
+                onPressed: _loading
+                    ? null
+                    : () async {
+                  setState(() => _loading = true);
+
+                  await _controller.startBootpayAuth(
+                    context,
+                    onVerified: () async {
+                      final email = await _controller.findEmailByPhone(_controller.phoneController.text.trim());
+                      if (!mounted) return;
+                      setState(() => _loading = false);
+
+                      if (email != null) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FindEmailResultScreen(email: email),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('이메일을 찾을 수 없습니다.')),
+                        );
+                      }
+                    },
+                  );
+                  // 실패 시 setState는 onVerified 내부에서 하니까 따로 신경 안 써도 됨
                 },
                 style: ElevatedButton.styleFrom(
-                  elevation: 0, // 그림자 중복 방지
+                  elevation: 0,
                   backgroundColor: Colors.white,
-                  shadowColor: Colors.transparent, // 그림자는 BoxDecoration에서 처리
+                  shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
-                    side: BorderSide.none, // border 제거
+                    side: BorderSide.none,
                   ),
-                  padding: EdgeInsets.symmetric(vertical: 14), // 높이 살짝 키움
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: Row(
+                child: _loading
+                    ? const SizedBox(
+                  height: 18, width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+                    : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SvgPicture.asset(
@@ -107,30 +183,6 @@ class FindEmailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 100),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/findEmailResult');
-                },
-
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                ),
-                child: const Text(
-                  '이메일 찾기',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            )
           ],
         ),
       ),

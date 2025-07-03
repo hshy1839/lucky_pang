@@ -261,7 +261,7 @@ class SignupController extends ChangeNotifier {
     super.dispose();
   }
 
-  Future<void> startBootpayAuth(BuildContext context) async {
+  Future<void> startBootpayAuth(BuildContext context, {Function()? onVerified}) async {
     Payload payload = Payload();
 
     payload.pg = '다날';
@@ -316,6 +316,9 @@ class SignupController extends ChangeNotifier {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('본인인증이 완료되었습니다.')),
           );
+          if (onVerified != null) {
+            onVerified();
+          }
         } else {
           print('❌ 서버 인증 실패: ${res.body}');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -326,4 +329,22 @@ class SignupController extends ChangeNotifier {
     );
   }
 
+  Future<String?> findEmailByPhone(String phone) async {
+    try {
+      final findEmailRes = await http.get(
+        Uri.parse('${BaseUrl.value}:7778/api/users/findEmail?phoneNumber=$phone'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (findEmailRes.statusCode == 200) {
+        final emailData = jsonDecode(findEmailRes.body);
+        print("emailData : ${emailData}");
+        return emailData['email'];
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('이메일 찾기 오류: $e');
+      return null;
+    }
+  }
 }
