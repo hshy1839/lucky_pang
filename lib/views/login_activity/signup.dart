@@ -48,8 +48,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('회원가입', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -59,6 +58,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              const SizedBox(height: 26),
+
+              Image.asset(
+                'assets/icons/app_logo.png',
+                width: 50,
+                height: 50,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '럭키탕 - 회원가입',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.black,
+                ),
+              ),
               const SizedBox(height: 36),
               _buildInputWithButton(
                 context,
@@ -83,6 +98,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 ],
               if (signupController.provider == 'local') ...[
+                const SizedBox(height: 36),
+
                 _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
                 const SizedBox(height: 36),
                 _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
@@ -110,24 +127,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 60),
 
-              Row(
-                children: [
-                  Transform.scale(
-                    scale: 0.8,
-                    child: Checkbox(
-                      value: eventOptIn,
-                      onChanged: (value) {
-                        setState(() => eventOptIn = value ?? false);
-                        signupController.eventAgree = value ?? false;
-                      },
-                      activeColor: Theme.of(context).primaryColor,
-                      checkColor: Colors.white,
-                    ),
-                  ),
-                  const Text('이벤트 정보 받아보기 (선택)', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-              const SizedBox(height: 4),
+
               const Text(
                 '럭키탕에 회원가입을 신청하시면 신청자는 만 14세 이상이며, 서비스 이용약관과 개인정보 수집 및 이용 동의 내용을 확인하고 동의한 것으로 간주합니다.',
                 style: TextStyle(fontSize: 12),
@@ -155,7 +155,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Widget _buildInputWithButton(
       BuildContext context,
-      String hint,
+      String label,
       TextEditingController controller,
       String buttonText,
       VoidCallback onPressed, {
@@ -165,24 +165,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final buttonColor = isButtonEnabled
         ? Theme.of(context).primaryColor
         : (buttonText == '본인인증 완료' ? Colors.green : Colors.grey);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(child: _buildTextField(hint, controller)),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: isButtonEnabled ? onPressed : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: buttonColor,
-                minimumSize: const Size(80, 36),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        _buildTextField(label, controller),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: ElevatedButton(
+            onPressed: isButtonEnabled ? onPressed : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: buttonColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(buttonText, style: const TextStyle(color: Colors.white)),
             ),
-          ],
+            child: Text(buttonText, style: const TextStyle(color: Colors.white)),
+          ),
         ),
         if (errorText != null && errorText.isNotEmpty)
           Padding(
@@ -193,16 +194,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildTextField(String hint, TextEditingController controller, {bool obscureText = false}) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
-        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[200]!)),
-      ),
+
+  Widget _buildTextField(String label, TextEditingController controller, {bool obscureText = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: const InputDecoration(
+              // hintText: label, // ❌ placeholder 대신 label만 사용
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+            ),
+            style: const TextStyle(fontSize: 14),
+          ),
+        ),
+      ],
     );
   }
+
 }

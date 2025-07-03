@@ -23,6 +23,13 @@ class LuckyBoxOrderPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Image.asset(
+                  'assets/images/BoxEmptyStateImage.png',
+                  width: 150, // 원하면 사이즈 조절
+                  height: 150,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 24),
                 const Text(
                   '박스 결제가 완료되었어요!',
                   style: TextStyle(
@@ -31,58 +38,37 @@ class LuckyBoxOrderPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // 👉 박스 열기 로직 또는 페이지 이동
-                    Navigator.pushNamed(context, '/unbox');
-                  },
-                  icon: const Icon(Icons.card_giftcard, size: 24),
-                  label: const Text(
-                    '바로 박스 열기',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 32, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor, // 앱 메인 컬러
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '보관함으로 가기',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: () {
-                    // 👉 보관함 페이지 이동
-                    Navigator.pushNamed(context, '/storage');
-                  },
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '보관함',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
-                                ),
-                              );
-                            },
-                        ),
-                        const TextSpan(
-                          text: '으로 가기',
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ),
+
               ],
             ),
           ),

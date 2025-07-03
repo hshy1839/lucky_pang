@@ -92,6 +92,7 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
         elevation: 0,
         leading: const BackButton(color: Colors.black),
         centerTitle: true,
+
         title: const Text(
           '쿠폰코드 입력',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
@@ -103,8 +104,14 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: 30.h),
+            Image.asset(
+              'assets/images/coupon_code_image.png',
+              width: double.infinity,
+              fit: BoxFit.contain,
+            ),
             // 이미지는 필요하면 추가
             SizedBox(height: 30.h),
+
             Text(
               '쿠폰 코드를 입력하면 포인트가 지급됩니다!',
               style: TextStyle(

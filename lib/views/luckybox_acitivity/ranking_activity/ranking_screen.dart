@@ -62,7 +62,7 @@ class _RankingScreenState extends State<RankingScreen> {
     int sumPrice = 0;
     for (var order in filteredOrders) {
       final product = order['unboxedProduct']?['product'];
-      final rawPrice = product?['price'] ?? 0;
+      final rawPrice = product?['consumerPrice'] ?? 0;
       final price = rawPrice is int ? rawPrice : (rawPrice as num).toInt();
       if (price > maxPrice) maxPrice = price;
       sumPrice += price;

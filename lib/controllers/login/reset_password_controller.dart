@@ -36,12 +36,13 @@ class ResetPasswordController {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
         title: Text(title),
         content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('확인'),
+            child: const Text('확인', style: TextStyle(color: Colors.blue),),
           ),
         ],
       ),

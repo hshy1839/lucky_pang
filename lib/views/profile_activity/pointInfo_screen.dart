@@ -165,10 +165,9 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
                                 strokeWidth: 2,
                               ),
                             ),
-                            errorWidget: (context, url, error) =>
-                                Icon(Icons.person, color: Colors.grey, size: 24),
+                            errorWidget: (context, url, error) => _defaultProfileIcon(),
                           )
-                              : Icon(Icons.person, color: Colors.grey, size: 24),
+                              : _defaultProfileIcon(),
                         ),
                       ),
                       SizedBox(width: 12.w),
@@ -182,6 +181,7 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
                       ),
                     ],
                   ),
+
                   SizedBox(height: 20.h),
                   // 🔹 잔여 포인트 텍스트 & 값
                   Row(
@@ -371,6 +371,19 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _defaultProfileIcon() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white, // 흰색 원 배경
+        shape: BoxShape.circle,
+      ),
+      child: Icon(Icons.person, color: Colors.grey, size: 24),
+      alignment: Alignment.center,
     );
   }
 

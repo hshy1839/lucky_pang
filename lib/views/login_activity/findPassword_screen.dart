@@ -11,6 +11,7 @@ class FindPasswordScreen extends StatefulWidget {
 
 class _FindPasswordScreenState extends State<FindPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -34,15 +35,15 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(height: 80), // 너무 위에 붙지 않게
+              SizedBox(height: 100), // 너무 위에 붙지 않게
               Column(
                 children: [
                   Image.asset(
                     'assets/icons/app_logo.png',
-                    width: 60,
-                    height: 60,
+                    width: 72,
+                    height: 72,
                   ),
-                  SizedBox(height: 50),
+                  SizedBox(height: 20),
                   Text(
                     '럭키탕 - 비밀번호 찾기',
                     style: TextStyle(
@@ -51,9 +52,32 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                       color: Colors.black,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFF5722),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 32,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 38),
                   Text(
-                    '가입할 때 입력하신 이메일로\n인증코드를 보내드렸어요!',
+                    '가입할 때 입력하신 이메일로\n인증코드를 보내드릴게요!',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[700],
@@ -81,7 +105,7 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final email = _emailController.text.trim();
                     if (email.isEmpty) {
                       showDialog(
@@ -93,15 +117,22 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                       );
                       return;
                     }
-                    ResetPasswordController.sendTemporaryPassword(
+                    setState(() {
+                      _isLoading = true;
+                    });
+
+                    await ResetPasswordController.sendTemporaryPassword(
                       email: email,
                       context: context,
                     );
+                    setState(() {
+                      _isLoading = false;
+                    });
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   child: const Text(
@@ -114,6 +145,14 @@ class _FindPasswordScreenState extends State<FindPasswordScreen> {
                   ),
                 ),
               ),
+              SizedBox(height: 30,),
+              if (_isLoading)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: CircularProgressIndicator(
+                    color: Theme.of(context).primaryColor, // primary 컬러 적용
+                  ),
+                ),
               SizedBox(height: 50),
             ],
           ),
