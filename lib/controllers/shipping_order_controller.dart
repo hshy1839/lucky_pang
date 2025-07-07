@@ -106,7 +106,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
       if (token == null) return;
 
       final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/orders/deliver'),
+        Uri.parse('${BaseUrl.value}:7778/api/bootpay/verify/shipping'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

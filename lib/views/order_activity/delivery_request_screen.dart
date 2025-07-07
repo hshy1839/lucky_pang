@@ -421,7 +421,7 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       shippingId: selectedShippingId!,
                       totalAmount: totalAmount,
                       pointsUsed: usedPoints,
-                      paymentMethod: selectedPayment.isEmpty ? 'point' : selectedPayment,
+                      paymentMethod: totalAmount == 0 ? 'point' : selectedPayment,
                     );
                   },
 
