@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../controllers/shipping_controller.dart';
 import '../../../controllers/order_screen_controller.dart';
 import '../../controllers/point_controller.dart';
+import '../../controllers/shipping_order_controller.dart';
 import '../../routes/base_url.dart';
 import '../widget/shipping_card.dart';
 
@@ -413,37 +414,17 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       return;
                     }
 
-                    if (totalAmount > 0 && selectedPayment == '신용/체크카드') {
-                      await OrderScreenController.requestCardPayment(
-                        context: context,
-                        boxId: box['_id'],
-                        boxName: box['name'],
-                        amount: totalAmount,
-                      );
-                      return;
-                    }
-
-                    await OrderScreenController.updateOrderStatus(
-                      orderId: orderId,
-                      status: 'shipped',
-                    );
-                    showDialog(
+                    // 여기만 ShippingOrderController로 변경
+                    await ShippingOrderController.submitShippingOrder(
                       context: context,
-                      builder: (_) => AlertDialog(
-                        title: Text('결제 완료'),
-                        content: Text('결제가 완료되었습니다!'),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              Navigator.of(context).pushReplacementNamed('/main');
-                            },
-                            child: Text('확인'),
-                          ),
-                        ],
-                      ),
+                      orderId: orderId,
+                      shippingId: selectedShippingId!,
+                      totalAmount: totalAmount,
+                      pointsUsed: usedPoints,
+                      paymentMethod: selectedPayment.isEmpty ? 'point' : selectedPayment,
                     );
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                   ),

@@ -90,40 +90,50 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-              Theme(
-              data: Theme.of(context).copyWith(
-                canvasColor: Colors.white, // 드롭다운 전체 배경
-              ),
-              child: DropdownButtonFormField<String>(
-                value: selectedMemoOption,
-                isExpanded: true,
-                decoration: _inputDecoration().copyWith(
-                  hintText: '메모를 선택해 주세요',
-                ),
-                items: memoOptions.map((option) => DropdownMenuItem(
-                  value: option,
-                  child: Text(
-                    option,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.black),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      canvasColor: Colors.white, // 드롭다운 전체 배경
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: selectedMemoOption,
+                      isExpanded: true,
+                      decoration: _inputDecoration().copyWith(
+                        hintText: '메모를 선택해 주세요',
+                      ),
+                      items: memoOptions.map((option) => DropdownMenuItem(
+                        value: option,
+                        child: Text(
+                          option,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.black),
+                        ),
+                      )).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedMemoOption = value;
+                          if (value != '직접입력') {
+                            memoController.text = value ?? '';
+                          } else {
+                            memoController.clear();
+                          }
+                        });
+                      },
+                    ),
                   ),
-                )).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedMemoOption = value;
-                    if (value != '직접입력') {
-                      memoController.text = value ?? '';
-                    } else {
-                      memoController.clear();
-                    }
-                  });
-                },
-              ),
-            )
-
+                  // ✅ 직접입력 선택 시에만 입력창 노출
+                  if (selectedMemoOption == '직접입력')
+                    Padding(
+                      padding: EdgeInsets.only(top: 8.h),
+                      child: TextField(
+                        controller: memoController,
+                        decoration: _inputDecoration().copyWith(hintText: '메모를 직접 입력하세요'),
+                        maxLength: 100,
+                      ),
+                    ),
                 ],
               ),
             ),
+
             SizedBox(height: 24.h),
             Row(
               children: [
@@ -170,7 +180,7 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('배송지가 등록되었습니다.')),
                     );
-                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('배송지 등록에 실패했습니다.')),

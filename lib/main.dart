@@ -76,48 +76,46 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'luckytang',
-      theme: ThemeData(
-        primaryColor: const Color(0xFFF24E1E),
-        useMaterial3: true, // Material3 사용하는 경우도 대응
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          // ✅ AppBar 배경색 고정
-          elevation: 0,
-          // ✅ 그림자 제거
-          centerTitle: true,
-          surfaceTintColor: Colors.white,
-          // ✅ Material 3 대응
-          iconTheme: IconThemeData(color: Colors.black),
-          titleTextStyle: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaleFactor: 0.8),
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        title: 'luckytang',
+        theme: ThemeData(
+          primaryColor: const Color(0xFFF24E1E),
+          useMaterial3: true,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            centerTitle: true,
+            surfaceTintColor: Colors.white,
+            iconTheme: IconThemeData(color: Colors.black),
+            titleTextStyle: TextStyle(
+              color: Colors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          textTheme: ThemeData.light().textTheme.apply(
+            fontFamily: 'pretendard-regular',
           ),
         ),
-        textTheme: ThemeData
-            .light()
-            .textTheme
-            .apply(
-          fontFamily: 'pretendard-regular',
-        ),
+        home: _determineInitialScreen(),
+        routes: AppRoutes.routes,
+        onGenerateRoute: (settings) {
+          if (settings.name == '/main') {
+            final args = settings.arguments as Map<String, dynamic>?;
+            final index = args?['initialTabIndex'] ?? 0;
+            return MaterialPageRoute(
+              builder: (_) => MainScreenWithFooter(initialTabIndex: index),
+            );
+          }
+          return null;
+        },
       ),
-      home: _determineInitialScreen(),
-      routes: AppRoutes.routes,
-      onGenerateRoute: (settings) {
-        if (settings.name == '/main') {
-          final args = settings.arguments as Map<String, dynamic>?;
-          final index = args?['initialTabIndex'] ?? 0;
-          return MaterialPageRoute(
-            builder: (_) => MainScreenWithFooter(initialTabIndex: index),
-          );
-        }
-        return null; // 그 외는 기본 route로 처리
-      },
     );
   }
+
 
 
   Widget _determineInitialScreen() {

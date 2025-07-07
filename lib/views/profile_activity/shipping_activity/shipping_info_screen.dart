@@ -97,8 +97,11 @@ class _ShippingInfoScreenState extends State<ShippingInfoScreen> {
               width: double.infinity,
               height: 56.h,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/shippingCreate');
+                onPressed: () async {
+                  final result = await Navigator.pushNamed(context, '/shippingCreate');
+                  if (result == true) {
+                    await fetchShippings();
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5C43),
@@ -159,8 +162,11 @@ class _ShippingInfoScreenState extends State<ShippingInfoScreen> {
               width: double.infinity,
               height: 65.h,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/shippingCreate');
+                onPressed: () async {
+                  final result = await Navigator.pushNamed(context, '/shippingCreate');
+                  if (result == true) {
+                    await fetchShippings();
+                  }
                 },
                 icon: const Icon(Icons.add, color: Colors.white,),
                 label: const Text('배송지 추가하기'),

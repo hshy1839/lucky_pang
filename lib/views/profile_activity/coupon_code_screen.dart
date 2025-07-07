@@ -65,26 +65,7 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: const BackButton(color: Colors.black),
-          centerTitle: true,
-          title: const Text(
-            '쿠폰코드 입력',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-        ),
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).primaryColor,
-          ),
-        ),
-      );
-    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -92,7 +73,6 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
         elevation: 0,
         leading: const BackButton(color: Colors.black),
         centerTitle: true,
-
         title: const Text(
           '쿠폰코드 입력',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
@@ -109,7 +89,6 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
               width: double.infinity,
               fit: BoxFit.contain,
             ),
-            // 이미지는 필요하면 추가
             SizedBox(height: 30.h),
 
             Text(
@@ -186,9 +165,7 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
                     borderRadius: BorderRadius.circular(15.r),
                   ),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
+                child: Text(
                   '쿠폰코드 입력하기',
                   style: TextStyle(
                     fontSize: 16.sp,
@@ -198,9 +175,16 @@ class _CouponCodeScreenState extends State<CouponCodeScreen> {
                 ),
               ),
             ),
+            if (_isLoading) ...[
+              SizedBox(height: 16.h),
+              CircularProgressIndicator(
+                color: Theme.of(context).primaryColor,
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
 }

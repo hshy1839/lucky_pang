@@ -41,7 +41,9 @@ class SettingScreen extends StatelessWidget {
               ),
               SizedBox(width: 20),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/withdraw');
+                },
                 child: const Text('회원탈퇴', style: TextStyle(color: Colors.black)),
               ),
             ],

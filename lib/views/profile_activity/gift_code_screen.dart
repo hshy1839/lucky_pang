@@ -62,26 +62,7 @@ class _GiftCodeScreenState extends State<GiftCodeScreen> {
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: const BackButton(color: Colors.black),
-          centerTitle: true,
-          title: const Text(
-            '선물코드 입력',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-        ),
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).primaryColor,
-          ),
-        ),
-      );
-    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -122,8 +103,7 @@ class _GiftCodeScreenState extends State<GiftCodeScreen> {
                 style: TextStyle(
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w400,
-                  color: Color(0xFF465461)
-                  ,
+                  color: Color(0xFF465461),
                 ),
               ),
             ),
@@ -135,7 +115,7 @@ class _GiftCodeScreenState extends State<GiftCodeScreen> {
                 borderRadius: BorderRadius.circular(12.r),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x1F000000), // CSS: #0000001F
+                    color: Color(0x1F000000),
                     offset: Offset(0, 1),
                     blurRadius: 3,
                   ),
@@ -147,13 +127,13 @@ class _GiftCodeScreenState extends State<GiftCodeScreen> {
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   hintText: '선물코드를 입력해 주세요',
-                  hintStyle: TextStyle(color: Color(0xFF8D969D),
+                  hintStyle: TextStyle(
+                    color: Color(0xFF8D969D),
                     fontSize: 14,
                   ),
                 ),
               ),
             ),
-
             if (_isInvalidCode) ...[
               SizedBox(height: 8.h),
               Align(
@@ -181,9 +161,7 @@ class _GiftCodeScreenState extends State<GiftCodeScreen> {
                     borderRadius: BorderRadius.circular(15.r),
                   ),
                 ),
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
+                child: Text(
                   '선물코드 입력하기',
                   style: TextStyle(
                     fontSize: 16.sp,
@@ -193,10 +171,17 @@ class _GiftCodeScreenState extends State<GiftCodeScreen> {
                 ),
               ),
             ),
+            if (_isLoading) ...[
+              SizedBox(height: 16.h),
+              CircularProgressIndicator(
+                color: Theme.of(context).primaryColor,
+              ),
+            ],
           ],
         ),
       ),
     );
   }
+
 }
 

@@ -51,11 +51,11 @@ class _RankingScreenState extends State<RankingScreen> {
         : now.subtract(const Duration(days: 6));
 
     final filteredOrders = orders.where((order) {
-      final createdAtStr = order['createdAt'];
-      if (createdAtStr == null) return false;
-      final createdAt = DateTime.tryParse(createdAtStr);
-      if (createdAt == null) return false;
-      return createdAt.isAfter(startDate);
+      final decidedAtStr = order['unboxedProduct']?['decidedAt'];
+      if (decidedAtStr == null) return false;
+      final decidedAt = DateTime.tryParse(decidedAtStr);
+      if (decidedAt == null) return false;
+      return decidedAt.isAfter(startDate);
     }).toList();
 
     int maxPrice = 0;

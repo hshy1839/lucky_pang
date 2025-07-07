@@ -45,7 +45,9 @@ class _OrderScreenState extends State<OrderScreen> {
       unboxedProducts = (result ?? [])
           .where((o) =>
       o['status'] != 'shipped' &&
-          (o['refunded']?['point'] ?? 0) == 0 // 환급된 상품은 숨김
+          (o['refunded']?['point'] ?? 0) == 0 &&
+          o['unboxedProduct'] != null &&
+          o['unboxedProduct']['product'] != null // ★ 여기를 추가
       )
           .toList();
       isLoading = false;
@@ -56,7 +58,16 @@ class _OrderScreenState extends State<OrderScreen> {
     final userId = await storage.read(key: 'userId');
     if (userId == null) return;
     final result = await OrderScreenController.getUnboxedProducts(userId);
-    setState(() => unboxedShippedProducts = (result ?? []).where((o) => o['status'] == 'shipped').toList());
+
+    // 정렬 추가!
+    final list = (result ?? []).where((o) => o['status'] == 'shipped').toList();
+    list.sort((a, b) {
+      final aDate = DateTime.tryParse(a['unboxedProduct']?['decidedAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = DateTime.tryParse(b['unboxedProduct']?['decidedAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
+
+    setState(() => unboxedShippedProducts = list);
     isLoading = false;
   }
 
