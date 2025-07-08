@@ -54,14 +54,7 @@ class NoticeScreenController {
     }
   }
 
-  String _getImageUrl(dynamic image) {
-    if (image is List && image.isNotEmpty) {
-      return '$_baseUrl${image[0]}';
-    } else if (image is String) {
-      return '$_baseUrl$image';
-    }
-    return '';
-  }
+
 
   List<String> _getImageList(dynamic images) {
     if (images is List) {

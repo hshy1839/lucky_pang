@@ -2,7 +2,6 @@ import 'package:attedance_app/views/setting_activity/QnA_activity/qna_detail_scr
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // 날짜 포맷용
 import '../../../controllers/qna_controller.dart'; // QnaController 경로에 맞게 수정
-import '../notice_activity/notice_detail_screen.dart';
 
 class QnaScreen extends StatefulWidget {
   @override
@@ -23,8 +22,7 @@ class _QnaScreenState extends State<QnaScreen> {
   Future<void> _fetchQnaQuestions() async {
     try {
       final fetchedQuestions = await _controller.getQnaInfo();
-      for (var question in fetchedQuestions) {
-      }
+
       setState(() {
         qnaQuestions = fetchedQuestions;
         _isLoading = false;

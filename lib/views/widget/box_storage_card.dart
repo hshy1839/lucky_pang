@@ -63,7 +63,6 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
   @override
   Widget build(BuildContext context) {
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(widget.createdAt));
-    final totalPrice = widget.paymentAmount + widget.pointUsed;
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),

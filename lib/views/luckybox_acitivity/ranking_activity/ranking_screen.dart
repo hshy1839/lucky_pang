@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../controllers/order_screen_controller.dart';
-import '../../../routes/base_url.dart';
 import '../../widget/ranking_screen_widget/ranking_tab_bar_header.dart';
 import '../../widget/ranking_screen_widget/unbox_realtime_list.dart';
 import '../../widget/ranking_screen_widget/unbox_weekly_ranking.dart';

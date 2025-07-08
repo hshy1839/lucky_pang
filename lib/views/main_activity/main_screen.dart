@@ -5,11 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:marquee/marquee.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../controllers/main_screen_controller.dart';
-import '../../controllers/notice_screen_controller.dart';
-import '../../footer.dart';
-import '../../header.dart';
 import '../product_activity/product_detail_screen.dart';
 import '../setting_activity/event_activity/event_detail_screen.dart';
 

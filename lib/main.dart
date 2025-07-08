@@ -4,12 +4,12 @@ import 'dart:io';
 import 'package:attedance_app/routes/app_routes.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/ranking_activity/ranking_screen.dart';
+import 'package:attedance_app/views/main_activity/SplashScreen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 
 // 화면들 import
@@ -22,12 +22,8 @@ import 'firebase_options.dart';
 import 'footer.dart';
 import 'views/order_activity/order_screen.dart';
 
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-// void _navigateToErrorScreen(BuildContext context) {
-//   WidgetsBinding.instance.addPostFrameCallback((_) {
-//     Navigator.of(context).pushNamedAndRemoveUntil('/error', (route) => false);
-//   });
-// }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,14 +32,9 @@ void main() async {
   );
 
   KakaoSdk.init(
-    nativeAppKey: '89857ed78c6e2c92bab47311bbea5546', // 👉 카카오 개발자 콘솔에서 복사
+    nativeAppKey: '89857ed78c6e2c92bab47311bbea5546',
   );
 
-
-  // FlutterError.onError = (FlutterErrorDetails details) {
-  //   FlutterError.presentError(details);
-  //   _navigateToErrorScreen(); // ✅ Flutter 프레임워크 오류 발생 시
-  // };
   runApp(
     MultiProvider(
       providers: [
@@ -53,27 +44,40 @@ void main() async {
       child: MyApp(),
     ),
   );
-//   runZonedGuarded(
-//         () {
-//       runApp(
-//         MultiProvider(
-//           providers: [
-//             ChangeNotifierProvider(create: (_) => SignupController()),
-//             ChangeNotifierProvider(create: (_) => BoxController()),
-//           ],
-//           child: MyApp(),
-//         ),
-//       );
-//     },
-//         (error, stack) {
-//       print('🔴 Uncaught async error: $error');
-//       _navigateToErrorScreen(); // ✅ 비동기 오류 발생 시
-//     },
-//   );
 }
 
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
 
-class MyApp extends StatelessWidget {
+class _MyAppState extends State<MyApp> {
+  Widget? _startScreen;
+
+  @override
+  void initState() {
+    super.initState();
+    _startApp();
+  }
+
+  Future<void> _startApp() async {
+    setState(() => _startScreen = const SplashScreen());
+    await Future.delayed(const Duration(seconds: 2)); // 2초 대기
+    final Widget next = await _checkLoginStatus();
+    setState(() => _startScreen = next);
+  }
+
+  Future<Widget> _checkLoginStatus() async {
+    final storage = FlutterSecureStorage();
+    final isLoggedIn = await storage.read(key: 'isLoggedIn') == 'true';
+    final token = await storage.read(key: 'token');
+
+    if (!isLoggedIn || token == null) {
+      return LoginScreen();
+    }
+    return MainScreenWithFooter();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MediaQuery(
@@ -99,11 +103,8 @@ class MyApp extends StatelessWidget {
           textTheme: ThemeData.light().textTheme.apply(
             fontFamily: 'pretendard-regular',
           ),
-          textSelectionTheme: TextSelectionThemeData(
-              cursorColor: Colors.black,         // 커서 색상
-          ),
         ),
-        home: _determineInitialScreen(),
+        home: _startScreen ?? const SplashScreen(),
         routes: AppRoutes.routes,
         onGenerateRoute: (settings) {
           if (settings.name == '/main') {
@@ -118,43 +119,6 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
-
-
-
-  Widget _determineInitialScreen() {
-    return FutureBuilder<Widget>(
-      future: _checkLoginStatus(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          // ✅ ErrorScreen으로 강제 이동
-          // WidgetsBinding.instance.addPostFrameCallback((_) {
-          //   _navigateToErrorScreen();
-          // });
-          return const SizedBox(); // 임시 위젯 (필수)
-        } else {
-          if (snapshot.data is LoginScreen) {
-            return  LoginScreen();
-          } else {
-            return MainScreenWithFooter();
-          }
-        }
-      },
-    );
-  }
-
-  Future<Widget> _checkLoginStatus() async {
-    final storage = FlutterSecureStorage();
-    final isLoggedIn = await storage.read(key: 'isLoggedIn') == 'true';
-    final token = await storage.read(key: 'token');
-
-    if (!isLoggedIn || token == null) {
-      return LoginScreen();
-    }
-    return MainScreenWithFooter();
-  }
-
 }
 
 class MainScreenWithFooter extends StatefulWidget {
@@ -198,13 +162,10 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ 여기서 pages 리스트를 빌드 타이밍에 생성
     final List<Widget> pages = [
-      MainScreen(onTabTapped: _onTabTapped, ),
-
+      MainScreen(onTabTapped: _onTabTapped),
       RankingScreen(),
-      OrderScreen(pageController: _pageController,
-        onTabChanged: _onTabTapped,),
+      OrderScreen(pageController: _pageController, onTabChanged: _onTabTapped),
       ProfileScreen(),
       LuckyBoxPurchasePage(),
     ];
@@ -229,4 +190,3 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
     );
   }
 }
-

@@ -1,10 +1,8 @@
 import 'package:bootpay/bootpay.dart';
-import 'package:bootpay/model/extra.dart';
 import 'package:bootpay/model/payload.dart';
 import 'package:bootpay/model/user.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import '../../routes/base_url.dart';
 import '../../views/login_activity/login.dart';

@@ -82,6 +82,7 @@ flutter:
     - assets/icons/google_icon.svg
     - assets/icons/app_logo.svg
     - assets/icons/app_logo.png
+    - assets/icons/splash_logo.png
     - assets/icons/smartphone.svg
     - assets/icons/footer_icons/home_icon.svg
     - assets/icons/footer_icons/inbox_icon.svg

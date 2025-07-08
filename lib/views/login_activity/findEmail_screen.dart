@@ -14,39 +14,7 @@ class _FindEmailScreenState extends State<FindEmailScreen> {
   final SignupController _controller = SignupController();
   bool _loading = false;
 
-  Future<void> _authAndFindEmail() async {
-    setState(() => _loading = true);
 
-    // 1. 본인인증 진행
-    await _controller.startBootpayAuth(context);
-
-    // 2. 인증 성공시 이메일 조회 및 이동
-    if (_controller.isPhoneVerified && _controller.phoneController.text.isNotEmpty) {
-      final email = await _controller.findEmailByPhone(_controller.phoneController.text.trim());
-      if (!mounted) return;
-      setState(() => _loading = false);
-
-      if (email != null) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FindEmailResultScreen(email: email),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이메일을 찾을 수 없습니다.')),
-        );
-      }
-    } else {
-      setState(() => _loading = false);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('본인인증이 완료되지 않았습니다.')),
-        );
-      }
-    }
-  }
 
   @override
   void dispose() {

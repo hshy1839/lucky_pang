@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import '../../controllers/giftcode_controller.dart';
 
 class ShippedProductCard extends StatefulWidget {
   final String mainImageUrl;
@@ -37,7 +36,6 @@ class ShippedProductCard extends StatefulWidget {
 }
 
 class _ShippedProductCardState extends State<ShippedProductCard> {
-  bool _loading = true;
 
   @override
   void initState() {

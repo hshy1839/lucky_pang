@@ -6,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../controllers/order_screen_controller.dart';
 import '../../routes/base_url.dart';
-import '../luckybox_acitivity/luckyBoxPurchase_screen.dart';
 import '../widget/box_storage_card.dart';
 import '../widget/product_storage_card.dart';
 

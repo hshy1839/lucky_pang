@@ -22,11 +22,7 @@ class MainScreenController extends ChangeNotifier {
 
   Future<void> getNotices() async {
     final token = await storage.read(key: 'token'); // ✅ SecureStorage에서 토큰 읽기
-    final currentDate = DateTime.utc(
-      DateTime.now().year,
-      DateTime.now().month,
-      DateTime.now().day,
-    ).toIso8601String();
+
 
     final url = '${BaseUrl.value}:7778/api/users/noticeList/find';
     final headers = {

@@ -57,7 +57,6 @@ class ShippingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final recipient = shipping['recipient'] ?? '';
     final phone = shipping['phone'] ?? '';
-    final memo = shipping['memo'] ?? '';
     final isDefault = shipping['is_default'] ?? false;
     final shippingAddress = shipping['shippingAddress'] ?? {};
     final postcode = shippingAddress['postcode'] ?? '';

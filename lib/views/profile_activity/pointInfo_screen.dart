@@ -268,31 +268,6 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
   }
 
 
-  Widget _buildTabItem(String label, String key, bool selected) {
-    return GestureDetector(
-      onTap: () => setState(() => selectedTab = key),
-      child: Container(
-        alignment: Alignment.center,
-        padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 8.w),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? const Color(0xFFFFFF00) : Colors.transparent,
-              width: 3.h,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14.sp,
-            color: selected ? Theme.of(context).primaryColor : Colors.black,
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildPointList() {
 
@@ -300,7 +275,6 @@ class _PointInfoScreenState extends State<PointInfoScreen> {
         .where((item) => (item['expired_at'] != null && item['expired_at'].toString().isNotEmpty))
         .toList();
 
-    List<dynamic> dataToShow = selectedTab == 'scheduled' ? scheduledPoints : pointLogs;
 
     if (selectedTab == 'scheduled' && scheduledPoints.isEmpty) {
       return Padding(

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../routes/base_url.dart';
@@ -127,14 +126,7 @@ class ProductController {
     }
   }
 
-  String _formatDate(String date) {
-    try {
-      final dt = DateTime.parse(date);
-      return DateFormat('yyyy년 MM월 dd일').format(dt);
-    } catch (_) {
-      return date;
-    }
-  }
+
 
   String _getImageUrl(dynamic image) {
     if (image is List && image.isNotEmpty) {

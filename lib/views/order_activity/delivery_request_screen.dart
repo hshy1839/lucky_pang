@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import '../../../controllers/shipping_controller.dart';
-import '../../../controllers/order_screen_controller.dart';
 import '../../controllers/point_controller.dart';
 import '../../controllers/shipping_order_controller.dart';
 import '../../routes/base_url.dart';
@@ -384,9 +382,11 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
+                          backgroundColor: Colors.white,
                           title: Text('안내'),
                           content: Text('모든 약관에 동의해주세요.'),
-                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'))],
+                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'
+                          , style: TextStyle(color: Colors.blue),))],
                         ),
                       );
                       return;
@@ -395,9 +395,11 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
+                          backgroundColor: Colors.white,
                           title: Text('안내'),
                           content: Text('배송지를 선택해주세요.'),
-                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'))],
+                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인',
+                          style: TextStyle(color: Colors.blue),))],
                         ),
                       );
                       return;
@@ -406,9 +408,11 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
                       showDialog(
                         context: context,
                         builder: (_) => AlertDialog(
+                          backgroundColor: Colors.white,
                           title: Text('안내'),
                           content: Text('결제 수단을 선택해주세요.'),
-                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인'))],
+                          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('확인',
+                          style: TextStyle(color: Colors.blue),))],
                         ),
                       );
                       return;

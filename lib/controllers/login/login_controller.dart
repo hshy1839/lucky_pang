@@ -4,7 +4,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../routes/base_url.dart';
@@ -33,20 +32,19 @@ class LoginController {
 
       final loginSuccess = responseData['loginSuccess'] ?? false;
       final token = responseData['token'] ?? '';
-      final isActive = responseData['is_active'] ?? false; // 추가: is_active 값 확인
 
       if (loginSuccess) {
-          // 로그인 성공 후 token 저장
-          await storage.write(key: 'token', value: token);
-          await storage.write(key: 'isLoggedIn', value: 'true');
+        // 로그인 성공 후 token 저장
+        await storage.write(key: 'token', value: token);
+        await storage.write(key: 'isLoggedIn', value: 'true');
 
-          final userId = responseData['userId']; // 서버에서 전달된 userId
-          if (userId != null) {
-            await storage.write(key: 'userId', value: userId);
-          }
+        final userId = responseData['userId']; // 서버에서 전달된 userId
+        if (userId != null) {
+          await storage.write(key: 'userId', value: userId);
+        }
 
 
-          _showSuccessDialog();
+        _showSuccessDialog();
       } else {
         _showErrorDialog(responseData['message'] ?? 'Error: 500');
       }

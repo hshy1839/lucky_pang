@@ -1,12 +1,9 @@
-import 'dart:convert';
 import 'package:attedance_app/views/widget/endOfScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../controllers/cart_controller.dart';
 import '../../controllers/profile_screen_controller.dart';
 import '../../controllers/product_controller.dart';
-import '../main_activity/2order_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -486,13 +483,6 @@ class _ProductOptionsBottomSheetState extends State<ProductOptionsBottomSheet> {
                           return;
                         }
 
-                        List<Map<String, dynamic>> selectedSizes =
-                        sizeQuantity.entries.map((entry) {
-                          return {
-                            'size': entry.key,
-                            'quantity': entry.value,
-                          };
-                        }).toList();
 
 
                       },
