@@ -110,4 +110,41 @@ class UserInfoScreenController {
   }
 
 
+  Future<bool> withdrawUser(BuildContext context) async {
+    try {
+      final token = await storage.read(key: 'token');
+      if (token == null || token.isEmpty) throw Exception('로그인 정보가 없습니다.');
+
+      final response = await http.delete(
+        Uri.parse('${BaseUrl.value}:7778/api/users/withdraw'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          await storage.delete(key: 'token');
+          await storage.delete(key: 'isLoggedIn');
+
+
+          return true;
+        } else {
+          throw Exception(data['message'] ?? '탈퇴 처리 실패');
+        }
+      } else {
+        throw Exception('서버 오류: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('회원탈퇴 오류: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('회원 탈퇴 중 오류가 발생했습니다.')),
+      );
+      return false;
+    }
+  }
+
+
 }

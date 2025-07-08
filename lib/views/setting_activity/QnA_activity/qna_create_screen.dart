@@ -46,6 +46,7 @@ class _QnaCreateScreenState extends State<QnaCreateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(
           '1:1 문의',
@@ -61,7 +62,9 @@ class _QnaCreateScreenState extends State<QnaCreateScreen> {
           },
         ),
       ),
-      body: Padding(
+      body:
+      SingleChildScrollView(
+    child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,28 +79,61 @@ class _QnaCreateScreenState extends State<QnaCreateScreen> {
               }).toList(),
               decoration: InputDecoration(
                 labelText: '카테고리',
-                border: OutlineInputBorder(),
+                labelStyle: TextStyle(
+                  color: Colors.black,  // 👈 라벨 텍스트 색상 지정
+                  fontWeight: FontWeight.bold,
+                ),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.0),
+                ),
               ),
+              dropdownColor: Colors.white, // 드롭다운 배경 흰색
               onChanged: (value) {
                 setState(() {
                   _selectedCategory = value;
                 });
               },
             ),
+
             SizedBox(height: 16.0),
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
                 labelText: '제목',
-                border: OutlineInputBorder(),
+                labelStyle: TextStyle(color: Colors.black), // 라벨 색상
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.0),
+                ),
               ),
             ),
             SizedBox(height: 16.0),
+
             TextField(
               controller: _bodyController,
               decoration: InputDecoration(
                 labelText: '내용',
-                border: OutlineInputBorder(),
+                labelStyle: TextStyle(color: Colors.black), // 라벨 색상
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black, width: 1.0),
+                ),
               ),
               maxLines: 8,
             ),
@@ -115,6 +151,7 @@ class _QnaCreateScreenState extends State<QnaCreateScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

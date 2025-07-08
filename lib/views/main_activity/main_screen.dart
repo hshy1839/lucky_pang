@@ -36,6 +36,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+
     _loadProducts();
     _loadAds();
     _loadUnboxedLogs();

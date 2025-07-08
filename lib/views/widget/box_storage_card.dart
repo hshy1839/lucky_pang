@@ -12,6 +12,7 @@ class BoxStorageCard extends StatefulWidget {
   final VoidCallback onOpenPressed;
   final VoidCallback onGiftPressed;
   final String boxId;
+  final int boxPrice;
   final String orderId;
 
   const BoxStorageCard({
@@ -25,6 +26,7 @@ class BoxStorageCard extends StatefulWidget {
     required this.onGiftPressed,
     required this.boxId,
     required this.orderId,
+    required this.boxPrice,
   });
 
   @override
@@ -34,6 +36,7 @@ class BoxStorageCard extends StatefulWidget {
 class _BoxStorageCardState extends State<BoxStorageCard> {
   bool _giftCodeExists = false;
   bool _loading = true;
+
 
   @override
   void initState() {
@@ -94,7 +97,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                     Row(
                       children: [
                         Text(
-                          '${NumberFormat('#,###').format(totalPrice)}원',
+                          '${NumberFormat('#,###').format(widget.boxPrice)}원',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,

@@ -99,6 +99,9 @@ class MyApp extends StatelessWidget {
           textTheme: ThemeData.light().textTheme.apply(
             fontFamily: 'pretendard-regular',
           ),
+          textSelectionTheme: TextSelectionThemeData(
+              cursorColor: Colors.black,         // 커서 색상
+          ),
         ),
         home: _determineInitialScreen(),
         routes: AppRoutes.routes,

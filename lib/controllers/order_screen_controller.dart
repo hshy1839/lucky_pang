@@ -109,6 +109,7 @@ class OrderScreenController {
 
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (_) => AlertDialog(
           backgroundColor: Colors.white,
           title: const Text(
@@ -439,7 +440,7 @@ class OrderScreenController {
         name: boxName,
         qty: quantity,
         id: orderId,
-        price: amount.toDouble(),
+        price: (amount / quantity).toDouble(),
       ),
     ];
 

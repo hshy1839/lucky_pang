@@ -134,17 +134,8 @@ class _ShippingCreateScreenState extends State<ShippingCreateScreen> {
               ),
             ),
 
-            SizedBox(height: 24.h),
-            Row(
-              children: [
-                Checkbox(
-                  value: isDefault,
-                  onChanged: (val) => setState(() => isDefault = val ?? false),
-                ),
-                const Text('기본배송지로 지정'),
-              ],
-            ),
-            SizedBox(height: 24.h),
+            SizedBox(height: 40.h),
+
             SizedBox(
               width: double.infinity,
               height: 56.h,

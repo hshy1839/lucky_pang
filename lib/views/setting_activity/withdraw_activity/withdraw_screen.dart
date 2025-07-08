@@ -23,9 +23,47 @@ class WithdrawScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            SizedBox(height: 60),
+            SizedBox(height: 40),
             // 타이틀/로고/이모지 부분은 그대로
+            Image.asset(
+              'assets/icons/app_logo.png',
+              width: 62,
+              height: 62,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '럭키탕 - 회원탈퇴',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: Colors.black,
+              ),
+            ),
 
+            const SizedBox(height: 18),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFF5722),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 32,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
+            ),
             SizedBox(height: 120),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -34,7 +72,6 @@ class WithdrawScreen extends StatelessWidget {
                   '정말 떠나시나요..? ',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
-                Text('😭', style: TextStyle(fontSize: 26)),
               ],
             ),
             SizedBox(height: 24),
@@ -72,7 +109,12 @@ class WithdrawScreen extends StatelessWidget {
               builder: (context, signupController, child) {
                 return InkWell(
                   onTap: () {
-                    signupController.startBootpayAuth(context);
+                    signupController.startBootpayAuth(
+                      context,
+                      onVerified: () {
+                        Navigator.pushReplacementNamed(context, '/withdraw/agreement');
+                      },
+                    );
                   },
                   child: Text(
                     '회원탈퇴',
@@ -85,6 +127,7 @@ class WithdrawScreen extends StatelessWidget {
                 );
               },
             ),
+
           ],
         ),
       ),

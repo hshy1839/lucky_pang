@@ -77,11 +77,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
       );
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (_) => AlertDialog(
+          backgroundColor: Colors.white, // 흰색 배경
           title: const Text('결제 완료'),
           content: const Text('배송비 결제가 완료되었습니다!'),
           actions: [
             TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue,  // 버튼 배경색 파란색
+              ),
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pushReplacementNamed('/main');

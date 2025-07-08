@@ -3,7 +3,6 @@
   import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
   import 'package:attedance_app/views/main_activity/error_screen.dart';
   import 'package:attedance_app/views/order_activity/delivery_request_screen.dart';
-  import 'package:attedance_app/views/setting_activity/event_activity/event_detail_screen.dart';
   import 'package:attedance_app/views/setting_activity/terms_activity/purchaseTerm_screen.dart';
   import 'package:attedance_app/views/setting_activity/terms_activity/refundTerm_screen.dart';
 import 'package:attedance_app/views/setting_activity/withdraw_activity/withdraw_agreement_screen.dart';
@@ -16,15 +15,12 @@ import 'package:attedance_app/views/setting_activity/withdraw_activity/withdraw_
   import '../views/login_activity/singup_agree_screen.dart';
   import '../views/luckybox_acitivity/boxOpen_screen.dart';
   import '../views/luckybox_acitivity/createGiftCode_screen.dart';
-  import '../views/main_activity/main_screen.dart';
   import '../views/setting_activity/event_activity/event_screen.dart';
   import '../views/setting_activity/notice_activity/notice_screen.dart';
   import '../views/main_activity/search_product_screen.dart';
   import '../views/main_activity/userinfo_detail_screen.dart';
-  import '../views/main_activity/2order_screen.dart';
   import '../views/main_activity/2order_detail_screen.dart';
   import '../views/main_activity/account_screen.dart';
-  import '../views/main_activity/cart_detail_screen.dart';
   import '../views/order_activity/order_screen.dart';
   import '../views/profile_activity/pointInfo_screen.dart';
   import '../views/profile_activity/coupon_code_screen.dart';
@@ -56,7 +52,6 @@ import 'package:attedance_app/views/setting_activity/withdraw_activity/withdraw_
       '/accountInfo': (_) => AccountScreen(),
       '/luckyboxOrder': (_) => LuckyBoxOrderPage(),
       '/userinfo': (_) => UserDetailScreen(),
-      // '/cart': (_) => CartDetailScreen(),
       '/order': (_) => OrderScreen(),
       '/2orderdetail': (_) => aOrderDetailScreen(),
       '/pointInfo': (_) => PointInfoScreen(),
@@ -87,13 +82,6 @@ import 'package:attedance_app/views/setting_activity/withdraw_activity/withdraw_
       '/deliveryscreen': (_) => DeliveryRequestScreen(),
         '/boxOpen': (context) => BoxOpenScreen(),
       '/withdraw': (context) => WithdrawScreen(),
-      '/withdraw/agreement': (context) {
-        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-        return WithdrawAgreementScreen(
-          onConfirm: args?['onConfirm'] ?? () {},
-          termsText: args?['termsText'] ?? '',
-        );
-      },
-
+      '/withdraw/agreement': (context) => const WithdrawAgreementScreen(),
     };
   }

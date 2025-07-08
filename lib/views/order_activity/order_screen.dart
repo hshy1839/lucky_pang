@@ -444,6 +444,7 @@ class _OrderScreenState extends State<OrderScreen> {
                       paymentAmount: order['paymentAmount'] ?? 0,
                       paymentType: order['paymentType'] ?? 'point',
                       pointUsed: order['pointUsed'] ?? 0,
+                      boxPrice: order['box']['price'] ?? 0,
                       onOpenPressed: () {
                         Navigator.pushNamed(
                           context,

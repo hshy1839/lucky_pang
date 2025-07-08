@@ -499,12 +499,14 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text('안내'),
           content: const Text('결제 수단을 선택해주세요!'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('확인'),
+              child: const Text('확인',
+              style: TextStyle(color: Colors.blue),),
             ),
           ],
         ),
