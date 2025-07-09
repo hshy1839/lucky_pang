@@ -136,8 +136,9 @@ class _DeliveryRequestScreenState extends State<DeliveryRequestScreen> {
               ),
               SizedBox(height: 50.h),
               ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/shippingCreate');
+                onPressed: () async {
+                  await Navigator.pushNamed(context, '/shippingCreate');
+                  await _fetchShipping();
                 },
                 icon: Icon(Icons.add, color: Colors.white),
                 label: Text('배송지 추가하기', style: TextStyle(color: Colors.white)),

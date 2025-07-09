@@ -43,6 +43,7 @@ dependencies:
   google_sign_in: ^6.3.0
   bootpay: ^5.0.13
   flutter_launcher_icons: ^0.14.4
+  video_player: ^2.10.0
 
 dev_dependencies:
   flutter_test:
@@ -107,6 +108,8 @@ flutter:
     - assets/images/ranking_images/unboxing_max.png
     - assets/images/ranking_images/unboxing_try.png
 
+
+    - assets/videos/boxOpen_video.mp4
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

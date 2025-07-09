@@ -8,6 +8,7 @@ import '../../controllers/order_screen_controller.dart';
 import '../../routes/base_url.dart';
 import '../widget/box_storage_card.dart';
 import '../widget/product_storage_card.dart';
+import '../widget/video_player.dart';
 
 class OrderScreen extends StatefulWidget {
   final void Function(int)? onTabChanged;
@@ -444,13 +445,12 @@ class _OrderScreenState extends State<OrderScreen> {
                       paymentType: order['paymentType'] ?? 'point',
                       pointUsed: order['pointUsed'] ?? 0,
                       boxPrice: order['box']['price'] ?? 0,
-                      onOpenPressed: () {
-                        Navigator.pushNamed(
+                      onOpenPressed: () async {
+                        await Navigator.push(
                           context,
-                          '/boxOpen',
-                          arguments: {
-                            'orderId': order['_id'],
-                          },
+                          MaterialPageRoute(
+                            builder: (context) => OpenBoxVideoScreen(orderId: order['_id']),
+                          ),
                         );
                       },
                       onGiftPressed: () {},

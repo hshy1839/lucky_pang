@@ -23,12 +23,13 @@ class ShippingCard extends StatelessWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
         title: Text('배송지 삭제'),
         content: Text('배송지를 삭제하시겠습니까?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('취소'),
+            child: Text('취소', style: TextStyle(color: Colors.blue),),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
