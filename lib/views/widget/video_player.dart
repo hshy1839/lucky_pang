@@ -44,18 +44,31 @@ class _OpenBoxVideoScreenState extends State<OpenBoxVideoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: _controller.value.isInitialized
-          ? SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: _controller.value.size.width,
-            height: _controller.value.size.height,
-            child: VideoPlayer(_controller),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque, // 영상 빈곳도 터치 되게
+        onTap: () {
+          if (!_videoFinished) {
+            _videoFinished = true;
+            Navigator.of(context).pushReplacementNamed(
+              '/boxOpen',
+              arguments: {'orderId': widget.orderId},
+            );
+          }
+        },
+        child: _controller.value.isInitialized
+            ? SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _controller.value.size.width,
+              height: _controller.value.size.height,
+              child: VideoPlayer(_controller),
+            ),
           ),
-        ),
-      )
-          : const Center(child: CircularProgressIndicator()),
+        )
+            : const Center(child: CircularProgressIndicator()),
+      ),
     );
   }
+
 }

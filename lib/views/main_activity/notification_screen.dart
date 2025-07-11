@@ -120,10 +120,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     dateStr,
                     style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                   ),
-                  onTap: () {
-                    if (url.isNotEmpty) {
-                      Navigator.pushNamed(context, url);
-                    }
+          onTap: () {
+          if (url.isNotEmpty && url != '/order') {
+          Navigator.pushNamed(context, url);
+          }
                   },
                   tileColor: isRead ? Colors.grey[50] : Colors.white,
                 );
