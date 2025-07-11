@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "1010364747048",
+    "project_id": "luckytang-50c16",
+    "storage_bucket": "luckytang-50c16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1010364747048:android:1bc5cb6e2d7a25f8c1541d",
+        "android_client_info": {
+          "package_name": "com.luckytang"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1010364747048-fr4eldruruj0jdhmba9r9bjock9ggsou.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.luckytang",
+            "certificate_hash": "f4c1768f709ecaa700a8f91e04e68da78138bbce"
+          }
+        },
+        {
+          "client_id": "1010364747048-icnmc591mrl9h516ancjlhvk5kee0lgh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.luckytang",
+            "certificate_hash": "9f8d4d909edbde2ee141e8af4364b7630a9dd07c"
+          }
+        },
+        {
+          "client_id": "1010364747048-tfnh6pc2gecqgo6vk2mod7fqonuf8in5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.luckytang",
+            "certificate_hash": "959c1140916dd8139c29b8fde9291ffd0fd0833b"
+          }
+        },
+        {
+          "client_id": "1010364747048-io74p3deq6v61kd370dqs9i06n5obin7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHwcRTiGS4ekzaKsgfehjjFe_8cUV-Qug"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1010364747048-io74p3deq6v61kd370dqs9i06n5obin7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1010364747048-krilck6fmpo48ct4s5s34mt6brml2h7d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.shoppingMallApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

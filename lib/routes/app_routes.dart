@@ -2,6 +2,7 @@ import 'package:attedance_app/main.dart';
 import 'package:attedance_app/views/login_activity/findEmail_result_screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
 import 'package:attedance_app/views/main_activity/error_screen.dart';
+import 'package:attedance_app/views/main_activity/notification_screen.dart';
 import 'package:attedance_app/views/order_activity/delivery_request_screen.dart';
 import 'package:attedance_app/views/setting_activity/terms_activity/purchaseTerm_screen.dart';
 import 'package:attedance_app/views/setting_activity/terms_activity/refundTerm_screen.dart';
@@ -83,5 +84,6 @@ class AppRoutes {
     '/boxOpen': (context) => BoxOpenScreen(),
     '/withdraw': (context) => WithdrawScreen(),
     '/withdraw/agreement': (context) => const WithdrawAgreementScreen(),
+    '/notification': (context) =>  NotificationScreen(),
   };
 }

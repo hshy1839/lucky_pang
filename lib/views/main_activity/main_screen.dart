@@ -3,9 +3,12 @@ import 'package:attedance_app/controllers/product_controller.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as secureStorage;
 import 'package:intl/intl.dart';
 import 'package:marquee/marquee.dart';
 import '../../controllers/main_screen_controller.dart';
+import '../../controllers/notification_controller.dart';
 import '../product_activity/product_detail_screen.dart';
 import '../setting_activity/event_activity/event_detail_screen.dart';
 
@@ -21,6 +24,9 @@ class _MainScreenState extends State<MainScreen> {
   List<Map<String, String>> products = [];
   List<Map<String, dynamic>> ads = [];
   List<Map<String, dynamic>> latestUnboxedLogs = [];
+  bool hasUnreadNoti = false;
+  final secureStorage = const FlutterSecureStorage();
+  bool _loadingNoti = false;
 
 
   String selectedBox = '5,000원 박스';
@@ -36,6 +42,7 @@ class _MainScreenState extends State<MainScreen> {
     _loadProducts();
     _loadAds();
     _loadUnboxedLogs();
+    _loadUnreadNoti();
     _scrollController.addListener(_scrollListener);
   }
 
@@ -50,6 +57,33 @@ class _MainScreenState extends State<MainScreen> {
     if (price == null || price.isEmpty) return '0';
     final formatter = NumberFormat('#,###');
     return formatter.format(int.parse(price));
+  }
+  Future<void> _loadUnreadNoti() async {
+    setState(() { _loadingNoti = true; });
+    String? userId = await secureStorage.read(key: 'userId');
+    String? token = await secureStorage.read(key: 'token');
+    if (userId != null && token != null) {
+      try {
+        final notiList = await NotificationController().fetchNotifications(
+          userId: userId,
+          token: token,
+        );
+        setState(() {
+          hasUnreadNoti = notiList.any((n) => n['read'] == false);
+          _loadingNoti = false;
+        });
+      } catch (e) {
+        setState(() {
+          hasUnreadNoti = false;
+          _loadingNoti = false;
+        });
+      }
+    } else {
+      setState(() {
+        hasUnreadNoti = false;
+        _loadingNoti = false;
+      });
+    }
   }
 
   Future<void> _loadUnboxedLogs() async {
@@ -263,6 +297,26 @@ class _MainScreenState extends State<MainScreen> {
                         _currentAdIndex = index;
                       });
                     },
+                  ),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: _loadingNoti
+                      ? CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2)
+                      : IconButton(
+                    icon: Icon(
+                      hasUnreadNoti ? Icons.notifications : Icons.notifications_outlined,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/notification');
+                      // 알림화면 다녀온 후 다시 상태 갱신 (읽음 처리 반영)
+                      _loadUnreadNoti();
+                    },
+                    tooltip: '알림',
                   ),
                 ),
                 Positioned(
