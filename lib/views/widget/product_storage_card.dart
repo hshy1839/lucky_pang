@@ -197,7 +197,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     try {
       final dateOnly = acquiredAt.split(' ').first; // '2025-06-11'
       final acquired = DateTime.parse(dateOnly); // 2025-06-11 00:00:00
-      final expireDate = acquired.add(Duration(days: 2)).subtract(Duration(seconds: 1)); // 90일 후 23:59:59
+      final expireDate = acquired.add(Duration(days: 90)).subtract(Duration(seconds: 1)); // 90일 후 23:59:59
       final today = DateTime.now();
       final diff = expireDate.difference(today).inDays;
       if (diff < 0) return '만료됨';

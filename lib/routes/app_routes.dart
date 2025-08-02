@@ -1,5 +1,6 @@
 import 'package:attedance_app/main.dart';
 import 'package:attedance_app/views/login_activity/findEmail_result_screen.dart';
+import 'package:attedance_app/views/luckybox_acitivity/BoxesOpen_Screen.dart';
 import 'package:attedance_app/views/luckybox_acitivity/luckyBoxOrder.dart';
 import 'package:attedance_app/views/main_activity/error_screen.dart';
 import 'package:attedance_app/views/main_activity/notification_screen.dart';
@@ -82,6 +83,11 @@ class AppRoutes {
     },
     '/deliveryscreen': (_) => DeliveryRequestScreen(),
     '/boxOpen': (context) => BoxOpenScreen(),
+    '/boxesOpen': (context) {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+      final orderIds = (args?['orderIds'] as List<dynamic>?)?.cast<String>() ?? [];
+      return BoxesopenScreen(orderIds: orderIds);
+    },
     '/withdraw': (context) => WithdrawScreen(),
     '/withdraw/agreement': (context) => const WithdrawAgreementScreen(),
     '/notification': (context) =>  NotificationScreen(),

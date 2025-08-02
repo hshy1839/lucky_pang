@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../../controllers/giftcode_controller.dart';
 
 class BoxStorageCard extends StatefulWidget {
@@ -14,6 +13,9 @@ class BoxStorageCard extends StatefulWidget {
   final String boxId;
   final int boxPrice;
   final String orderId;
+  final bool isSelected;
+  final ValueChanged<bool?> onSelectChanged;
+  final bool isDisabled;
 
   const BoxStorageCard({
     super.key,
@@ -27,6 +29,9 @@ class BoxStorageCard extends StatefulWidget {
     required this.boxId,
     required this.orderId,
     required this.boxPrice,
+    required this.isSelected,
+    required this.onSelectChanged,
+    required this.isDisabled,
   });
 
   @override
@@ -37,7 +42,6 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
   bool _giftCodeExists = false;
   bool _loading = true;
 
-
   @override
   void initState() {
     super.initState();
@@ -45,7 +49,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
   }
 
   Future<void> _checkGiftCode() async {
-    if (_giftCodeExists) return; // 이미 존재하면 재요청하지 않음
+    if (_giftCodeExists) return;
 
     final exists = await GiftCodeController.checkGiftCodeExists(
       type: 'box',
@@ -59,24 +63,46 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(widget.createdAt));
+    final formattedDate =
+    DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(widget.createdAt));
+    final purchaseDate = DateTime.parse(widget.createdAt);
+    final cancelDeadline = purchaseDate.add(const Duration(days: 7));
+    final remainingDays = cancelDeadline.difference(DateTime.now()).inDays;
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        border: Border.all(color: Color(0xFFF0F1F2)),
+        border: Border.all(color: const Color(0xFFF0F1F2)),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 이미지 + 가격/결제정보
+          if (!widget.isDisabled)
+            Align(
+              alignment: Alignment.topLeft,
+              child: Checkbox(
+                value: widget.isSelected,
+                onChanged: widget.onSelectChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                fillColor: MaterialStateProperty.resolveWith<Color>(
+                      (Set<MaterialState> states) {
+                    if (states.contains(MaterialState.selected)) {
+                      return Colors.black;
+                    }
+                    return Colors.white;
+                  },
+                ),
+                checkColor: Colors.white,
+              ),
+            ),
+
+          // 이미지 + 정보
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
@@ -87,35 +113,34 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                   fit: BoxFit.cover,
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ⬇️ 첫줄 (금액, 럭키박스, 결제유형)
                     Row(
                       children: [
                         Text(
                           '${NumberFormat('#,###').format(widget.boxPrice)}원',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
                             color: Colors.black,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Text(
+                        const SizedBox(width: 4),
+                        const Text(
                           "럭키박스",
                           style: TextStyle(
                             fontSize: 13,
                             color: Color(0xFF465461),
                           ),
                         ),
-                        SizedBox(width: 14),
+                        const SizedBox(width: 14),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Color(0xFF8D969D)),
+                            border: Border.all(color: const Color(0xFF8D969D)),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -124,7 +149,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                                 : widget.paymentType == 'card'
                                 ? '카드 결제'
                                 : '기타 결제',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 10,
                               color: Color(0xFF465461),
                             ),
@@ -132,18 +157,24 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
-                    // ⬇️ 두번째줄 (구매날짜, 결제취소)
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Text(
                           '구매날짜: $formattedDate',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF8D969D)),
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF8D969D)),
                         ),
-                        SizedBox(width: 4,),
+                        const SizedBox(width: 4),
                         Text(
-                          '결제취소 7일 남음',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF2EB520)),
+                          remainingDays > 0
+                              ? '결제취소 $remainingDays일 남음'
+                              : '결제취소 불가',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: remainingDays > 0
+                                ? const Color(0xFF2EB520)
+                                : Colors.red,
+                          ),
                         ),
                       ],
                     ),
@@ -153,23 +184,24 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
             ],
           ),
 
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-          // 버튼들
+          // 버튼 영역
           Row(
             children: [
               Expanded(
                 child: SizedBox(
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: (_giftCodeExists || _loading) ? null : widget.onOpenPressed,
+                    onPressed: (_giftCodeExists || _loading)
+                        ? null
+                        : widget.onOpenPressed,
                     style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
-                        if (states.contains(MaterialState.disabled)) {
-                          return Theme.of(context).primaryColor.withOpacity(0.3);
-                        }
-                        return Theme.of(context).primaryColor;
-                      }),
+                      backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                            (states) => states.contains(MaterialState.disabled)
+                            ? Theme.of(context).primaryColor.withOpacity(0.3)
+                            : Theme.of(context).primaryColor,
+                      ),
                       shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                         RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -186,7 +218,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                   ),
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: SizedBox(
                   height: 45,
@@ -224,8 +256,6 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
           ),
         ],
       ),
-
     );
   }
-
 }

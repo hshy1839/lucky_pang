@@ -28,6 +28,8 @@ class _OrderScreenState extends State<OrderScreen> {
   List<Map<String, dynamic>> unboxedProducts = [];
   List<Map<String, dynamic>> unboxedShippedProducts = [];
   Set<String> selectedOrderIds = {};
+  Set<String> selectedBoxOrderIds = {};
+  bool isBoxSelected(String orderId) => selectedBoxOrderIds.contains(orderId);
 
   @override
   void initState() {
@@ -48,6 +50,37 @@ class _OrderScreenState extends State<OrderScreen> {
       }
     });
   }
+  void toggleBoxSelection(String orderId, bool selected) {
+    setState(() {
+      if (selected) {
+        selectedBoxOrderIds.add(orderId);
+      } else {
+        selectedBoxOrderIds.remove(orderId);
+      }
+    });
+  }
+
+  Future<void> _handleBatchOpenBoxes() async {
+    final selectedOrders = paidOrders
+        .where((o) => selectedBoxOrderIds.contains(o['_id']))
+        .toList();
+
+    final orderIds = selectedOrders.map((o) => o['_id'].toString()).toList();
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OpenBoxVideoScreen(
+          orderIds: orderIds,
+          isBatch: true,
+        ),
+      ),
+    );
+
+    await loadOrders(); // 리프레시
+    setState(() => selectedBoxOrderIds.clear());
+  }
+
 
   Future<void> loadUnboxedProducts() async {
     setState(() { isLoading = true; });
@@ -425,6 +458,39 @@ class _OrderScreenState extends State<OrderScreen> {
                 ),
               ],
             ] else if (selectedTab == 'box') ...[
+              if (paidOrders.isNotEmpty) ...[
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: selectedBoxOrderIds.length == paidOrders.length,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              selectedBoxOrderIds = paidOrders.map((e) => e['_id'] as String).toSet();
+                            } else {
+                              selectedBoxOrderIds.clear();
+                            }
+                          });
+                        },
+                      ),
+                      Text('전체 ${paidOrders.length}개  |  ${selectedBoxOrderIds.length}개 선택'),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: selectedBoxOrderIds.isEmpty ? null : _handleBatchOpenBoxes,
+                        style: TextButton.styleFrom(
+                          foregroundColor: selectedBoxOrderIds.isEmpty
+                              ? Colors.grey // 비활성화 시 회색
+                              : Theme.of(context).primaryColor, // 활성화 시 프라이머리 컬러
+                        ),
+                        child: const Text('일괄열기'),
+                      ),
+
+                    ],
+                  ),
+                ),
+              ],
               isLoading
                   ? CircularProgressIndicator(
                 color: Theme.of(context).primaryColor,
@@ -537,11 +603,27 @@ class _OrderScreenState extends State<OrderScreen> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => OpenBoxVideoScreen(orderId: order['_id']),
+                            builder: (context) => OpenBoxVideoScreen(
+                                orderId: order['_id'],
+                              isBatch: true,),
                           ),
                         );
+                        await loadOrders(); // 새로고침
                       },
-                      onGiftPressed: () {},
+                      onGiftPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/giftcode/create',
+                          arguments: {
+                            'type': 'box',
+                            'boxId': order['box']['_id'],
+                            'orderId': order['_id'],
+                          },
+                        ).then((_) => loadOrders());
+                      },
+                      isSelected: isBoxSelected(order['_id']),
+                      onSelectChanged: (val) => toggleBoxSelection(order['_id'], val ?? false),
+                      isDisabled: order['giftCode'] != null,
                     );
                   },
                 ),
