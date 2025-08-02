@@ -27,6 +27,7 @@ class _OrderScreenState extends State<OrderScreen> {
   final storage = FlutterSecureStorage();
   List<Map<String, dynamic>> unboxedProducts = [];
   List<Map<String, dynamic>> unboxedShippedProducts = [];
+  Set<String> selectedOrderIds = {};
 
   @override
   void initState() {
@@ -34,6 +35,18 @@ class _OrderScreenState extends State<OrderScreen> {
     loadOrders();
     loadUnboxedProducts();
     loadUnboxedShippedProducts();
+  }
+
+  bool isSelected(String orderId) => selectedOrderIds.contains(orderId);
+
+  void toggleSelection(String orderId, bool selected) {
+    setState(() {
+      if (selected) {
+        selectedOrderIds.add(orderId);
+      } else {
+        selectedOrderIds.remove(orderId);
+      }
+    });
   }
 
   Future<void> loadUnboxedProducts() async {
@@ -90,6 +103,53 @@ class _OrderScreenState extends State<OrderScreen> {
       isLoading = false;
     });
   }
+
+  Future<void> _handleBatchRefund() async {
+    final selectedOrders = unboxedProducts.where((o) => selectedOrderIds.contains(o['_id'])).toList();
+
+    final confirm = await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('일괄 환급'),
+        content: Text('${selectedOrders.length}개의 상품을 환급하시겠습니까?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('환급')),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    for (final order in selectedOrders) {
+      final product = order['unboxedProduct']['product'];
+      final refundRateStr = product['refundProbability']?.toString() ?? '0';
+      final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+
+      await OrderScreenController.refundOrder(
+        order['_id'],
+        refundRate,
+        description: '[${product['brand']}] ${product['name']} 포인트 환급',
+      );
+    }
+
+    setState(() {
+      unboxedProducts.removeWhere((o) => selectedOrderIds.contains(o['_id']));
+      selectedOrderIds.clear();
+    });
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('환급 완료'),
+        content: Text('선택한 상품들이 환급되었습니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('확인')),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +273,31 @@ class _OrderScreenState extends State<OrderScreen> {
                   ),
                 )
               ] else ...[
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: selectedOrderIds.length == unboxedProducts.length,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              selectedOrderIds = unboxedProducts.map((e) => e['_id'] as String).toSet();
+                            } else {
+                              selectedOrderIds.clear();
+                            }
+                          });
+                        },
+                      ),
+                      Text('전체 ${unboxedProducts.length}개  |  ${selectedOrderIds.length}개 선택'),
+                      Spacer(),
+                      TextButton(
+                        onPressed: selectedOrderIds.isEmpty ? null : _handleBatchRefund,
+                        child: Text('일괄환급하기'),
+                      ),
+                    ],
+                  ),
+                ),
                 Expanded(
                   child: ListView.separated(
                     padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 12.h),
@@ -221,6 +306,7 @@ class _OrderScreenState extends State<OrderScreen> {
                     itemBuilder: (context, index) {
                       final order = unboxedProducts[index];
                       final product = order['unboxedProduct']['product'];
+                      final orderId = order['_id'];
 
                       return ProductStorageCard(
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
@@ -231,6 +317,8 @@ class _OrderScreenState extends State<OrderScreen> {
                         purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
                         consumerPrice: product['consumerPrice'],
                         brand: '${product['brand']}',
+                        isSelected: isSelected(orderId),
+                        onSelectChanged: (val) => toggleSelection(orderId, val ?? false),
                         dDay: 'D-90',
                         isLocked: false,
                         onRefundPressed: () {
