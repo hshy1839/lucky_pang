@@ -22,7 +22,7 @@ class Footer extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () {}, // 이벤트 소비해서 아래로 안 내려감
             child: Container(
-              height: 75,
+              height: 85,
               width: double.infinity,
               color: Colors.transparent,
             ),
@@ -30,7 +30,7 @@ class Footer extends StatelessWidget {
 
           // ✅ Footer 본체
           SizedBox(
-            height: 75,
+            height: 86,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,

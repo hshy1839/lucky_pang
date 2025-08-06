@@ -45,9 +45,11 @@ class _RankingScreenState extends State<RankingScreen> {
     final orders = await OrderScreenController.getAllUnboxedOrders();
 
     final now = DateTime.now();
+    final weekday = now.weekday;
+    final monday = now.subtract(Duration(days: weekday - 1));
     final startDate = showRealtimeLog
         ? now.subtract(const Duration(hours: 24))
-        : now.subtract(const Duration(days: 6));
+        : monday;
 
     final filteredOrders = orders.where((order) {
       final decidedAtStr = order['unboxedProduct']?['decidedAt'];
@@ -88,11 +90,15 @@ class _RankingScreenState extends State<RankingScreen> {
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-    final today = DateTime.now();
-    final weekAgo = today.subtract(const Duration(days: 6));
+
+    final now = DateTime.now();
+    final weekday = now.weekday;
+    final monday = now.subtract(Duration(days: weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+
     final dateFormat =
-        "${weekAgo.year}-${weekAgo.month.toString().padLeft(2, '0')}-${weekAgo.day.toString().padLeft(2, '0')}"
-        " - ${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+        "${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}"
+        " ~ ${sunday.year}-${sunday.month.toString().padLeft(2, '0')}-${sunday.day.toString().padLeft(2, '0')}";
 
     return Scaffold(
       body: Container(
@@ -101,135 +107,134 @@ class _RankingScreenState extends State<RankingScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFFF5722), // #FF5722
-              Color(0xFFC622FF), // #C622FF
+              Color(0xFFFF5722),
+              Color(0xFFC622FF),
             ],
-            stops: [0.0, 0.7], // 101.06%에 해당하는 값은 거의 1.01
+            stops: [0.0, 0.7],
           ),
         ),
         child: SafeArea(
           child: isLoading
               ? Center(child: CircularProgressIndicator())
               : CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    SliverAppBar(
-                      automaticallyImplyLeading: false,
-                      expandedHeight: 480.h,
-                      pinned: true,
-                      backgroundColor: Colors.transparent,
-                      flexibleSpace: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return FlexibleSpaceBar(
-                            background: Padding(
-                              padding: EdgeInsets.only(top: 40.h),
-                              child: isCollapsed
-                                  ? _buildCompactStatHeader()
-                                  : Column(
-                                      children: [
-                                        Text(
-                                          showRealtimeLog
-                                              ? '지금 언박싱하는 사람들'
-                                              : '이번주 언박싱 랭킹',
-                                          style: TextStyle(
-                                            fontSize: 22.sp,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        SizedBox(height: 4.h),
-                                        Text(
-                                          showRealtimeLog
-                                              ? '최근 24시간'
-                                              : dateFormat,
-                                          style: TextStyle(
-                                              fontSize: 12.sp,
-                                              color: Colors.white),
-                                        ),
-                                        SizedBox(height: 20.h),
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 16.w),
-                                          child: Column(
-                                            children: [
-                                              buildUnboxStatCard(
-                                                title: '언박싱 최고가',
-                                                value:
-                                                    _formatNumber(highestPrice),
-                                                unit: '원',
-                                                backgroundColor:
-                                                    Color(0xFF021526),
-                                                backgroundImage:
-                                                    'assets/images/ranking_images/unboxing_high.png',
-                                              ),
-                                              buildUnboxStatCard(
-                                                title: '언박싱 횟수',
-                                                value:
-                                                    '${unboxedOrders.length}',
-                                                unit: '회',
-                                                backgroundColor:
-                                                    Color(0xFF021526),
-                                                backgroundImage:
-                                                    'assets/images/ranking_images/unboxing_try.png',
-                                              ),
-                                              buildUnboxStatCard(
-                                                title: '누적 최고가',
-                                                value:
-                                                    _formatNumber(totalPrice),
-                                                unit: '원',
-                                                backgroundColor:
-                                                    Color(0xFF021526),
-                                                backgroundImage:
-                                                    'assets/images/ranking_images/unboxing_max.png',
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: RankingTabBarHeader(
-                        isSelected: showRealtimeLog,
-                        onTap: (selected) {
-                          setState(() {
-                            showRealtimeLog = selected;
-                            fetchUnboxedLogs();
-                            if (_scrollController.hasClients) {
-                              _scrollController.animateTo(
-                                0.0,
-                                duration: Duration(milliseconds: 300),
-                                curve: Curves.ease,
-                              );
-                            }
-                            // 그리고 무조건 카드형(사각형)으로 복구!
-                            isCollapsed = false;
-                          });
-                        },
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Container(
-                        color: Colors.white,
-                        height: 350.h,
-                        child: showRealtimeLog
-                            ? SingleChildScrollView(
-                                child: UnboxRealtimeList(
-                                    unboxedOrders: unboxedOrders),
-                              )
-                            : SingleChildScrollView(
-                                child: UnboxWeeklyRanking(
-                                    unboxedOrders: unboxedOrders),
+            controller: _scrollController,
+            slivers: [
+              SliverAppBar(
+                automaticallyImplyLeading: false,
+                expandedHeight: 480.h,
+                pinned: true,
+                backgroundColor: Colors.transparent,
+                flexibleSpace: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return FlexibleSpaceBar(
+                      background: Padding(
+                        padding: EdgeInsets.only(top: 40.h),
+                        child: isCollapsed
+                            ? _buildCompactStatHeader()
+                            : Column(
+                          children: [
+                            Text(
+                              showRealtimeLog
+                                  ? '지금 언박싱하는 사람들'
+                                  : '이번주 언박싱 랭킹',
+                              style: TextStyle(
+                                fontSize: 22.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              showRealtimeLog
+                                  ? '최근 24시간'
+                                  : dateFormat,
+                              style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.white),
+                            ),
+                            SizedBox(height: 20.h),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16.w),
+                              child: Column(
+                                children: [
+                                  buildUnboxStatCard(
+                                    title: '언박싱 최고가',
+                                    value:
+                                    _formatNumber(highestPrice),
+                                    unit: '원',
+                                    backgroundColor:
+                                    Color(0xFF021526),
+                                    backgroundImage:
+                                    'assets/images/ranking_images/unboxing_high.png',
+                                  ),
+                                  buildUnboxStatCard(
+                                    title: '언박싱 횟수',
+                                    value:
+                                    '${unboxedOrders.length}',
+                                    unit: '회',
+                                    backgroundColor:
+                                    Color(0xFF021526),
+                                    backgroundImage:
+                                    'assets/images/ranking_images/unboxing_try.png',
+                                  ),
+                                  buildUnboxStatCard(
+                                    title: '누적 최고가',
+                                    value:
+                                    _formatNumber(totalPrice),
+                                    unit: '원',
+                                    backgroundColor:
+                                    Color(0xFF021526),
+                                    backgroundImage:
+                                    'assets/images/ranking_images/unboxing_max.png',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: RankingTabBarHeader(
+                  isSelected: showRealtimeLog,
+                  onTap: (selected) {
+                    setState(() {
+                      showRealtimeLog = selected;
+                      fetchUnboxedLogs();
+                      if (_scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          0.0,
+                          duration: Duration(milliseconds: 300),
+                          curve: Curves.ease,
+                        );
+                      }
+                      isCollapsed = false;
+                    });
+                  },
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Container(
+                  color: Colors.white,
+                  height: 350.h,
+                  child: showRealtimeLog
+                      ? SingleChildScrollView(
+                    child: UnboxRealtimeList(
+                        unboxedOrders: unboxedOrders),
+                  )
+                      : SingleChildScrollView(
+                    child: UnboxWeeklyRanking(
+                        unboxedOrders: unboxedOrders),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -299,10 +304,10 @@ class _RankingScreenState extends State<RankingScreen> {
         borderRadius: BorderRadius.circular(10.r),
         image: backgroundImage != null
             ? DecorationImage(
-                image: AssetImage(backgroundImage),
-                fit: BoxFit.cover,
-                opacity: 0.4,
-              )
+          image: AssetImage(backgroundImage),
+          fit: BoxFit.cover,
+          opacity: 0.4,
+        )
             : null,
       ),
       child: Row(

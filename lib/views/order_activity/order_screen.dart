@@ -321,13 +321,27 @@ class _OrderScreenState extends State<OrderScreen> {
                             }
                           });
                         },
+                        fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+                          if (states.contains(MaterialState.selected)) {
+                            return Colors.black; // 체크 시 배경 검정
+                          }
+                          return Colors.white; // 비선택 시 배경 흰색
+                        }),
+                        checkColor: Colors.white, // 체크 표시 흰색
                       ),
+
                       Text('전체 ${unboxedProducts.length}개  |  ${selectedOrderIds.length}개 선택'),
                       Spacer(),
                       TextButton(
                         onPressed: selectedOrderIds.isEmpty ? null : _handleBatchRefund,
+                        style: TextButton.styleFrom(
+                          foregroundColor: selectedOrderIds.isEmpty
+                              ? Colors.grey // 비활성화 시 회색
+                              : Theme.of(context).primaryColor, // 활성화 시 primary
+                        ),
                         child: Text('일괄환급하기'),
                       ),
+
                     ],
                   ),
                 ),
@@ -474,7 +488,15 @@ class _OrderScreenState extends State<OrderScreen> {
                             }
                           });
                         },
+                        fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+                          if (states.contains(MaterialState.selected)) {
+                            return Colors.black; // 선택 시 배경 검정
+                          }
+                          return Colors.white; // 비선택 시 배경 흰색 (선택사항)
+                        }),
+                        checkColor: Colors.white, // 체크 표시 흰색
                       ),
+
                       Text('전체 ${paidOrders.length}개  |  ${selectedBoxOrderIds.length}개 선택'),
                       const Spacer(),
                       TextButton(

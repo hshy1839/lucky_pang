@@ -19,7 +19,7 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
   void initState() {
     super.initState();
     _updateTimeLeft();
-    _timer = Timer.periodic(Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _updateTimeLeft();
     });
   }
@@ -53,9 +53,9 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
       final user = order['user'];
       final nickname = user?['nickname'] ?? '익명';
 
-      final createdAtStr = order['createdAt'];
-      final createdAt = DateTime.tryParse(createdAtStr ?? '');
-      if (createdAt == null || createdAt.isBefore(startOfWeek) || createdAt.isAfter(endOfWeek)) {
+      final decidedAtStr = order['unboxedProduct']?['decidedAt'];
+      final decidedAt = DateTime.tryParse(decidedAtStr ?? '');
+      if (decidedAt == null || decidedAt.isBefore(startOfWeek) || decidedAt.isAfter(endOfWeek)) {
         continue;
       }
 
@@ -70,7 +70,6 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
     rankedList.sort((a, b) => (b['total'] as int).compareTo(a['total'] as int));
     return rankedList;
   }
-
 
   @override
   void dispose() {
@@ -87,7 +86,7 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
       child: ListView(
         padding: EdgeInsets.only(bottom: 100.h),
         shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         children: [
           Padding(
             padding: EdgeInsets.all(16.w),
@@ -154,7 +153,6 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
     return '${_formatCurrency(point)} P';
   }
 
-
   String _formatCurrency(int number) {
     return number.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
   }
@@ -188,8 +186,6 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
       ),
     );
   }
-
-
 }
 
 class RankingRuleTooltip extends StatelessWidget {
@@ -253,4 +249,3 @@ class RankingRuleTooltip extends StatelessWidget {
     );
   }
 }
-

@@ -57,7 +57,11 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).primaryColor,
+          ),
+        )
             : Stack(
           children: [
             Column(

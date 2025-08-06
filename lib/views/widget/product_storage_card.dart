@@ -46,6 +46,7 @@ class ProductStorageCard extends StatefulWidget {
 class _ProductStorageCardState extends State<ProductStorageCard> {
   bool _giftCodeExists = false;
   bool _loading = true;
+  bool _isLockedManually = false;
 
   @override
   void initState() {
@@ -68,24 +69,101 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isLocked = _isLockedManually;
+
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        border: Border.all(color: Color(0xFFF0F1F2)),
+        border: Border.all(color: const Color(0xFFF0F1F2)),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// 체크박스
-          Align(
-            alignment: Alignment.topLeft,
-            child: Checkbox(
-              value: widget.isSelected,
-              onChanged: widget.onSelectChanged,
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
+          /// 체크박스 + 자물쇠 아이콘
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Checkbox(
+                value: widget.isSelected,
+                onChanged: isLocked ? null : widget.onSelectChanged,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                fillColor: MaterialStateProperty.resolveWith<Color>(
+                        (Set<MaterialState> states) {
+                      if (states.contains(MaterialState.selected)) {
+                        return Colors.black;
+                      }
+                      return Colors.white;
+                    }),
+                checkColor: Colors.white,
+              ),
+              GestureDetector(
+                onTap: () async {
+                  if (!_isLockedManually) {
+                    // 🔓 → 🔒 전환: 잠금
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text('잠금 확인'),
+                          content: const Text('해당 상품을 잠금 하시겠습니까?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text('아니오', style: TextStyle(color: Theme.of(context).primaryColor)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text('예', style: TextStyle(color: Theme.of(context).primaryColor)),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (confirm == true) {
+                      setState(() {
+                        _isLockedManually = true;
+                      });
+                    }
+                  } else {
+                    // 🔒 → 🔓 전환: 잠금 해제
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text('잠금 해제 확인'),
+                          content: const Text('해당 상품의 잠금을 해제하시겠습니까?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text('아니오', style: TextStyle(color: Theme.of(context).primaryColor)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text('예', style: TextStyle(color: Theme.of(context).primaryColor)),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (confirm == true) {
+                      setState(() {
+                        _isLockedManually = false;
+                      });
+                    }
+                  }
+                },
+                child: Icon(
+                  _isLockedManually ? Icons.lock : Icons.lock_open,
+                  color: _isLockedManually ? Colors.green : Colors.blue,
+                  size: 20.w,
+                ),
+              ),
+
+            ],
           ),
 
           /// 이미지 + 텍스트
@@ -114,7 +192,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                     SizedBox(height: 8.h),
                     Text(
                       widget.productName,
-                      style: TextStyle(fontSize: 14.sp, color: Color(0xFF465461)),
+                      style: TextStyle(
+                          fontSize: 14.sp, color: const Color(0xFF465461)),
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -125,7 +204,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                           '${NumberFormat('#,###').format(widget.purchasePrice)} 원',
                           style: TextStyle(
                             fontSize: 18.sp,
-                            color: Color(0xFFFF5722),
+                            color: const Color(0xFFFF5722),
                           ),
                         ),
                         SizedBox(width: 12.w),
@@ -133,7 +212,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                           '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
                           style: TextStyle(
                             fontSize: 17.sp,
-                            color: Color(0xFF8D969D),
+                            color: const Color(0xFF8D969D),
                             decoration: TextDecoration.lineThrough,
                           ),
                         ),
@@ -142,7 +221,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                           _calculateDDay(widget.acquiredAt),
                           style: TextStyle(
                             fontSize: 17.sp,
-                            color: Color(0xFF465461),
+                            color: const Color(0xFF465461),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -163,8 +242,10 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                 child: _buildOutlinedButton(
                   context,
                   text: '환급하기',
-                  onPressed: !_giftCodeExists ? widget.onRefundPressed : null,
-                  enabled: !_giftCodeExists,
+                  onPressed: (!isLocked && !_giftCodeExists)
+                      ? widget.onRefundPressed
+                      : null,
+                  enabled: (!isLocked && !_giftCodeExists),
                 ),
               ),
               SizedBox(width: 8.w),
@@ -172,8 +253,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                 child: _buildOutlinedButton(
                   context,
                   text: _giftCodeExists ? '선물코드 확인' : '선물하기',
-                  onPressed: widget.onGiftPressed,
-                  enabled: true,
+                  onPressed: isLocked ? null : widget.onGiftPressed,
+                  enabled: !isLocked,
                 ),
               ),
               SizedBox(width: 8.w),
@@ -181,8 +262,10 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                 child: _buildElevatedButton(
                   context,
                   text: '배송신청',
-                  onPressed: widget.onDeliveryPressed,
-                  enabled: !_giftCodeExists && !_loading,
+                  onPressed: (!isLocked && !_giftCodeExists && !_loading)
+                      ? widget.onDeliveryPressed
+                      : () {},
+                  enabled: (!isLocked && !_giftCodeExists && !_loading),
                 ),
               ),
             ],
@@ -192,12 +275,12 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     );
   }
 
-  /// D-xx 계산
   String _calculateDDay(String acquiredAt) {
     try {
-      final dateOnly = acquiredAt.split(' ').first; // '2025-06-11'
-      final acquired = DateTime.parse(dateOnly); // 2025-06-11 00:00:00
-      final expireDate = acquired.add(Duration(days: 90)).subtract(Duration(seconds: 1)); // 90일 후 23:59:59
+      final dateOnly = acquiredAt.split(' ').first;
+      final acquired = DateTime.parse(dateOnly);
+      final expireDate =
+      acquired.add(const Duration(days: 90)).subtract(const Duration(seconds: 1));
       final today = DateTime.now();
       final diff = expireDate.difference(today).inDays;
       if (diff < 0) return '만료됨';

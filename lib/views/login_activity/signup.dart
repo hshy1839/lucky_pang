@@ -36,7 +36,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
       }
 
-
       _isInitialized = true;
     }
   }
@@ -48,7 +47,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -59,7 +57,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             children: [
               const SizedBox(height: 26),
-
               Image.asset(
                 'assets/icons/app_logo.png',
                 width: 50,
@@ -85,8 +82,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 isButtonEnabled: !signupController.nicknameChecked,
               ),
               const SizedBox(height: 36),
-
-              if (signupController.provider == 'local'|| signupController.provider == 'kakao') ...[
+              if (signupController.provider == 'local' || signupController.provider == 'kakao') ...[
                 _buildInputWithButton(
                   context,
                   '이메일',
@@ -96,26 +92,53 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   errorText: signupController.emailError,
                   isButtonEnabled: !signupController.emailChecked,
                 ),
-                ],
+              ],
               if (signupController.provider == 'local') ...[
                 const SizedBox(height: 36),
-
                 _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
                 const SizedBox(height: 36),
                 _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
                 const SizedBox(height: 36),
               ],
 
-              _buildInputWithButton(
-                context,
-                '휴대폰 번호',
-                signupController.phoneController,
-                signupController.isPhoneVerified ? '본인인증 완료' : '본인인증하기',
-                signupController.isPhoneVerified ? () {} : () => signupController.startBootpayAuth(context),
-                isButtonEnabled: !signupController.isPhoneVerified,
+              // ✅ 휴대폰 번호 제목 + 버튼
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '휴대폰 번호',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: signupController.isPhoneVerified
+                          ? null
+                          : () => signupController.startBootpayAuth(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: signupController.isPhoneVerified
+                            ? Colors.green
+                            : Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text(
+                        signupController.isPhoneVerified ? '본인인증 완료' : '본인인증',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-
               const SizedBox(height: 36),
+
               _buildInputWithButton(
                 context,
                 '추천인 코드',
@@ -126,8 +149,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 isButtonEnabled: !signupController.referralCodeChecked,
               ),
               const SizedBox(height: 60),
-
-
               const Text(
                 '럭키탕에 회원가입을 신청하시면 신청자는 만 14세 이상이며, 서비스 이용약관과 개인정보 수집 및 이용 동의 내용을 확인하고 동의한 것으로 간주합니다.',
                 style: TextStyle(fontSize: 12),
@@ -142,7 +163,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     backgroundColor: Theme.of(context).primaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                   ),
-                  child: const Text('가입완료', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text(
+                    '가입완료',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -194,7 +218,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-
   Widget _buildTextField(String label, TextEditingController controller, {bool obscureText = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,7 +248,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             controller: controller,
             obscureText: obscureText,
             decoration: const InputDecoration(
-              // hintText: label, // ❌ placeholder 대신 label만 사용
               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
@@ -237,5 +259,4 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ],
     );
   }
-
 }
