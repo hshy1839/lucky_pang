@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../controllers/giftcode_controller.dart';
 import '../../controllers/order_screen_controller.dart';
 import '../../routes/base_url.dart';
 import '../widget/box_storage_card.dart';
@@ -30,13 +31,21 @@ class _OrderScreenState extends State<OrderScreen> {
   Set<String> selectedOrderIds = {};
   Set<String> selectedBoxOrderIds = {};
   bool isBoxSelected(String orderId) => selectedBoxOrderIds.contains(orderId);
+  Map<String, bool> lockedProductIds = {};
 
   @override
   void initState() {
     super.initState();
-    loadOrders();
-    loadUnboxedProducts();
-    loadUnboxedShippedProducts();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (selectedTab == 'box') {
+        loadOrders();
+      } else if (selectedTab == 'product') {
+        loadUnboxedProducts();
+      } else if (selectedTab == 'shipped') {
+        loadUnboxedShippedProducts();
+      }
+    });
   }
 
   bool isSelected(String orderId) => selectedOrderIds.contains(orderId);
@@ -61,11 +70,34 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
   Future<void> _handleBatchOpenBoxes() async {
-    final selectedOrders = paidOrders
-        .where((o) => selectedBoxOrderIds.contains(o['_id']))
-        .toList();
+    // ✅ 진짜 유효한 박스만 필터링: 선택됐고, 선물코드 없고, 아직 언박싱되지 않은 것만
+    final validSelectedOrders = paidOrders.where((o) {
+      final isSelected = selectedBoxOrderIds.contains(o['_id']);
+      final hasGiftCode = o['giftCode'] != null;
+      final isUnboxed = o['unboxedProduct'] != null && o['unboxedProduct']['product'] != null;
 
-    final orderIds = selectedOrders.map((o) => o['_id'].toString()).toList();
+      return isSelected && !hasGiftCode && !isUnboxed;
+    }).toList();
+
+    if (validSelectedOrders.isEmpty) {
+      // ✅ 필터링 후에도 열 수 있는 게 없다면 다이얼로그 표시
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('선택 오류'),
+          content: Text('열 수 있는 박스를 선택하세요.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('확인'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final orderIds = validSelectedOrders.map((o) => o['_id'].toString()).toList();
 
     await Navigator.push(
       context,
@@ -78,8 +110,10 @@ class _OrderScreenState extends State<OrderScreen> {
     );
 
     await loadOrders(); // 리프레시
-    setState(() => selectedBoxOrderIds.clear());
+    setState(() => selectedBoxOrderIds.clear()); // ✅ 선택 초기화
   }
+
+
 
 
   Future<void> loadUnboxedProducts() async {
@@ -87,17 +121,29 @@ class _OrderScreenState extends State<OrderScreen> {
     final userId = await storage.read(key: 'userId');
     if (userId == null) return;
     final result = await OrderScreenController.getUnboxedProducts(userId);
+    List<Map<String, dynamic>> temp = [];
+
+    for (final o in result ?? []) {
+      if (o['status'] == 'shipped') continue;
+      if ((o['refunded']?['point'] ?? 0) > 0) continue;
+      if (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null) continue;
+
+      // ✅ 선물코드 존재 여부 확인
+      final exists = await GiftCodeController.checkGiftCodeExists(
+        type: 'product',
+        orderId: o['_id'],
+        productId: o['unboxedProduct']['product']['_id'],
+      );
+      o['giftCodeExists'] = exists;
+
+      temp.add(o);
+    }
+
     setState(() {
-      unboxedProducts = (result ?? [])
-          .where((o) =>
-      o['status'] != 'shipped' &&
-          (o['refunded']?['point'] ?? 0) == 0 &&
-          o['unboxedProduct'] != null &&
-          o['unboxedProduct']['product'] != null // ★ 여기를 추가
-      )
-          .toList();
+      unboxedProducts = temp;
       isLoading = false;
     });
+
   }
   Future<void> loadUnboxedShippedProducts() async {
     setState(() { isLoading = true; });
@@ -126,13 +172,35 @@ class _OrderScreenState extends State<OrderScreen> {
     }
 
     final orders = await OrderScreenController.getOrdersByUserId(userId);
+
+// 각 박스에 대해 선물코드 존재 여부 확인 후 필드 추가
+    final futures = orders.map((o) async {
+      final exists = await GiftCodeController.checkGiftCodeExists(
+        type: 'box',
+        boxId: o['box']['_id'],
+        orderId: o['_id'],
+      );
+      o['giftCodeExists'] = exists;
+      return o;
+    }).toList();
+
+    final ordersWithGiftCode = await Future.wait(futures);
+
+
     print('📦 전체 주문 수: ${orders.length}');
     print('📦 paid: ${orders.where((o) => o['status'] == 'paid').length}');
 
+    final filtered = ordersWithGiftCode.where((o) =>
+    o['status'] == 'paid' &&
+        (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null)
+    ).toList();
+
     setState(() {
-      paidOrders = orders.where((o) =>
-      o['status'] == 'paid' &&
-          (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null)).toList();
+      paidOrders = filtered;
+    });
+
+// ✅ 여기서 isLoading false는 따로 마지막에!
+    setState(() {
       isLoading = false;
     });
   }
@@ -310,25 +378,45 @@ class _OrderScreenState extends State<OrderScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   child: Row(
                     children: [
+                      // 전체 선택 체크박스
                       Checkbox(
-                        value: selectedOrderIds.length == unboxedProducts.length,
+                        value: unboxedProducts
+                            .where((o) =>
+                        o['unboxedProduct']?['product']?['isLocked'] != true &&
+                            (o['refunded']?['point'] ?? 0) == 0 &&
+                            o['giftCodeExists'] != true &&
+                            (lockedProductIds[o['_id']] != true))
+                            .every((o) => selectedOrderIds.contains(o['_id'])),
                         onChanged: (val) {
                           setState(() {
                             if (val == true) {
-                              selectedOrderIds = unboxedProducts.map((e) => e['_id'] as String).toSet();
+                              selectedOrderIds = unboxedProducts
+                                  .where((o) =>
+                              o['unboxedProduct']?['product']?['isLocked'] != true &&
+                                  (o['refunded']?['point'] ?? 0) == 0 &&
+                                  o['giftCodeExists'] != true &&
+                                  (lockedProductIds[o['_id']] != true))
+                                  .map((o) => o['_id'] as String)
+                                  .toSet();
                             } else {
                               selectedOrderIds.clear();
                             }
                           });
                         },
+
+                        // ✅ 스타일 추가 부분
                         fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
                           if (states.contains(MaterialState.selected)) {
-                            return Colors.black; // 체크 시 배경 검정
+                            return Colors.black; // 체크 시 배경색: 검정
                           }
-                          return Colors.white; // 비선택 시 배경 흰색
+                          return Colors.white; // 미체크 시 배경색: 흰색
                         }),
-                        checkColor: Colors.white, // 체크 표시 흰색
+                        checkColor: Colors.white, // 체크 아이콘 색상: 흰색
+                        side: const BorderSide(color: Colors.black), // 미체크 시 테두리: 검정
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
+
 
                       Text('전체 ${unboxedProducts.length}개  |  ${selectedOrderIds.length}개 선택'),
                       Spacer(),
@@ -359,6 +447,12 @@ class _OrderScreenState extends State<OrderScreen> {
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
                         mainImageUrl: '${BaseUrl.value}:7778${product['mainImage']}',
                         productName: '${product['name']}',
+                        isManuallyLocked: lockedProductIds[order['_id']] ?? false,
+                        onManualLockChanged: (val) {
+                          setState(() {
+                            lockedProductIds[order['_id']] = val;
+                          });
+                        },
                         orderId: order['_id'],
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
                         purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
@@ -478,11 +572,24 @@ class _OrderScreenState extends State<OrderScreen> {
                   child: Row(
                     children: [
                       Checkbox(
-                        value: selectedBoxOrderIds.length == paidOrders.length,
+                        value: paidOrders
+                            .where((o) =>
+                        o['giftCode'] == null &&
+                            o['giftCodeExists'] != true &&
+                            (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null))
+                            .every((o) => selectedBoxOrderIds.contains(o['_id'])), // ✅ 선택 가능한 항목이 전부 선택되어 있으면 체크됨
+
                         onChanged: (val) {
                           setState(() {
                             if (val == true) {
-                              selectedBoxOrderIds = paidOrders.map((e) => e['_id'] as String).toSet();
+                              selectedBoxOrderIds = paidOrders
+                                  .where((o) =>
+                              o['giftCode'] == null &&
+                                  o['giftCodeExists'] != true &&
+                                  (o['unboxedProduct'] == null ||
+                                      o['unboxedProduct']['product'] == null))
+                                  .map((e) => e['_id'] as String)
+                                  .toSet();
                             } else {
                               selectedBoxOrderIds.clear();
                             }
@@ -490,14 +597,16 @@ class _OrderScreenState extends State<OrderScreen> {
                         },
                         fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
                           if (states.contains(MaterialState.selected)) {
-                            return Colors.black; // 선택 시 배경 검정
+                            return Colors.black;
                           }
-                          return Colors.white; // 비선택 시 배경 흰색 (선택사항)
+                          return Colors.white;
                         }),
-                        checkColor: Colors.white, // 체크 표시 흰색
+                        checkColor: Colors.white,
                       ),
 
-                      Text('전체 ${paidOrders.length}개  |  ${selectedBoxOrderIds.length}개 선택'),
+
+                      Text('전체 ${paidOrders.where((o) => o['giftCode'] == null).length}개  |  ${selectedBoxOrderIds.length}개 선택'),
+
                       const Spacer(),
                       TextButton(
                         onPressed: selectedBoxOrderIds.isEmpty ? null : _handleBatchOpenBoxes,
@@ -517,7 +626,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   ? CircularProgressIndicator(
                 color: Theme.of(context).primaryColor,
               )
-                  : paidOrders.isEmpty
+                  : !isLoading && paidOrders.isEmpty
                   ? Expanded(
                 child: Center(
                   child: Column(
@@ -839,7 +948,10 @@ class _OrderScreenState extends State<OrderScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () async {
-            setState(() => selectedTab = key);
+            setState(() {
+              selectedTab = key;
+              isLoading = true;
+            });
 
             // 탭 변경 후 해당 데이터 다시 로딩
             if (key == 'box') {

@@ -19,6 +19,8 @@ class ProductStorageCard extends StatefulWidget {
   final String productId;
   final bool isSelected;
   final ValueChanged<bool?> onSelectChanged;
+  final bool isManuallyLocked;
+  final ValueChanged<bool> onManualLockChanged;
 
   const ProductStorageCard({
     super.key,
@@ -37,6 +39,8 @@ class ProductStorageCard extends StatefulWidget {
     required this.productId,
     required this.isSelected,
     required this.onSelectChanged,
+    required this.isManuallyLocked,
+    required this.onManualLockChanged,
   });
 
   @override
@@ -46,7 +50,6 @@ class ProductStorageCard extends StatefulWidget {
 class _ProductStorageCardState extends State<ProductStorageCard> {
   bool _giftCodeExists = false;
   bool _loading = true;
-  bool _isLockedManually = false;
 
   @override
   void initState() {
@@ -69,7 +72,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isLocked = _isLockedManually;
+    final isLocked = widget.isManuallyLocked;
+    final isFullyLocked = isLocked || _giftCodeExists;
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -82,25 +86,26 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
         children: [
           /// 체크박스 + 자물쇠 아이콘
           Row(
+
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+
               Checkbox(
                 value: widget.isSelected,
-                onChanged: isLocked ? null : widget.onSelectChanged,
+                onChanged: isFullyLocked ? null : widget.onSelectChanged,
                 visualDensity: VisualDensity.compact,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                fillColor: MaterialStateProperty.resolveWith<Color>(
-                        (Set<MaterialState> states) {
-                      if (states.contains(MaterialState.selected)) {
-                        return Colors.black;
-                      }
-                      return Colors.white;
-                    }),
+                fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return Colors.black;
+                  }
+                  return Colors.white;
+                }),
                 checkColor: Colors.white,
               ),
               GestureDetector(
                 onTap: () async {
-                  if (!_isLockedManually) {
+                  if (!widget.isManuallyLocked) {
                     // 🔓 → 🔒 전환: 잠금
                     final confirm = await showDialog<bool>(
                       context: context,
@@ -124,7 +129,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
 
                     if (confirm == true) {
                       setState(() {
-                        _isLockedManually = true;
+                        widget.onManualLockChanged(true);
+                        widget.onSelectChanged(false);
                       });
                     }
                   } else {
@@ -151,16 +157,17 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
 
                     if (confirm == true) {
                       setState(() {
-                        _isLockedManually = false;
+                        widget.onManualLockChanged(false);
                       });
                     }
                   }
                 },
                 child: Icon(
-                  _isLockedManually ? Icons.lock : Icons.lock_open,
-                  color: _isLockedManually ? Colors.green : Colors.blue,
+                  widget.isManuallyLocked ? Icons.lock : Icons.lock_open,
+                  color: widget.isManuallyLocked ? Colors.green : Colors.blue,
                   size: 20.w,
                 ),
+
               ),
 
             ],

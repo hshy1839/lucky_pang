@@ -49,8 +49,6 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
   }
 
   Future<void> _checkGiftCode() async {
-    if (_giftCodeExists) return;
-
     final exists = await GiftCodeController.checkGiftCodeExists(
       type: 'box',
       boxId: widget.boxId,
@@ -84,19 +82,23 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
           if (!widget.isDisabled)
             Align(
               alignment: Alignment.topLeft,
-              child: Checkbox(
-                value: widget.isSelected,
-                onChanged: widget.onSelectChanged,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                fillColor: MaterialStateProperty.resolveWith<Color>(
-                      (Set<MaterialState> states) {
-                    if (states.contains(MaterialState.selected)) {
-                      return Colors.black;
-                    }
-                    return Colors.white;
-                  },
+              child: AbsorbPointer(
+                absorbing: _giftCodeExists,
+                child: Checkbox(
+                  value: widget.isSelected,
+                  onChanged:
+                  _giftCodeExists ? null : widget.onSelectChanged,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  fillColor: MaterialStateProperty.resolveWith<Color>(
+                        (Set<MaterialState> states) {
+                      if (states.contains(MaterialState.selected)) {
+                        return Colors.black;
+                      }
+                      return Colors.white;
+                    },
+                  ),
+                  checkColor: Colors.white,
                 ),
-                checkColor: Colors.white,
               ),
             ),
 
@@ -138,7 +140,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                         ),
                         const SizedBox(width: 14),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 4),
                           decoration: BoxDecoration(
                             border: Border.all(color: const Color(0xFF8D969D)),
                             borderRadius: BorderRadius.circular(20),
@@ -162,7 +165,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                       children: [
                         Text(
                           '구매날짜: $formattedDate',
-                          style: const TextStyle(fontSize: 10, color: Color(0xFF8D969D)),
+                          style: const TextStyle(
+                              fontSize: 10, color: Color(0xFF8D969D)),
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -197,12 +201,14 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                         ? null
                         : widget.onOpenPressed,
                     style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                      backgroundColor:
+                      MaterialStateProperty.resolveWith<Color>(
                             (states) => states.contains(MaterialState.disabled)
                             ? Theme.of(context).primaryColor.withOpacity(0.3)
                             : Theme.of(context).primaryColor,
                       ),
-                      shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                      shape: MaterialStateProperty.all<
+                          RoundedRectangleBorder>(
                         RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -237,7 +243,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                       });
                     },
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Theme.of(context).primaryColor),
+                      side: BorderSide(
+                          color: Theme.of(context).primaryColor),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
