@@ -211,51 +211,94 @@ class _OrderScreenState extends State<OrderScreen> {
     });
   }
 
+  void _showFullscreenLoader() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'loading',
+      barrierColor: Colors.black54, // 화면 어둡게
+      pageBuilder: (_, __, ___) {
+        return WillPopScope(
+          onWillPop: () async => false, // 뒤로가기 막기
+          child: Center(
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: CircularProgressIndicator(
+                color: Theme.of(context).primaryColor, // 프라이머리 색상
+                strokeWidth: 3,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideFullscreenLoader() {
+    final nav = Navigator.of(context, rootNavigator: true);
+    if (nav.canPop()) nav.pop();
+  }
+
+
   Future<void> _handleBatchRefund() async {
     final selectedOrders = unboxedProducts.where((o) => selectedOrderIds.contains(o['_id'])).toList();
 
-    final confirm = await showDialog(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('일괄 환급'),
+        title: const Text('일괄 환급'),
         content: Text('${selectedOrders.length}개의 상품을 환급하시겠습니까?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('환급')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('환급')),
         ],
       ),
     );
 
     if (confirm != true) return;
 
-    for (final order in selectedOrders) {
-      final product = order['unboxedProduct']['product'];
-      final refundRateStr = product['refundProbability']?.toString() ?? '0';
-      final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+    _showFullscreenLoader();
+    int successCnt = 0;
+    try {
+      for (final order in selectedOrders) {
+        final product = order['unboxedProduct']['product'];
+        final refundRateStr = product['refundProbability']?.toString() ?? '0';
+        final refundRate = double.tryParse(refundRateStr) ?? 0.0;
 
-      await OrderScreenController.refundOrder(
-        order['_id'],
-        refundRate,
-        description: '[${product['brand']}] ${product['name']} 포인트 환급',
-      );
+        final refunded = await OrderScreenController.refundOrder(
+          order['_id'],
+          refundRate,
+          description: '[${product['brand']}] ${product['name']} 포인트 환급',
+        );
+
+        if (refunded != null) successCnt++;
+      }
+
+      // 리스트/선택 갱신
+      setState(() {
+        unboxedProducts.removeWhere((o) => selectedOrderIds.contains(o['_id']));
+        selectedOrderIds.clear();
+      });
+    } catch (e) {
+      // 실패 토스트/다이얼로그 필요하면 여기서
+    } finally {
+      if (mounted) _hideFullscreenLoader();
     }
 
-    setState(() {
-      unboxedProducts.removeWhere((o) => selectedOrderIds.contains(o['_id']));
-      selectedOrderIds.clear();
-    });
-
-    showDialog(
+    if (!mounted) return;
+    await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('환급 완료'),
-        content: Text('선택한 상품들이 환급되었습니다.'),
+        title: const Text('환급 완료'),
+        content: Text('$successCnt개 환급이 처리되었습니다.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('확인')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인')),
         ],
       ),
     );
   }
+
 
 
   @override

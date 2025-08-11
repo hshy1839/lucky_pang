@@ -170,15 +170,17 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                 Text(
                   '당첨을 축하드립니다!',
                   style: TextStyle(
-                    fontSize: 18.sp,
+                    fontSize: 20.sp,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 16.h),
+
+                SizedBox(height: 40.h),
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12.w),
                     child: GridView.builder(
+                      padding: EdgeInsets.only(bottom: 150.h),
                       itemCount: unboxedProducts.length,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -204,184 +206,216 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                 ),
                                 child: AspectRatio(
                                   aspectRatio: 1,
-                                  child: product['mainImageUrl'] != null
+                                  child: (product['mainImageUrl'] != null && product['mainImageUrl'].toString().isNotEmpty)
                                       ? Image.network(
                                     product['mainImageUrl'],
                                     fit: BoxFit.cover,
+                                    // 로딩 중/스트리밍에도 쓰고 싶다면 선택
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return Container(
+                                        color: const Color(0xFFF5F6F6),
+                                        alignment: Alignment.center,
+                                        child: const CircularProgressIndicator(strokeWidth: 2),
+                                      );
+                                    },
+                                    // 404/401/네트워크 오류 시 아이콘으로 대체
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: const Color(0xFFF5F6F6),
+                                        alignment: Alignment.center,
+                                        child: Icon(
+                                          Icons.inventory_2_outlined,
+                                          size: 40,
+                                          color: Colors.grey[500],
+                                        ),
+                                      );
+                                    },
                                   )
-                                      : const Icon(Icons.image, size: 48),
+                                      : Container(
+                                    color: const Color(0xFFF5F6F6),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 40,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+
                                 ),
                               ),
-                              Padding(
-                                padding: EdgeInsets.all(8.w),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product['brand'] ?? '',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13.sp,
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsets.all(8.w),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product['brand'] ?? '',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13.sp,
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: 2.h),
-                                    Text(
-                                      product['productName'] ?? '',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12.sp,
-                                        color: const Color(0xFF465461),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        product['productName'] ?? '',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: const Color(0xFF465461),
+                                        ),
                                       ),
-                                    ),
-                                    SizedBox(height: 4.h),
-                                    Text(
-                                      '정가: ${currency.format(product['consumerPrice'])}원',
-                                      style: TextStyle(
-                                        fontSize: 12.sp,
-                                        color: Colors.redAccent,
-                                        fontWeight: FontWeight.w600,
+
+                                      // ⬇️ 남는 공간을 먹어서 아래 '정가'를 바닥으로 밀어냄
+                                      const Spacer(),
+
+                                      Text(
+                                        '정가: ${currency.format(product['consumerPrice'])}원',
+                                        style: TextStyle(
+                                          fontSize: 14.sp,
+                                          color: Colors.redAccent,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         );
+
                       },
                     ),
                   ),
                 ),
-                SizedBox(height: 80.h), // 버튼 공간
               ],
             ),
 
-            // ✅ 하단 버튼: 잔여 박스 있으면 1개/10개 열기, 없으면 박스 보관함/다시 구매
+
+
             Positioned(
-              bottom: 16.h,
+              bottom: 10.h,
               left: 24.w,
               right: 24.w,
               child: hasOpenable
-                  ? Row(
+                  ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48.h,
-                      child: ElevatedButton(
-                        onPressed: () => _openNextBoxes(1),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: Color(0xFFFF5722)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                  SizedBox(
+                    height: 48.h,
+                    child: ElevatedButton(
+                      onPressed: () => _openNextBoxes(1),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: Color(0xFFFF5722)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Text(
-                          '1개 열기',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFFFF5722),
-                          ),
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                      ),
+                      child: const Text(
+                        '1개 열기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFFF5722),
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: SizedBox(
-                      height: 48.h,
-                      child: ElevatedButton(
-                        onPressed: canOpenTen ? () => _openNextBoxes(10) : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5722),
-                          disabledBackgroundColor: const Color(0xFFFF5722).withOpacity(0.35),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    height: 48.h,
+                    child: ElevatedButton(
+                      onPressed: canOpenTen ? () => _openNextBoxes(10) : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5722),
+                        disabledBackgroundColor: const Color(0xFFFF5722).withOpacity(0.35),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Text(
-                          '10개 열기',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                      ),
+                      child: const Text(
+                        '10개 열기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ),
                 ],
               )
-                  : Row(
+                  : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48.h,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
-                            ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFFF5722)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
+                  SizedBox(
+                    height: 48.h,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
                           ),
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFFF5722)),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Text(
-                          '박스 보관함',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFFFF5722),
-                            fontWeight: FontWeight.w600,
-                          ),
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                      ),
+                      child: const Text(
+                        '박스 보관함',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFFFF5722),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: SizedBox(
-                      height: 48.h,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MainScreenWithFooter(initialTabIndex: 4),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5722),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    height: 48.h,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainScreenWithFooter(initialTabIndex: 4),
                           ),
-                          padding: EdgeInsets.symmetric(vertical: 16.h),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5722),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
-                        child: const Text(
-                          '박스 다시 구매하기',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                      ),
+                      child: const Text(
+                        '박스 다시 구매하기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
+            )
+
           ],
         ),
       ),

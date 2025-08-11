@@ -184,7 +184,21 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                   width: 100.w,
                   height: 100.h,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 100.w,
+                      height: 100.h,
+                      color: const Color(0xFFF5F6F6),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: 36,
+                        color: Colors.grey[500],
+                      ),
+                    );
+                  },
                 ),
+
               ),
               SizedBox(width: 12.w),
               Expanded(

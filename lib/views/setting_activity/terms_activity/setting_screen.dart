@@ -8,44 +8,76 @@ class SettingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
           '설정',
           style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.grey[100],
         iconTheme: const IconThemeData(color: Colors.black),
         centerTitle: true,
       ),
-      body: ListView(
-        children: [
-          _buildListTile(context, title: '공지사항', route: '/notice'),
-          _divider(),
-          _buildListTile(context, title: '이벤트', route: '/event'),
-          _divider(),
+      body: Column(
 
-          _buildListTile(context, title: 'FAQ', route: '/faq'),
-          _divider(),
-          _buildListTile(context, title: '이용약관', route: '/serviceTerm'),
-          _divider(),
-          _buildListTile(context, title: '개인정보처리방침', route: '/privacy'),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                onPressed: () => _logout(context),
-                child: const Text('로그아웃', style: TextStyle(color: Colors.black)),
-              ),
-              SizedBox(width: 20),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/withdraw');
-                },
-                child: const Text('회원탈퇴', style: TextStyle(color: Colors.black)),
-              ),
-            ],
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(top: 50),
+              children: [
+                _buildListTile(context, title: '공지사항', route: '/notice'),
+                _divider(),
+                _buildListTile(context, title: '이벤트', route: '/event'),
+                _divider(),
+                _buildListTile(context, title: 'FAQ', route: '/faq'),
+                _divider(),
+                _buildListTile(context, title: '이용약관', route: '/serviceTerm'),
+                _divider(),
+                _buildListTile(context, title: '개인정보처리방침', route: '/privacy'),
+              ],
+            ),
+          ),
+
+          // 하단 버튼 영역
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // 로그아웃 버튼
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => _logout(context),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text(
+                      '로그아웃',
+                      style: TextStyle(color: Colors.black, fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // 회원탈퇴 버튼
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/withdraw');
+                    },
+                    child: const Text(
+                      '회원탈퇴',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -54,30 +86,32 @@ class SettingScreen extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     const storage = FlutterSecureStorage();
-    await storage.delete(key: 'token'); // 🔑 토큰 삭제
+    await storage.delete(key: 'token');
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false); // 👤 로그인 상태 초기화
+    await prefs.setBool('isLoggedIn', false);
 
-    // 원하면 로그인 화면으로 이동하거나 이전 화면으로 pop
     Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   Widget _buildListTile(BuildContext context, {required String title, required String route}) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+    return Container(
+      color: Colors.white,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.black),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.black),
+        onTap: () {
+          Navigator.pushNamed(context, route);
+        },
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16.0, color: Colors.black),
-      onTap: () {
-        Navigator.pushNamed(context, route);
-      },
     );
   }
 
   Widget _divider() {
-    return Divider(height: 1, color: Colors.grey[300]);
+    return Divider(height: 1, color: Colors.grey[100], thickness: 8);
   }
 }

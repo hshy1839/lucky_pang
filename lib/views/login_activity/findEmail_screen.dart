@@ -133,7 +133,7 @@ class _FindEmailScreenState extends State<FindEmailScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SvgPicture.asset(
-                      'assets/icons/smartphone.svg',
+                      'assets/icons/smartphone_icon.svg',
                       width: 18,
                       height: 18,
                     ),

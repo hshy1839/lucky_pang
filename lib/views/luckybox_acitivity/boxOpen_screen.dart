@@ -166,15 +166,51 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
 
                 ClipRRect(
                   borderRadius: BorderRadius.circular(50.r),
-                  child: Image.network(
+                  child: imageUrl.isNotEmpty
+                      ? Image.network(
                     imageUrl,
                     width: 260.w,
                     height: 260.w,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Image.asset('assets/images/default_product.png', fit: BoxFit.cover),
+                    // 로딩 중 스피너
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        width: 260.w,
+                        height: 260.w,
+                        color: const Color(0xFFF5F6F6),
+                        alignment: Alignment.center,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      );
+                    },
+                    // 404/401/네트워크 에러 시 아이콘으로 대체
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 260.w,
+                        height: 260.w,
+                        color: const Color(0xFFF5F6F6),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.inventory_2_outlined,
+                          size: 56,
+                          color: Colors.grey[500],
+                        ),
+                      );
+                    },
+                  )
+                      : Container(
+                    width: 260.w,
+                    height: 260.w,
+                    color: const Color(0xFFF5F6F6),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.inventory_2_outlined,
+                      size: 56,
+                      color: Colors.grey[500],
+                    ),
                   ),
                 ),
+
 
                 SizedBox(height: 24.h),
                 Column(
