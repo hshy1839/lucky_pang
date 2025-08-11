@@ -55,11 +55,20 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
       orderId: widget.orderId,
     );
 
+    if (!mounted) return;
     setState(() {
       _giftCodeExists = exists;
       _loading = false;
     });
+
+    // ✅ 선물코드가 생겼고 현재 체크돼 있으면 부모 선택 해제
+    if (exists && widget.isSelected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onSelectChanged(false);
+      });
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -229,8 +238,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                 child: SizedBox(
                   height: 45,
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
+                    onPressed: () async {
+                      await Navigator.pushNamed(
                         context,
                         '/giftcode/create',
                         arguments: {
@@ -238,10 +247,10 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                           'boxId': widget.boxId,
                           'orderId': widget.orderId,
                         },
-                      ).then((_) {
-                        _checkGiftCode();
-                      });
+                      );
+                      await _checkGiftCode(); // ✅ 돌아오면 다시 체크 + 필요 시 선택 해제
                     },
+
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(
                           color: Theme.of(context).primaryColor),

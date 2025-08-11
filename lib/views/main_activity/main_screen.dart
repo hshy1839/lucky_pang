@@ -214,7 +214,7 @@ class _MainScreenState extends State<MainScreen> {
                         Text(
                           '${formatPrice(product['price'])}원',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFFFF5722),
                           ),
@@ -226,9 +226,12 @@ class _MainScreenState extends State<MainScreen> {
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF8D969D),
+                            decorationThickness: 1.2,
                             decoration: TextDecoration.lineThrough,
+                            decorationStyle: TextDecorationStyle.solid,
                           ),
-                        ),
+                        )
+
                       ],
                     ),
                   ],
@@ -383,6 +386,8 @@ class _MainScreenState extends State<MainScreen> {
             child: Padding(
               padding: const EdgeInsets.only(top: 64.0, left: 20.0, right: 20.0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,   // ✅ 기준선 정렬
+                textBaseline: TextBaseline.alphabetic,            // ✅ 필수
                 children: [
                   Text(
                     '전체상품',
@@ -392,10 +397,19 @@ class _MainScreenState extends State<MainScreen> {
                       color: Colors.black,
                     ),
                   ),
+                  SizedBox(width: 60),
+                  Text(
+                    '${NumberFormat('#,###').format(products.length)}개',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
+
           // 5,000원 박스
           SliverToBoxAdapter(
             child: SizedBox(height: 20),
@@ -428,7 +442,7 @@ class _MainScreenState extends State<MainScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 5,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.48,
+                childAspectRatio: 0.55,
               ),
             ),
           ),

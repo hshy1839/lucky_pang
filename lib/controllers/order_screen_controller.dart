@@ -453,12 +453,14 @@ class OrderScreenController {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('결제가 취소되었습니다.'), backgroundColor: Colors.red),
         );
+        Navigator.pop(context);
       },
       onError: (data) {
         if (onError != null) onError(data.toString());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('결제 중 오류가 발생했습니다.'), backgroundColor: Colors.red),
         );
+        Navigator.pop(context);
       },
       onClose: () {
         Bootpay().dismiss(context);

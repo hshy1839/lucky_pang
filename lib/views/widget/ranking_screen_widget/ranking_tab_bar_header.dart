@@ -39,26 +39,39 @@ class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _tabButton(context, '실시간 로그', isSelected, () => onTap(true)),
-                  SizedBox(width: 10.w),
-                  _tabButton(context, '위클리 랭킹', !isSelected, () => onTap(false)),
-                ],
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 22.w), // ✅ 좌우 전체 여백
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _tabButton(context, '실시간 로그', isSelected, () => onTap(true)),
+                    ),
+                    SizedBox(width: 16.w),
+                    Expanded(
+                      child: _tabButton(context, '위클리 랭킹', !isSelected, () => onTap(false)),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 50.h),
 
-              Text(
-                "당첨을 축하드립니다!",
-                style:TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                  foreground: Paint()..shader = linearGradient,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 0.h),
+          Text(
+            "당첨을 축하드립니다!",
+            style: TextStyle(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.bold,
+              foreground: Paint()
+                ..shader = LinearGradient(
+                  colors: [
+                    Color(0xFFBF00FF), // 보라
+                    Color(0xFFFF4081), // 핑크
+                    Color(0xFFFF5722), // 주황
+                  ],
+                ).createShader(Rect.fromLTWH(0.0, 0.0, 380.0, 70.0)),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 0.h),
             ],
           ),
         ),
@@ -70,15 +83,16 @@ class RankingTabBarHeader extends SliverPersistentHeaderDelegate {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 12.h),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+          alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFFF5722) : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(15.r),
+          borderRadius: BorderRadius.circular(10.r),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 14.sp,
+            fontSize: 16.sp,
             color: selected ? Colors.white : Colors.black54,
             fontWeight: FontWeight.bold,
           ),

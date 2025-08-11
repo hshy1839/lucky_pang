@@ -66,7 +66,7 @@ class UnboxRealtimeList extends StatelessWidget {
                   if (consumerPrice < 100000) return const SizedBox.shrink();
 
                   return Padding(
-                    padding: EdgeInsets.only(left: 16.w, right: 20.w, bottom: 8.h, top: 0.h),
+                    padding: EdgeInsets.only(left: 16.w, right: 20.w, bottom: 40.h, top: 0.h),
                     child: Container(
                       width: 350.w,
                       decoration: BoxDecoration(

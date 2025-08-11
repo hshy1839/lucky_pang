@@ -114,6 +114,12 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
 
+  bool _isBoxSelectable(Map<String, dynamic> o) {
+    final hasGiftCodeField = o['giftCode'] != null;
+    final hasGiftCodeExists = o['giftCodeExists'] == true;
+    final isUnboxed = o['unboxedProduct'] != null && o['unboxedProduct']['product'] != null;
+    return !hasGiftCodeField && !hasGiftCodeExists && !isUnboxed;
+  }
 
 
   Future<void> loadUnboxedProducts() async {
@@ -539,12 +545,15 @@ class _OrderScreenState extends State<OrderScreen> {
                             context,
                             '/giftcode/create',
                             arguments: {
-                              'type': 'product',
-                              'productId': product['_id'],
+                              'type': 'box',
+                              'boxId': order['box']['_id'],
                               'orderId': order['_id'],
                             },
-                          ).then((_) {
-                            loadUnboxedProducts();
+                          ).then((_) async {
+                            await loadOrders(); // ✅ giftCodeExists 포함 최신 데이터 로드
+                            setState(() {
+                              selectedBoxOrderIds.remove(order['_id']); // ✅ 방금 선물한 박스 선택 해제
+                            });
                           });
                         },
                         onDeliveryPressed: () {
@@ -750,7 +759,12 @@ class _OrderScreenState extends State<OrderScreen> {
                             'boxId': order['box']['_id'],
                             'orderId': order['_id'],
                           },
-                        ).then((_) => loadOrders());
+                        ).then((_) async {
+                          await loadOrders(); // ✅ giftCodeExists 포함 최신 데이터 로드
+                          setState(() {
+                            selectedBoxOrderIds.remove(order['_id']); // ✅ 방금 선물한 박스 선택 해제
+                          });
+                        });
                       },
                       isSelected: isBoxSelected(order['_id']),
                       onSelectChanged: (val) => toggleBoxSelection(order['_id'], val ?? false),

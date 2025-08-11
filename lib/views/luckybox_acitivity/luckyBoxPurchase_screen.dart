@@ -6,6 +6,8 @@ import '../../controllers/order_screen_controller.dart';
 import '../../controllers/point_controller.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../controllers/userinfo_screen_controller.dart';
+
 class LuckyBoxPurchasePage extends StatefulWidget {
   @override
   _LuckyBoxPurchasePageState createState() => _LuckyBoxPurchasePageState();
@@ -22,6 +24,7 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
   bool refundPolicyAgreed = false;
   String? selectedBoxId;
   bool _isFirstBuild = true;
+  final userInfoController = UserInfoScreenController();
 
   final pointController = PointController();
   final storage = FlutterSecureStorage();
@@ -67,11 +70,15 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
       });
 
       loadUserPoints();
+      _loadNickname();
       _isFirstBuild = false;
     }
   }
 
-
+  void _loadNickname() async {
+    await userInfoController.fetchUserInfo(context);
+    setState(() {});
+  }
 
   void loadUserPoints() async {
     final userId = await storage.read(key: 'userId');
@@ -134,8 +141,10 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 10),
-              const Text(
-                '특별한 상품들이 당신을 기다리고 있어요.',
+              Text(
+                '특별한 상품들이 '
+                    '${userInfoController.nickname.isNotEmpty ? '${userInfoController.nickname}님' : '당신'}'
+                    '을 기다리고 있어요.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.white),
               ),
@@ -188,23 +197,24 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
             return Center(
               child: Wrap(
                 spacing: 10,
+                runSpacing: 10,
                 children: boxController.boxes.map<Widget>((box) {
                   final isSelected = selectedBoxId == box['_id'];
                   return GestureDetector(
                     onTap: () => setState(() => selectedBoxId = box['_id']),
                     child: Container(
-                      width: 150,
+                      width: 180,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
                         child: Text(
                           box['name'],
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.grey,
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

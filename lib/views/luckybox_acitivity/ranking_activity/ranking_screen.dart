@@ -95,7 +95,8 @@ class _RankingScreenState extends State<RankingScreen> {
     final weekday = now.weekday;
     final monday = now.subtract(Duration(days: weekday - 1));
     final sunday = monday.add(const Duration(days: 6));
-
+    final todayStr =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     final dateFormat =
         "${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}"
         " ~ ${sunday.year}-${sunday.month.toString().padLeft(2, '0')}-${sunday.day.toString().padLeft(2, '0')}";
@@ -146,11 +147,12 @@ class _RankingScreenState extends State<RankingScreen> {
                             SizedBox(height: 4.h),
                             Text(
                               showRealtimeLog
-                                  ? '최근 24시간'
+                                  ? "$todayStr  최근 24시간" // ✅ 오늘 날짜 + 최근 24시간
                                   : dateFormat,
                               style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.white),
+                                fontSize: 12.sp,
+                                color: Colors.white,
+                              ),
                             ),
                             SizedBox(height: 20.h),
                             Padding(
@@ -258,30 +260,53 @@ class _RankingScreenState extends State<RankingScreen> {
     return Column(
       children: [
         Container(
-          width: 60.w,
-          height: 60.w,
+          padding: EdgeInsets.all(2), // ✅ 테두리 두께
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Color(0xFF021526),
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFFC622FF),
+                Color(0xFFFF5722),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black26, blurRadius: 4.r, offset: Offset(0, 2)),
+                color: Colors.black.withOpacity(0.3), // 그림자 색
+                blurRadius: 6, // 그림자 번짐 정도
+                offset: Offset(0, 3), // 그림자 위치
+              ),
             ],
           ),
-          alignment: Alignment.center,
-          child: Text(
-            value,
-            style: TextStyle(
+          child: Container(
+            width: 60.w,
+            height: 60.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF021526), // 안쪽 배경색
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              value,
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 14.sp),
+                fontSize: 18.sp,
+              ),
+            ),
           ),
         ),
         SizedBox(height: 12.h),
-        Text(label, style: TextStyle(color: Colors.white, fontSize: 12.sp)),
+        Text(
+          label,
+          style: TextStyle(color: Colors.white, fontSize: 12.sp),
+        ),
       ],
     );
   }
+
+
 
   String _formatNumber(int number) {
     return number
