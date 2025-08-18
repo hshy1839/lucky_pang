@@ -49,6 +49,7 @@ class _NoticeScreenState extends State<NoticeScreen> {
         ),
       ),
         body: ListView.separated(
+          padding: const EdgeInsets.only(top: 30),
           itemCount: notices.length,
           separatorBuilder: (_, __) =>
               Divider(height: 10, color: Colors.grey[100], thickness: 5),
@@ -93,7 +94,7 @@ class _NoticeScreenState extends State<NoticeScreen> {
                           height: 20,
 
                         ),
-                        SizedBox(width: 18,)
+                        SizedBox(width: 4,)
                       ],
                     ),
                   ],

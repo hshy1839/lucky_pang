@@ -98,7 +98,7 @@ class SettingScreen extends StatelessWidget {
     return Container(
       color: Colors.white,
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         title: Text(
           title,
           style: const TextStyle(color: Colors.black),

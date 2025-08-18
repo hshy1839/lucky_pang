@@ -176,15 +176,28 @@ class _MainScreenState extends State<MainScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-                child: Image.network(
-                  product['mainImageUrl'] ?? 'assets/icons/app_icon.jpg',
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                child: (product['mainImageUrl'] != null && product['mainImageUrl'].toString().isNotEmpty)
+                    ? Image.network(
+                  product['mainImageUrl']!,
                   width: double.infinity,
-                  height: 210, // ✅ 줄임
+                  height: 210,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Center(child: Icon(Icons.error)),
+                  errorBuilder: (_, __, ___) => Container(
+                    width: double.infinity,
+                    height: 210,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.error, size: 40, color: Colors.grey),
+                  ),
+                )
+                    : Container(
+                  width: double.infinity,
+                  height: 210,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
                 ),
               ),
+
               Container(
                 height: 140,
                 padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
@@ -442,7 +455,7 @@ class _MainScreenState extends State<MainScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 5,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.55,
+                childAspectRatio: 0.47,
               ),
             ),
           ),

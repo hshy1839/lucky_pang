@@ -45,21 +45,42 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
     final Map<String, int> userTotals = {};
 
     final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1)); // 이번주 월요일
-    final startOfWeek = DateTime(weekStart.year, weekStart.month, weekStart.day); // 월요일 00:00
-    final endOfWeek = startOfWeek.add(const Duration(days: 7)).subtract(const Duration(seconds: 1)); // 일요일 23:59:59
+    // 이번주 월요일 00:00
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final startOfWeek = DateTime(monday.year, monday.month, monday.day);
 
-    for (var order in orders) {
+    // 오늘 23:59:59.999 (오늘 포함)
+    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+    for (final order in orders) {
       final user = order['user'];
-      final nickname = user?['nickname'] ?? '익명';
+      final nickname = (user?['nickname'] ?? '익명').toString();
 
-      final decidedAtStr = order['unboxedProduct']?['decidedAt'];
-      final decidedAt = DateTime.tryParse(decidedAtStr ?? '');
-      if (decidedAt == null || decidedAt.isBefore(startOfWeek) || decidedAt.isAfter(endOfWeek)) {
+      final decidedAtStr = order['unboxedProduct']?['decidedAt']?.toString();
+      if (decidedAtStr == null || decidedAtStr.isEmpty) continue;
+
+      final parsed = DateTime.tryParse(decidedAtStr);
+      if (parsed == null) continue;
+
+      // 🔹 UTC 표기(Z)가 있어도 로컬로 변환해 비교
+      final decidedAt = parsed.toLocal();
+
+      // 🔹 이번주 월요일~오늘 23:59:59.999 사이만 카운트
+      if (decidedAt.isBefore(startOfWeek) || decidedAt.isAfter(endOfToday)) {
         continue;
       }
 
-      final int price = (order['unboxedProduct']?['product']?['consumerPrice'] ?? 0).toInt();
+      // 🔹 가격 안전 파싱 (int / double / String 모두 처리)
+      final dynamic priceDyn = order['unboxedProduct']?['product']?['consumerPrice'];
+      int price = 0;
+      if (priceDyn is int) {
+        price = priceDyn;
+      } else if (priceDyn is double) {
+        price = priceDyn.floor();
+      } else if (priceDyn is String) {
+        price = int.tryParse(priceDyn) ?? 0;
+      }
+
       userTotals[nickname] = (userTotals[nickname] ?? 0) + price;
     }
 
@@ -70,6 +91,7 @@ class _UnboxWeeklyRankingState extends State<UnboxWeeklyRanking> {
     rankedList.sort((a, b) => (b['total'] as int).compareTo(a['total'] as int));
     return rankedList;
   }
+
 
   @override
   void dispose() {

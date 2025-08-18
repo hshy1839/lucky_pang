@@ -43,16 +43,30 @@ class ProductDetailScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: double.infinity, // 가로 너비를 무조건 최대로 설정
-                  height: 400, // 원하는 높이 설정
-                  child: Image.network(
-                    product['mainImageUrl'] ?? '',
-                    fit: BoxFit.cover, // ✅ 컨테이너에 꽉 채우기 (일부 잘릴 수도 있음)
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset('assets/images/placeholder.png', fit: BoxFit.cover);
-                    },
+                  width: double.infinity,
+                  height: 400,
+                  child: (product['mainImageUrl'] != null &&
+                      product['mainImageUrl'].toString().isNotEmpty)
+                      ? Image.network(
+                    product['mainImageUrl'],
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: double.infinity,
+                      height: 400,
+                      color: Colors.grey[200],
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+                    ),
+                  )
+                      : Container(
+                    width: double.infinity,
+                    height: 400,
+                    color: Colors.grey[200],
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
                   ),
                 ),
+
                 SizedBox(height: 30,),
                 Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -138,12 +152,27 @@ class ProductDetailScreen extends StatelessWidget {
                                 padding: const EdgeInsets.only(bottom: 8.0),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(15),
-                                  child: Image.network(
+                                  child: /* ⬇️ 여기 교체 */
+                                  (imageUrl != null && imageUrl.toString().isNotEmpty)
+                                      ? Image.network(
                                     imageUrl,
-                                    fit: BoxFit.fill,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Image.asset('assets/images/placeholder.png');
-                                    },
+                                    height: 210,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      height: 210,
+                                      width: double.infinity,
+                                      color: Colors.grey[200],
+                                      alignment: Alignment.center,
+                                      child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                                    ),
+                                  )
+                                      : Container(
+                                    height: 210,
+                                    width: double.infinity,
+                                    color: Colors.grey[200],
+                                    alignment: Alignment.center,
+                                    child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
                                   ),
                                 ),
                               );

@@ -1,8 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
+
 import '../../../controllers/order_screen_controller.dart';
+import '../../../routes/base_url.dart';
 import '../../widget/ranking_screen_widget/ranking_tab_bar_header.dart';
-import '../../widget/ranking_screen_widget/unbox_realtime_list.dart';
 import '../../widget/ranking_screen_widget/unbox_weekly_ranking.dart';
 
 class RankingScreen extends StatefulWidget {
@@ -17,39 +20,23 @@ class _RankingScreenState extends State<RankingScreen> {
   List<Map<String, dynamic>> unboxedOrders = [];
   int highestPrice = 0;
   int totalPrice = 0;
-  ScrollController _scrollController = ScrollController();
-  bool isCollapsed = false;
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     fetchUnboxedLogs();
-    _scrollController.addListener(() {
-      if (_scrollController.hasClients &&
-          !_scrollController.position.outOfRange) {
-        final offset = _scrollController.offset;
-        if (offset > 200.h && !isCollapsed) {
-          setState(() => isCollapsed = true);
-        } else if (offset <= 200.h && isCollapsed) {
-          setState(() => isCollapsed = false);
-        }
-      }
-    });
   }
 
   Future<void> fetchUnboxedLogs() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
+
     final orders = await OrderScreenController.getAllUnboxedOrders();
 
     final now = DateTime.now();
     final weekday = now.weekday;
     final monday = now.subtract(Duration(days: weekday - 1));
-    final startDate = showRealtimeLog
-        ? now.subtract(const Duration(hours: 24))
-        : monday;
+    final startDate = showRealtimeLog ? now.subtract(const Duration(hours: 24)) : monday;
 
     final filteredOrders = orders.where((order) {
       final decidedAtStr = order['unboxedProduct']?['decidedAt'];
@@ -77,16 +64,6 @@ class _RankingScreenState extends State<RankingScreen> {
     });
   }
 
-  String _formatShortNumber(int number) {
-    if (number >= 1000000) {
-      return (number / 1000000).toStringAsFixed(1) + 'M';
-    } else if (number >= 1000) {
-      return (number / 1000).toStringAsFixed(1) + 'K';
-    } else {
-      return number.toString();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
@@ -103,260 +80,403 @@ class _RankingScreenState extends State<RankingScreen> {
 
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFF5722),
-              Color(0xFFC622FF),
-            ],
+            colors: [Color(0xFFFF5722), Color(0xFFC622FF)],
             stops: [0.0, 0.7],
           ),
         ),
         child: SafeArea(
           child: isLoading
-              ? Center(child: CircularProgressIndicator())
-              : CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              SliverAppBar(
-                automaticallyImplyLeading: false,
-                expandedHeight: 480.h,
-                pinned: true,
-                backgroundColor: Colors.transparent,
-                flexibleSpace: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return FlexibleSpaceBar(
-                      background: Padding(
-                        padding: EdgeInsets.only(top: 40.h),
-                        child: isCollapsed
-                            ? _buildCompactStatHeader()
-                            : Column(
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 상단 타이틀 & 날짜
+              Padding(
+                padding: EdgeInsets.only(top: 20.h),
+                child: Column(
+                  children: [
+
+                    // ✅ 여기! 탭바 헤더 위에 배치되는 가로 슬라이드 카드(고가 언박싱 하이라이트)
+                    _buildHighValueCarousel(context),
+                  ],
+                ),
+              ),
+
+              // 탭바 헤더
+              Padding(
+                padding: EdgeInsets.only(top: 30.h),
+                child: RankingTabBarHeader(
+                  isSelected: showRealtimeLog,
+                  onTap: (selected) async {
+                    setState(() => showRealtimeLog = selected);
+                    await fetchUnboxedLogs();
+                  },
+                ),
+              ),
+
+              // 본문
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  child: UnboxRealtimeListNoHeader(unboxedOrders: unboxedOrders),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+// 클래스 내부에 추가 헬퍼: 상대시간 표시
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return '방금 전';
+    if (diff.inHours < 1) return '${diff.inMinutes}분 전';
+    if (diff.inDays < 1) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return DateFormat('MM/dd').format(dt);
+  }
+
+  /// 상단 가로 슬라이드 카드 영역 (최근 고가 언박싱 하이라이트)
+  Widget _buildHighValueCarousel(BuildContext context) {
+    const int highValueThreshold = 30000; // 필요 시 조정
+    final formatCurrency = NumberFormat('#,###');
+
+    int _priceOf(Map<String, dynamic> o) {
+      final raw = o['unboxedProduct']?['product']?['consumerPrice'];
+      return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
+    }
+
+    String? _imageUrl(dynamic raw) {
+      if (raw == null) return null;
+      final s = '$raw';
+      if (s.isEmpty) return null;
+      return s.startsWith('http') ? s : '${BaseUrl.value}:7778${s.startsWith('/') ? '' : '/'}$s';
+    }
+
+    final highValueOrders = unboxedOrders
+        .where((o) => _priceOf(o) >= highValueThreshold)
+        .toList()
+      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
+          .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
+
+    final items = highValueOrders.take(30).toList();
+
+    // 공통: 카드 UI 빌더
+    Widget _card({
+      String? profileName,
+      String rightTimeText = '',
+      String? brand,
+      String? productName,
+      int? price,
+      String? productImageUrl,
+      bool isEmpty = false,
+    }) {
+      return Container(
+        width: 330.w,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.r),
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2))],
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ⬅️ 정사각형 상품 메인 이미지
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8.r),
+              child: SizedBox(
+                width: 100.r,
+                height: 130.r,
+                child: productImageUrl != null && !isEmpty
+                    ? CachedNetworkImage(
+                  imageUrl: productImageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
+                )
+                    : Container(color: Colors.grey[200]),
+              ),
+            ),
+            SizedBox(width: 12.w),
+
+            // ▶️ 텍스트 영역
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  SizedBox(height: 10.h),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          isEmpty ? '최근 내역이 없습니다.' : '${profileName ?? '익명'}님이 당첨됐어요!',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Text(
+                        rightTimeText,
+                        style: TextStyle(color: Colors.black26, fontSize: 14.sp),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 6.h),
+
+                  // 브랜드
+                  Text(
+                    isEmpty ? '' : (brand ?? ''),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.black45, fontSize: 18.sp, ),
+                  ),
+
+                  // 상품명
+                  if (!isEmpty) ...[
+                    SizedBox(height: 4.h),
+                    Text(
+                      productName ?? '상품명 없음',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.black54, fontSize: 20.sp, ),
+                    ),
+                  ],
+
+                  // 정가
+                  SizedBox(height: 8.h),
+                  Text(
+                    isEmpty || price == null ? '' : '정가: ${formatCurrency.format(price)} 원',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: const Color(0xFFFF5722), // 빨강
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 데이터 없으면 동일 카드 레이아웃으로 안내
+    if (items.isEmpty) {
+      return SizedBox(
+        height: 150.h,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(left: 16.w, right: 12.w),
+              child: _card(
+                isEmpty: true,
+                rightTimeText: showRealtimeLog ? '최근 24시간' : '이번주',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 데이터 있을 때
+    return SizedBox(
+      height: 150.h,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final order = items[index];
+          final user = order['user'];
+          final product = order['unboxedProduct']?['product'];
+          final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
+          final brand = product?['brand'] ?? product?['brandName']; // 둘 중 있는 것 사용
+          final name = product?['name'];
+          final price = _priceOf(order);
+          final productImgUrl = _imageUrl(product?['mainImage']);
+          final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
+
+          return Padding(
+            padding: EdgeInsets.only(left: index == 0 ? 16.w : 8.w, right: 12.w),
+            child: _card(
+              profileName: user?['nickname'],
+              rightTimeText: timeText,
+              brand: brand,
+              productName: name,
+              price: price,
+              productImageUrl: productImgUrl,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+
+}
+
+/// 본문 리스트에서 "상단 슬라이더"는 제거한 버전
+/// (중복 노출 방지용: 기존 UnboxRealtimeList에서 상단 가로 슬라이드를 빼고 리스트만 남긴 형태)
+class UnboxRealtimeListNoHeader extends StatelessWidget {
+  final List<Map<String, dynamic>> unboxedOrders;
+  const UnboxRealtimeListNoHeader({super.key, required this.unboxedOrders});
+
+  @override
+  Widget build(BuildContext context) {
+    if (unboxedOrders.isEmpty) {
+      return SizedBox(
+        height: 100.h,
+        child: const Center(child: Text("최근 언박싱 기록이 없습니다.")),
+      );
+    }
+
+    final filteredOrders = unboxedOrders
+        .where((order) {
+      final consumerPrice = order['unboxedProduct']?['product']?['consumerPrice'] ?? 0;
+      return consumerPrice >= 20000 && consumerPrice < 100000;
+    })
+        .toList()
+      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
+          .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
+
+    final latest20Orders = filteredOrders.take(20).toList();
+    final formatCurrency = NumberFormat('#,###');
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 20),
+      itemCount: latest20Orders.length,
+      itemBuilder: (context, index) {
+        final order = latest20Orders[index];
+        final user = order['user'];
+        final product = order['unboxedProduct']?['product'];
+        final box = order['box'];
+        final consumerPrice = product?['consumerPrice'] ?? 0;
+
+        final rawProfileImage = user?['profileImage'];
+        final userProfileImage = (rawProfileImage != null && rawProfileImage.isNotEmpty)
+            ? (rawProfileImage.startsWith('http')
+            ? rawProfileImage
+            : '${BaseUrl.value}:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
+            : null;
+
+        return Padding(
+          padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 6.h),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20.r),
+              boxShadow: [
+                BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2)),
+              ],
+            ),
+            child: ListTile(
+              title: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24.r,
+                    backgroundColor: Colors.grey[300],
+                    child: userProfileImage != null
+                        ? ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: userProfileImage,
+                        fit: BoxFit.cover,
+                        width: 48.r,
+                        height: 48.r,
+                        placeholder: (context, url) => Center(
+                          child: CircularProgressIndicator(
+                            color: Theme.of(context).primaryColor,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) =>
+                            Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
+                      ),
+                    )
+                        : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: Text(
+                      user?['nickname'] ?? '익명',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.sp),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 20.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 상품 정보
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              showRealtimeLog
-                                  ? '지금 언박싱하는 사람들'
-                                  : '이번주 언박싱 랭킹',
-                              style: TextStyle(
-                                fontSize: 22.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                            SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                product?['name'] ?? '상품명 없음',
+                                style: TextStyle(fontSize: 15.sp, color: Colors.black),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
                             ),
                             SizedBox(height: 4.h),
                             Text(
-                              showRealtimeLog
-                                  ? "$todayStr  최근 24시간" // ✅ 오늘 날짜 + 최근 24시간
-                                  : dateFormat,
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(height: 20.h),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16.w),
-                              child: Column(
-                                children: [
-                                  buildUnboxStatCard(
-                                    title: '언박싱 최고가',
-                                    value:
-                                    _formatNumber(highestPrice),
-                                    unit: '원',
-                                    backgroundColor:
-                                    Color(0xFF021526),
-                                    backgroundImage:
-                                    'assets/images/ranking_images/unboxing_high.png',
-                                  ),
-                                  buildUnboxStatCard(
-                                    title: '언박싱 횟수',
-                                    value:
-                                    '${unboxedOrders.length}',
-                                    unit: '회',
-                                    backgroundColor:
-                                    Color(0xFF021526),
-                                    backgroundImage:
-                                    'assets/images/ranking_images/unboxing_try.png',
-                                  ),
-                                  buildUnboxStatCard(
-                                    title: '누적 최고가',
-                                    value:
-                                    _formatNumber(totalPrice),
-                                    unit: '원',
-                                    backgroundColor:
-                                    Color(0xFF021526),
-                                    backgroundImage:
-                                    'assets/images/ranking_images/unboxing_max.png',
-                                  ),
-                                ],
-                              ),
+                              '정가: ${formatCurrency.format(consumerPrice)}원',
+                              style: const TextStyle(fontSize: 15, color: Color(0xFF465461)),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: RankingTabBarHeader(
-                  isSelected: showRealtimeLog,
-                  onTap: (selected) {
-                    setState(() {
-                      showRealtimeLog = selected;
-                      fetchUnboxedLogs();
-                      if (_scrollController.hasClients) {
-                        _scrollController.animateTo(
-                          0.0,
-                          duration: Duration(milliseconds: 300),
-                          curve: Curves.ease,
-                        );
-                      }
-                      isCollapsed = false;
-                    });
-                  },
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Container(
-                  color: Colors.white,
-                  height: 350.h,
-                  child: showRealtimeLog
-                      ? SingleChildScrollView(
-                    child: UnboxRealtimeList(
-                        unboxedOrders: unboxedOrders),
-                  )
-                      : SingleChildScrollView(
-                    child: UnboxWeeklyRanking(
-                        unboxedOrders: unboxedOrders),
+                      // 박스/시간
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${formatCurrency.format(box?['price'] ?? 0)}원 박스',
+                            style: TextStyle(color: Colors.black, fontSize: 14.sp),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
+                                ?.toLocal()
+                                .toString()
+                                .substring(0, 16) ??
+                                '',
+                            style: const TextStyle(fontSize: 13, color: Colors.black45),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompactStatHeader() {
-    return Padding(
-      padding: EdgeInsets.only(top: 90.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _circleStat("${_formatShortNumber(highestPrice)}", "언박싱 최고가"),
-          _circleStat("${_formatShortNumber(unboxedOrders.length)}", "언박싱 횟수"),
-          _circleStat("${_formatShortNumber(totalPrice)}", "누적 최고가"),
-        ],
-      ),
-    );
-  }
-
-  Widget _circleStat(String value, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(2), // ✅ 테두리 두께
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                Color(0xFFC622FF),
-                Color(0xFFFF5722),
-              ],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3), // 그림자 색
-                blurRadius: 6, // 그림자 번짐 정도
-                offset: Offset(0, 3), // 그림자 위치
-              ),
-            ],
-          ),
-          child: Container(
-            width: 60.w,
-            height: 60.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF021526), // 안쪽 배경색
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18.sp,
+                ],
               ),
             ),
           ),
-        ),
-        SizedBox(height: 12.h),
-        Text(
-          label,
-          style: TextStyle(color: Colors.white, fontSize: 12.sp),
-        ),
-      ],
-    );
-  }
-
-
-
-  String _formatNumber(int number) {
-    return number
-        .toString()
-        .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',');
-  }
-
-  Widget buildUnboxStatCard({
-    required String title,
-    required String value,
-    required String unit,
-    Color? backgroundColor,
-    String? backgroundImage,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16.h),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
-      decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.black,
-        borderRadius: BorderRadius.circular(10.r),
-        image: backgroundImage != null
-            ? DecorationImage(
-          image: AssetImage(backgroundImage),
-          fit: BoxFit.cover,
-          opacity: 0.4,
-        )
-            : null,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: TextStyle(
-                      fontSize: 12.sp, color: Colors.white.withOpacity(0.8))),
-              SizedBox(height: 6.h),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white)),
-            ],
-          ),
-          Text(unit,
-              style: TextStyle(
-                  fontSize: 14.sp, color: Colors.white.withOpacity(0.9))),
-        ],
-      ),
+        );
+      },
     );
   }
 }

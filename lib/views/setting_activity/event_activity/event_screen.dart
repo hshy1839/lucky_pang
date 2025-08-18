@@ -49,6 +49,7 @@ class _EventScreenState extends State<EventScreen> {
       ),
 
       body: ListView.separated(
+        padding: const EdgeInsets.only(top: 30),
         itemCount: events.length + 1, // ✅ EndOfScreen 위해 +1
         separatorBuilder: (_, __) => Divider(
           height: 1,
@@ -103,7 +104,7 @@ class _EventScreenState extends State<EventScreen> {
                         width: 30,
                         height: 32,
                       ),
-                      SizedBox(width: 18),
+                      SizedBox(width: 4),
                     ],
                   ),
                 ],
