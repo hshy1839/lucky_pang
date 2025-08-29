@@ -210,7 +210,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                       ? Image.network(
                                     product['mainImageUrl'],
                                     fit: BoxFit.cover,
-                                    // 로딩 중/스트리밍에도 쓰고 싶다면 선택
                                     loadingBuilder: (context, child, progress) {
                                       if (progress == null) return child;
                                       return Container(
@@ -219,7 +218,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                         child: const CircularProgressIndicator(strokeWidth: 2),
                                       );
                                     },
-                                    // 404/401/네트워크 오류 시 아이콘으로 대체
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
                                         color: const Color(0xFFF5F6F6),
@@ -241,7 +239,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                       color: Colors.grey[500],
                                     ),
                                   ),
-
                                 ),
                               ),
                               Expanded(
@@ -267,10 +264,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                           color: const Color(0xFF465461),
                                         ),
                                       ),
-
-                                      // ⬇️ 남는 공간을 먹어서 아래 '정가'를 바닥으로 밀어냄
                                       const Spacer(),
-
                                       Text(
                                         '정가: ${currency.format(product['consumerPrice'])}원',
                                         style: TextStyle(
@@ -286,7 +280,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                             ],
                           ),
                         );
-
                       },
                     ),
                   ),
@@ -294,8 +287,38 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
               ],
             ),
 
+            // ⬇️ 상단 왼쪽 X 버튼 (보관함으로 이동)
+            Positioned(
+              top: 8.h,
+              left: 8.w,
+              child: SafeArea(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20.r),
+                    child: Container(
+                      padding: EdgeInsets.all(8.r),
 
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 28.r,
+                        color: const Color(0xFF465461),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
+            // ⬇️ 하단 버튼 영역
             Positioned(
               bottom: 10.h,
               left: 24.w,
@@ -414,8 +437,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                   ),
                 ],
               ),
-            )
-
+            ),
           ],
         ),
       ),

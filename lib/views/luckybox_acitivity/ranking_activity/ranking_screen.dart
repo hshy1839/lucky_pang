@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -5,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../controllers/order_screen_controller.dart';
 import '../../../routes/base_url.dart';
+import '../../product_activity/product_detail_screen.dart';
 import '../../widget/ranking_screen_widget/ranking_tab_bar_header.dart';
 import '../../widget/ranking_screen_widget/unbox_realtime_list.dart';
 import '../../widget/ranking_screen_widget/unbox_weekly_ranking.dart';
@@ -148,7 +151,6 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   /// 상단 가로 슬라이드 카드 영역 (최근 고가 언박싱 하이라이트)
-  /// 상단 가로 슬라이드 카드 영역 (최근 고가 언박싱 하이라이트)
   Widget _buildHighValueCarousel(BuildContext context) {
     const int highValueThreshold = 100000; // ✅ 10만원 이상만
     final formatCurrency = NumberFormat('#,###');
@@ -167,7 +169,115 @@ class _RankingScreenState extends State<RankingScreen> {
           : '${BaseUrl.value}:7778${s.startsWith('/') ? '' : '/'}$s';
     }
 
-    // ✅ 10만원 이상만 필터 + 안전 정렬(최신순)
+    // ✅ 상세 페이지에 맞춰 product를 정규화
+    Map<String, dynamic> _sanitizeProductForDetail(dynamic rawProduct) {
+      final Map<String, dynamic> p = Map<String, dynamic>.from(rawProduct ?? {});
+
+      // 숫자 -> 문자열 (Detail 화면이 String을 기대)
+      for (final key in ['consumerPrice', 'price']) {
+        final v = p[key];
+        if (v is num) p[key] = v.toString();
+      }
+
+      // 메인 이미지 후보 → 절대경로화
+      final mainCandidate =
+          p['mainImageUrl'] ?? p['mainImage'] ?? p['image'] ?? p['main_image'];
+      final mainAbs = _imageUrl(mainCandidate);
+      if (mainAbs != null && mainAbs.isNotEmpty) {
+        p['mainImageUrl'] = mainAbs;
+      } else if (p['mainImageUrl'] != null) {
+        p['mainImageUrl'] = p['mainImageUrl'].toString();
+      }
+
+      // 추가 이미지 (List/CSV/JSON 문자열/Map 모두 지원) → CSV로 저장 + 절대경로화
+      dynamic aiu = p['additionalImageUrls'] ??
+          p['additionalImages'] ??
+          p['detailImages'] ??
+          p['images'] ??
+          p['detailImageUrls'] ??
+          p['detail_images'];
+
+      final List<String> urls = [];
+
+      String? _fromMap(dynamic m) {
+        if (m is Map) {
+          for (final k in ['url', 'imageUrl', 'image', 'src', 'path', 'fileUrl', 'uri']) {
+            if (m[k] != null && m[k].toString().trim().isNotEmpty) {
+              return m[k].toString().trim();
+            }
+          }
+        }
+        return null;
+      }
+
+      void _add(dynamic e) {
+        String? candidate;
+        if (e == null) return;
+        if (e is String) {
+          candidate = e.trim();
+        } else if (e is Map) {
+          candidate = _fromMap(e);
+        } else {
+          candidate = e.toString().trim();
+        }
+        if (candidate == null || candidate.isEmpty) return;
+
+        final abs = _imageUrl(candidate) ?? candidate;
+        final t = abs.trim();
+        if (t.isNotEmpty) urls.add(t);
+      }
+
+      if (aiu is List) {
+        for (final e in aiu) _add(e);
+      } else if (aiu is Map) {
+        for (final k in ['urls', 'images', 'list', 'data']) {
+          if (aiu[k] is List) {
+            for (final e in aiu[k]) _add(e);
+          }
+        }
+        final one = _fromMap(aiu);
+        if (one != null) _add(one);
+      } else if (aiu is String && aiu.trim().isNotEmpty) {
+        final s = aiu.trim();
+        if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
+          try {
+            final decoded = jsonDecode(s);
+            if (decoded is List) {
+              for (final e in decoded) _add(e);
+            } else if (decoded is Map) {
+              for (final k in ['urls', 'images', 'list', 'data']) {
+                if (decoded[k] is List) {
+                  for (final e in decoded[k]) _add(e);
+                }
+              }
+              final one = _fromMap(decoded);
+              if (one != null) _add(one);
+            }
+          } catch (_) {
+            for (final part in s.split(RegExp(r'[,\|\n]'))) _add(part);
+          }
+        } else {
+          for (final part in s.split(RegExp(r'[,\|\n]'))) _add(part);
+        }
+      }
+
+      final cleaned = urls.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
+
+      // 메인 이미지가 없고 추가 이미지가 있으면 첫 이미지를 메인으로
+      if ((p['mainImageUrl'] == null || p['mainImageUrl'].toString().isEmpty) && cleaned.isNotEmpty) {
+        p['mainImageUrl'] = cleaned.first;
+      }
+
+      p['additionalImageUrls'] = cleaned.join(',');
+
+      for (final key in ['brand', 'brandName', 'name', 'category']) {
+        if (p[key] != null) p[key] = p[key].toString();
+      }
+
+      return p;
+    }
+
+    // ✅ 10만원 이상만 필터 + 최신순 정렬
     final highValueOrders = unboxedOrders
         .where((o) => _priceOf(o) >= highValueThreshold)
         .toList()
@@ -181,7 +291,7 @@ class _RankingScreenState extends State<RankingScreen> {
 
     final items = highValueOrders.take(20).toList(); // ✅ 최근 20개만
 
-    // 카드 UI
+    // 카드 UI (이미지 탭 가능)
     Widget _card({
       String? profileName,
       String rightTimeText = '',
@@ -189,6 +299,8 @@ class _RankingScreenState extends State<RankingScreen> {
       String? productName,
       int? price,
       String? productImageUrl,
+      String? boxName,
+      VoidCallback? onImageTap, // 👈 추가
       bool isEmpty = false,
     }) {
       return Container(
@@ -204,17 +316,20 @@ class _RankingScreenState extends State<RankingScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
-              child: SizedBox(
-                width: 100.r,
-                height: 130.r,
-                child: productImageUrl != null && !isEmpty
-                    ? CachedNetworkImage(
-                  imageUrl: productImageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
-                )
-                    : Container(color: Colors.grey[200]),
+              child: GestureDetector(
+                onTap: (productImageUrl != null && !isEmpty) ? onImageTap : null, // 👈 탭 이동
+                child: SizedBox(
+                  width: 130.r,
+                  height: 130.r,
+                  child: productImageUrl != null && !isEmpty
+                      ? CachedNetworkImage(
+                    imageUrl: productImageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
+                  )
+                      : Container(color: Colors.grey[200]),
+                ),
               ),
             ),
             SizedBox(width: 12.w),
@@ -234,7 +349,6 @@ class _RankingScreenState extends State<RankingScreen> {
                         ),
                       ),
                       SizedBox(width: 8.w),
-                      Text(rightTimeText, style: TextStyle(color: Colors.black26, fontSize: 14.sp)),
                     ],
                   ),
                   SizedBox(height: 8.h),
@@ -253,13 +367,40 @@ class _RankingScreenState extends State<RankingScreen> {
                       style: TextStyle(color: Colors.black54, fontSize: 18.sp),
                     ),
                   ],
-                  SizedBox(height: 16.h),
-                  Text(
-                    isEmpty || price == null ? '' : '정가: ${formatCurrency.format(price)} 원',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: const Color(0xFFFF5722), fontWeight: FontWeight.w700, fontSize: 18.sp),
-                  ),
+                  SizedBox(height: 4.h),
+                  if (!(isEmpty || price == null))
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '정가: ${formatCurrency.format(price)} 원',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: const Color(0xFFFF5722),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16.sp,
+                          ),
+                        ),
+                        if ((boxName ?? '').trim().isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(top: 2.h),
+                            child: Align(
+                              alignment: Alignment.centerRight, // ✅ 정가 '아랫줄'의 '우측'
+                              child: Text(
+                                boxName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black26, // ✅ 요청 색상
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+
                 ],
               ),
             ),
@@ -301,8 +442,10 @@ class _RankingScreenState extends State<RankingScreen> {
           final brand = product?['brand'] ?? product?['brandName'];
           final name = product?['name'];
           final price = _priceOf(order);
-          final productImgUrl = _imageUrl(product?['mainImage']);
+          final productImgUrl = _imageUrl(product?['mainImage'] ?? product?['mainImageUrl']);
+          final productId = (product?['_id'] ?? product?['id'] ?? product?['productId'] ?? '').toString();
           final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
+
 
           return Padding(
             padding: EdgeInsets.only(left: index == 0 ? 16.w : 8.w, right: 12.w),
@@ -313,12 +456,31 @@ class _RankingScreenState extends State<RankingScreen> {
               productName: name,
               price: price,
               productImageUrl: productImgUrl,
+              boxName: (() {
+                final box = order['box'];
+                final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
+                return (bn == null || bn.toString().trim().isEmpty) ? '' : bn.toString();
+              })(),
+              onImageTap: () {
+                final sanitized = _sanitizeProductForDetail(product);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ProductDetailScreen(
+                      product: sanitized,
+                      productId: productId,
+                    ),
+                  ),
+                );
+              },
             ),
           );
         },
       ),
     );
   }
+
+
 
 
 
@@ -367,6 +529,11 @@ class UnboxRealtimeListNoHeader extends StatelessWidget {
             ? rawProfileImage
             : '${BaseUrl.value}:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
             : null;
+        final boxNameText = (() {
+          final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
+          return (bn == null || bn.toString().trim().isEmpty) ? '' : bn.toString();
+        })();
+
 
         return Padding(
           padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 6.h),
@@ -435,9 +602,22 @@ class UnboxRealtimeListNoHeader extends StatelessWidget {
                               ),
                             ),
                             SizedBox(height: 4.h),
-                            Text(
-                              '정가: ${formatCurrency.format(consumerPrice)}원',
-                              style: const TextStyle(fontSize: 15, color: Color(0xFF465461)),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '정가: ${formatCurrency.format(consumerPrice)}원',
+                                    style: const TextStyle(fontSize: 15, color: Color(0xFF465461)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (boxNameText.isNotEmpty)
+                                  Text(
+                                    boxNameText,
+                                    style: TextStyle(fontSize: 14.sp, color: Colors.black26),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
                             ),
                           ],
                         ),
