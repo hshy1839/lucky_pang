@@ -24,11 +24,38 @@ class SignupController extends ChangeNotifier {
 
 
   String nicknameError = '';
+  String nicknameSuccess = '';
   String emailError = '';
   bool nicknameChecked = false;
   bool emailChecked = false;
 
   String errorMessage = '';
+
+  String passwordError = '';
+  bool _passwordListenerBound = false;
+
+  static final RegExp _emailRegex =
+  RegExp(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$');
+
+  // ✅ 비밀번호: 영문+숫자+특수문자, 8~16자
+  static final RegExp _passwordRegex =
+  RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[^\w\s]).{8,16}$');
+
+  void bindPasswordListenerOnce() {
+    if (_passwordListenerBound) return;
+    _passwordListenerBound = true;
+    passwordController.addListener(() {
+      final pwd = passwordController.text;
+      if (pwd.isEmpty) {
+        passwordError = '';
+      } else if (!_passwordRegex.hasMatch(pwd)) {
+        passwordError = '영문, 숫자, 특수문자 조합 8~16자리 조건에 맞게 작성해주세요.';
+      } else {
+        passwordError = '';
+      }
+      notifyListeners();
+    });
+  }
 
   void reset() {
     nicknameController.clear();
@@ -82,7 +109,13 @@ class SignupController extends ChangeNotifier {
 
     if (nickname.isEmpty) {
       nicknameError = '닉네임을 입력해주세요.';
-    } else {
+      nicknameSuccess = '';
+      nicknameChecked = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
       final response = await http.post(
         Uri.parse('${BaseUrl.value}:7778/api/users/check-duplicate'),
         headers: {'Content-Type': 'application/json'},
@@ -90,21 +123,58 @@ class SignupController extends ChangeNotifier {
       );
 
       final data = jsonDecode(response.body);
-      final exists = data['exists'] == true;
 
-      nicknameError = exists ? '이미 사용 중인 닉네임입니다.' : '사용 가능한 닉네임 입니다.';
-      nicknameChecked = !exists;
+      // ✅ 신규 포맷(ok/reasons/message) 우선 처리
+      if (data is Map && data.containsKey('ok')) {
+        final bool ok = data['ok'] == true;
+        final List reasons = (data['reasons'] as List?) ?? const [];
+
+        if (ok) {
+          nicknameError = '';
+          nicknameSuccess = '사용 가능한 닉네임 입니다.';// 성공 시 에러문구 없음 (필요하면 성공 문구 별도 처리)
+          nicknameChecked = true;
+        } else {
+          if (reasons.contains('blacklist')) {
+            nicknameError = '사용할 수 없는 닉네임 입니다.';  // ← 금칙어 케이스
+          } else if (reasons.contains('duplicate')) {
+            nicknameError = '이미 사용 중인 닉네임입니다.';
+          } else if (reasons.contains('length')) {
+            nicknameError = '닉네임은 2~8자입니다.';
+          } else {
+            nicknameError = (data['message'] as String?) ?? '사용할 수 없는 닉네임 입니다.';
+          }
+          nicknameChecked = false;
+          nicknameSuccess = '';
+        }
+      } else {
+        // 🔙 구버전 서버( exists 만 반환 ) 대응
+        final exists = data['exists'] == true;
+        nicknameError = exists ? '이미 사용 중인 닉네임입니다.' : '';
+        nicknameSuccess = '사용 가능한 닉네임 입니다.';
+        nicknameChecked = !exists;
+      }
+    } catch (e) {
+      nicknameError = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+      nicknameChecked = false;
     }
 
     notifyListeners();
   }
 
+
   Future<void> checkEmailDuplicate(BuildContext context) async {
     final email = emailController.text.trim();
 
-    if (email.isEmpty) {
-      emailError = '이메일을 입력해주세요.';
-    } else {
+    // 1) 형식 검증 선행
+    if (!_emailRegex.hasMatch(email)) {
+      emailError = '이메일 형식에 맞게 작성해주세요';
+      emailChecked = false;
+      notifyListeners();
+      return;
+    }
+
+    // 2) 형식 OK → 서버 중복검사
+    try {
       final response = await http.post(
         Uri.parse('${BaseUrl.value}:7778/api/users/check-duplicate'),
         headers: {'Content-Type': 'application/json'},
@@ -114,12 +184,27 @@ class SignupController extends ChangeNotifier {
       final data = jsonDecode(response.body);
       final exists = data['exists'] == true;
 
-      emailError = exists ? '이미 사용 중인 이메일입니다.' : '사용 가능한 이메일 입니다.';
+      emailError = exists ? '이미 사용 중인 이메일입니다.' : '';
       emailChecked = !exists;
+    } catch (e) {
+      emailError = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+      emailChecked = false;
     }
-
     notifyListeners();
   }
+
+  bool validatePasswordForSubmit() {
+    final pwd = passwordController.text;
+    if (!_passwordRegex.hasMatch(pwd)) {
+      passwordError = '영문, 숫자, 특수문자 조합 8~16자리 조건에 맞게 작성해주세요.';
+      notifyListeners();
+      return false;
+    }
+    passwordError = '';
+    notifyListeners();
+    return true;
+  }
+
 
   Future<void> checkReferralCode(BuildContext context) async {
     final code = referralCodeController.text.trim();
@@ -159,17 +244,25 @@ class SignupController extends ChangeNotifier {
                 passwordController.text.isEmpty ||
                 confirmPasswordController.text.isEmpty))) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('모든 항목을 입력해주세요'), backgroundColor: Colors.red),
+        SnackBar(content: Text('모든 항목을 입력해주세요'), backgroundColor: Colors.black),
       );
       return;
     }
 
     if (provider == 'local' && (!nicknameChecked || !emailChecked)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('닉네임과 이메일 중복확인을 완료해주세요.'), backgroundColor: Colors.red),
+        SnackBar(content: Text('닉네임과 이메일 중복확인을 완료해주세요.'), backgroundColor: Colors.black),
       );
       return;
     }
+
+    if (provider == 'local' && !validatePasswordForSubmit()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('비밀번호 형식은 영문, 숫자, 특수문자 조합 8~16자리 조건에 맞게 작성해주세요.'), backgroundColor: Colors.black),
+      );
+      return;
+    }
+
 
     if (referralCodeController.text.isNotEmpty && !referralCodeChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -177,15 +270,16 @@ class SignupController extends ChangeNotifier {
       );
       return;
     }
-    // if (!isPhoneVerified) {
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     SnackBar(content: Text('휴대폰 본인인증을 완료해주세요.'), backgroundColor: Colors.red),
-    //   );
-    //   return;
-    // }
+
+     if (!isPhoneVerified) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('휴대폰 본인인증을 완료해주세요.'), backgroundColor: Colors.black),
+       );
+       return;
+     }
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('비밀번호가 일치하지 않습니다.'), backgroundColor: Colors.red),
+        SnackBar(content: Text('비밀번호가 일치하지 않습니다.'), backgroundColor: Colors.black),
       );
       return;
     }

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../controllers/order_screen_controller.dart';
 import '../../../routes/base_url.dart';
 import '../../widget/ranking_screen_widget/ranking_tab_bar_header.dart';
+import '../../widget/ranking_screen_widget/unbox_realtime_list.dart';
 import '../../widget/ranking_screen_widget/unbox_weekly_ranking.dart';
 
 class RankingScreen extends StatefulWidget {
@@ -124,7 +125,9 @@ class _RankingScreenState extends State<RankingScreen> {
               Expanded(
                 child: Container(
                   color: Colors.white,
-                  child: UnboxRealtimeListNoHeader(unboxedOrders: unboxedOrders),
+                  child: showRealtimeLog
+                      ? UnboxRealtimeList(unboxedOrders: unboxedOrders) // 실시간
+                      : UnboxWeeklyRanking(unboxedOrders: unboxedOrders),       // 주간 랭킹
                 ),
               ),
             ],
@@ -145,8 +148,9 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   /// 상단 가로 슬라이드 카드 영역 (최근 고가 언박싱 하이라이트)
+  /// 상단 가로 슬라이드 카드 영역 (최근 고가 언박싱 하이라이트)
   Widget _buildHighValueCarousel(BuildContext context) {
-    const int highValueThreshold = 30000; // 필요 시 조정
+    const int highValueThreshold = 100000; // ✅ 10만원 이상만
     final formatCurrency = NumberFormat('#,###');
 
     int _priceOf(Map<String, dynamic> o) {
@@ -158,18 +162,26 @@ class _RankingScreenState extends State<RankingScreen> {
       if (raw == null) return null;
       final s = '$raw';
       if (s.isEmpty) return null;
-      return s.startsWith('http') ? s : '${BaseUrl.value}:7778${s.startsWith('/') ? '' : '/'}$s';
+      return s.startsWith('http')
+          ? s
+          : '${BaseUrl.value}:7778${s.startsWith('/') ? '' : '/'}$s';
     }
 
+    // ✅ 10만원 이상만 필터 + 안전 정렬(최신순)
     final highValueOrders = unboxedOrders
         .where((o) => _priceOf(o) >= highValueThreshold)
         .toList()
-      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
-          .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a['unboxedProduct']?['decidedAt'] ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse(b['unboxedProduct']?['decidedAt'] ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da);
+      });
 
-    final items = highValueOrders.take(30).toList();
+    final items = highValueOrders.take(20).toList(); // ✅ 최근 20개만
 
-    // 공통: 카드 UI 빌더
+    // 카드 UI
     Widget _card({
       String? profileName,
       String rightTimeText = '',
@@ -190,7 +202,6 @@ class _RankingScreenState extends State<RankingScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ⬅️ 정사각형 상품 메인 이미지
             ClipRRect(
               borderRadius: BorderRadius.circular(8.r),
               child: SizedBox(
@@ -207,14 +218,11 @@ class _RankingScreenState extends State<RankingScreen> {
               ),
             ),
             SizedBox(width: 12.w),
-
-            // ▶️ 텍스트 영역
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  SizedBox(height: 10.h),
+                  SizedBox(height:4.h),
                   Row(
                     children: [
                       Expanded(
@@ -222,52 +230,35 @@ class _RankingScreenState extends State<RankingScreen> {
                           isEmpty ? '최근 내역이 없습니다.' : '${profileName ?? '익명'}님이 당첨됐어요!',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(color: Colors.black87, fontSize: 16.sp, fontWeight: FontWeight.w600),
                         ),
                       ),
                       SizedBox(width: 8.w),
-                      Text(
-                        rightTimeText,
-                        style: TextStyle(color: Colors.black26, fontSize: 14.sp),
-                      ),
+                      Text(rightTimeText, style: TextStyle(color: Colors.black26, fontSize: 14.sp)),
                     ],
                   ),
-                  SizedBox(height: 6.h),
-
-                  // 브랜드
+                  SizedBox(height: 8.h),
                   Text(
                     isEmpty ? '' : (brand ?? ''),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.black45, fontSize: 18.sp, ),
+                    style: TextStyle(color: Colors.black45, fontSize: 16.sp),
                   ),
-
-                  // 상품명
                   if (!isEmpty) ...[
                     SizedBox(height: 4.h),
                     Text(
                       productName ?? '상품명 없음',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.black54, fontSize: 20.sp, ),
+                      style: TextStyle(color: Colors.black54, fontSize: 18.sp),
                     ),
                   ],
-
-                  // 정가
-                  SizedBox(height: 8.h),
+                  SizedBox(height: 16.h),
                   Text(
                     isEmpty || price == null ? '' : '정가: ${formatCurrency.format(price)} 원',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFFFF5722), // 빨강
-                      fontWeight: FontWeight.w700,
-                      fontSize: 22.sp,
-                    ),
+                    style: TextStyle(color: const Color(0xFFFF5722), fontWeight: FontWeight.w700, fontSize: 18.sp),
                   ),
                 ],
               ),
@@ -277,7 +268,7 @@ class _RankingScreenState extends State<RankingScreen> {
       );
     }
 
-    // 데이터 없으면 동일 카드 레이아웃으로 안내
+    // 데이터 없을 때
     if (items.isEmpty) {
       return SizedBox(
         height: 150.h,
@@ -307,7 +298,7 @@ class _RankingScreenState extends State<RankingScreen> {
           final user = order['user'];
           final product = order['unboxedProduct']?['product'];
           final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
-          final brand = product?['brand'] ?? product?['brandName']; // 둘 중 있는 것 사용
+          final brand = product?['brand'] ?? product?['brandName'];
           final name = product?['name'];
           final price = _priceOf(order);
           final productImgUrl = _imageUrl(product?['mainImage']);
@@ -328,6 +319,7 @@ class _RankingScreenState extends State<RankingScreen> {
       ),
     );
   }
+
 
 
 }

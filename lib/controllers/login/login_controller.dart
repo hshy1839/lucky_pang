@@ -55,58 +55,104 @@ class LoginController {
 
   Future<void> loginWithKakao(BuildContext context) async {
     try {
-      bool isInstalled = await isKakaoTalkInstalled();
+      final isInstalled = await isKakaoTalkInstalled();
 
-      OAuthToken token = isInstalled
+      final OAuthToken token = isInstalled
           ? await UserApi.instance.loginWithKakaoTalk()
           : await UserApi.instance.loginWithKakaoAccount();
 
-      final user = await UserApi.instance.me();
+      // 1차 사용자 정보
+      var user = await UserApi.instance.me();
       final kakaoId = user.id.toString();
       final nickname = user.kakaoAccount?.profile?.nickname ?? '카카오사용자';
 
-      print('✅ 카카오 로그인 성공: $kakaoId, $nickname');
-      print('카카오 유저 정보 전체: ${user.toJson()}');
+      var email = user.kakaoAccount?.email;
+      final emailNeedsAgreement = user.kakaoAccount?.emailNeedsAgreement ?? false;
+      final isEmailValid = user.kakaoAccount?.isEmailValid ?? false;
+      final isEmailVerified = user.kakaoAccount?.isEmailVerified ?? false;
 
+      print('✅ 카카오 로그인 성공: id=$kakaoId, nickname=$nickname');
+      print('📦 kakaoAccount email=${email ?? "(null)"} '
+          'hasEmail=${email != null && email.isNotEmpty} '
+          'emailNeedsAgreement=$emailNeedsAgreement '
+          'isEmailValid=$isEmailValid '
+          'isEmailVerified=$isEmailVerified');
+
+      // 이메일이 없고 동의가 필요할 때 스코프 재요청
+      if ((email == null || email.isEmpty) && emailNeedsAgreement) {
+        print('🟨 account_email 동의 필요 → 스코프 재요청...');
+        try {
+          await UserApi.instance.loginWithNewScopes(['account_email']);
+          user = await UserApi.instance.me();
+          email = user.kakaoAccount?.email;
+
+          print('🟩 재동의 후 email=${email ?? "(null)"} '
+              'hasEmail=${email != null && email.isNotEmpty} '
+              'emailNeedsAgreement=${user.kakaoAccount?.emailNeedsAgreement} '
+              'isEmailValid=${user.kakaoAccount?.isEmailValid} '
+              'isEmailVerified=${user.kakaoAccount?.isEmailVerified}');
+        } catch (e) {
+          print('❌ 스코프 재동의 실패/취소: $e');
+        }
+      }
+
+      // 서버에 로그인 시도 (디버깅용으로 email도 함께 전송)
       final response = await http.post(
         Uri.parse('${BaseUrl.value}:7778/api/users/social-login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'provider': 'kakao',
           'providerId': kakaoId,
+          'email': email,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final loginSuccess = data['loginSuccess'] == true; // 서버가 로그인 성공시 true 반환
-        final exists = data['exists'] == true; // exists가 true면 가입된 사용자
+        final loginSuccess = data['loginSuccess'] == true;
+        final exists = data['exists'] == true;
 
         if (loginSuccess || exists) {
-          final storage = FlutterSecureStorage();
-          await storage.write(key: 'token', value: data['token']);
-          await storage.write(key: 'userId', value: data['userId']);
+          // (선택) 토큰 저장: FlutterSecureStorage import 필요
+          // final storage = FlutterSecureStorage();
+          // if (data['token'] != null) await storage.write(key: 'token', value: data['token']);
+          // if (data['userId'] != null) await storage.write(key: 'userId', value: data['userId']);
 
+          print('🟢 소셜 로그인 성공 → 메인 이동');
+          if (!context.mounted) return;
           Navigator.pushReplacementNamed(context, '/main');
         } else {
-          Navigator.pushNamed(context, '/signupAgree', arguments: {
-            'provider': 'kakao',
-            'providerId': kakaoId,
-            'nickname': nickname,
-            'email': '',
-          });
+          print('🟡 신규 회원 → 약관동의 이동 (email=${email ?? "(null)"})');
+          if (!context.mounted) return;
+          Navigator.pushNamed(
+            context,
+            '/signupAgree',
+            arguments: {
+              'provider': 'kakao',
+              'providerId': kakaoId,
+              'nickname': nickname,
+              'email': email ?? '',
+              'kakaoFlags': {
+                'hasEmail': email != null && email.isNotEmpty,
+                'emailNeedsAgreement': emailNeedsAgreement,
+                'isEmailValid': isEmailValid,
+                'isEmailVerified': isEmailVerified,
+              },
+            },
+          );
         }
       } else {
         throw Exception('서버 오류: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ 로그인 실패: $e');
+      print('❌ 카카오 로그인 실패: $e');
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('카카오 로그인에 실패했어요.')),
+        const SnackBar(content: Text('카카오 로그인에 실패했어요.')),
       );
     }
-
   }
+
   Future<void> loginWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();

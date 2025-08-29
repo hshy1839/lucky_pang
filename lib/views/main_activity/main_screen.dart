@@ -210,13 +210,13 @@ class _MainScreenState extends State<MainScreen> {
                       children: [
                         Text(
                           product['brand'] ?? '',
-                          style: TextStyle(fontSize: 16, color: Color(0xFF021526)),
+                          style: TextStyle(fontSize: 18, color: Color(0xFF021526)),
                           overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 4),
                         Text(
                           product['name'] ?? '',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF465461)),
+                          style: TextStyle(fontSize: 16, color: Color(0xFF465461)),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -227,7 +227,7 @@ class _MainScreenState extends State<MainScreen> {
                         Text(
                           '${formatPrice(product['price'])}원',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 18,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFFFF5722),
                           ),
@@ -236,7 +236,7 @@ class _MainScreenState extends State<MainScreen> {
                         Text(
                           '정가: ${formatPrice(product['consumerPrice'])}원',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 16,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF8D969D),
                             decorationThickness: 1.2,
@@ -410,11 +410,11 @@ class _MainScreenState extends State<MainScreen> {
                       color: Colors.black,
                     ),
                   ),
-                  SizedBox(width: 60),
+                  SizedBox(width: 20),
                   Text(
                     '${NumberFormat('#,###').format(products.length)}개',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       color: Colors.grey[700],
                     ),
                   ),
@@ -455,7 +455,7 @@ class _MainScreenState extends State<MainScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 5,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.47,
+                childAspectRatio: 0.51,
               ),
             ),
           ),

@@ -50,7 +50,7 @@ class RankingTabBarHeader extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 50.h), // ✅ 원래 간격 유지
+            SizedBox(height: 25.h), // ✅ 원래 간격 유지
             Text(
               "당첨을 축하드립니다!",
               textAlign: TextAlign.center,
@@ -67,7 +67,7 @@ class RankingTabBarHeader extends StatelessWidget {
                   ).createShader(Rect.fromLTWH(0.0, 0.0, 380.0, 70.0)),
               ),
             ),
-            SizedBox(height: 0.h),
+            SizedBox(height: 20.h),
           ],
         ),
       ),

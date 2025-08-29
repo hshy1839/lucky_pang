@@ -194,38 +194,51 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
               return const Text('박스가 없습니다.');
             }
 
-            return Center(
-              child: Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: boxController.boxes.map<Widget>((box) {
-                  final isSelected = selectedBoxId == box['_id'];
-                  return GestureDetector(
-                    onTap: () => setState(() => selectedBoxId = box['_id']),
-                    child: Container(
-                      width: 180,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Text(
-                          box['name'],
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.grey,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+            return GridView.builder(
+              shrinkWrap: true, // ✅ SingleChildScrollView와 함께 사용
+              physics: const NeverScrollableScrollPhysics(), // ✅ 내부 스크롤 비활성화
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: boxController.boxes.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,        // ✅ 한 줄에 2개
+                crossAxisSpacing: 12,     // 좌우 간격
+                mainAxisSpacing: 12,      // 상하 간격
+                childAspectRatio: 3.0,    // 카드 가로:세로 비율(필요 시 조정)
+              ),
+              itemBuilder: (context, i) {
+                final box = boxController.boxes[i];
+                final isSelected = selectedBoxId == box['_id'];
+
+                return GestureDetector(
+                  onTap: () => setState(() => selectedBoxId = box['_id']),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(10),
+
+                      boxShadow: isSelected
+                          ? [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))]
+                          : [],
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      box['name'],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey[800],
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              },
             );
           },
         ),
+
 
         const SizedBox(height: 40),
         const Center(

@@ -24,6 +24,16 @@ import 'views/order_activity/order_screen.dart';
 
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+const storage = FlutterSecureStorage(
+  aOptions: AndroidOptions(
+    encryptedSharedPreferences: true, // 안정적
+    resetOnError: true,               // BAD_DECRYPT 등 나면 자동 리셋
+  ),
+  iOptions: IOSOptions(
+    accessibility: KeychainAccessibility.first_unlock,
+  ),
+);
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +42,7 @@ void main() async {
   );
 
   KakaoSdk.init(
-    nativeAppKey: '89857ed78c6e2c92bab47311bbea5546',
+    nativeAppKey: 'a428d1d9ce58d6f01884573a8a801131',
   );
 
   runApp(
@@ -60,22 +70,32 @@ class _MyAppState extends State<MyApp> {
     _startApp();
   }
 
+
   Future<void> _startApp() async {
     setState(() => _startScreen = const SplashScreen());
     await Future.delayed(const Duration(seconds: 2)); // 2초 대기
     final Widget next = await _checkLoginStatus();
     setState(() => _startScreen = next);
   }
-
-  Future<Widget> _checkLoginStatus() async {
-    final storage = FlutterSecureStorage();
-    final isLoggedIn = await storage.read(key: 'isLoggedIn') == 'true';
-    final token = await storage.read(key: 'token');
-
-    if (!isLoggedIn || token == null) {
-      return LoginScreen();
+  Future<String?> safeRead(String key) async {
+    try {
+      return await storage.read(key: key);
+    } on PlatformException {
+      // 복호화 실패 시(=지금 겪는 케이스) 전체 리셋 후 null 반환
+      await storage.deleteAll();
+      return null;
+    } catch (_) {
+      return null;
     }
-    return MainScreenWithFooter();
+  }
+  Future<Widget> _checkLoginStatus() async {
+    final isLoggedIn = (await safeRead('isLoggedIn')) == 'true';
+    final token = await safeRead('token');
+
+    if (isLoggedIn && token != null && token.isNotEmpty) {
+      return MainScreenWithFooter();
+    }
+    return LoginScreen();
   }
 
   @override
@@ -142,7 +162,6 @@ class _MainScreenWithFooterState extends State<MainScreenWithFooter> {
       _pageController.jumpToPage(_currentIndex);
     });
   }
-
   void _onTabTapped(int index) {
     setState(() {
       _currentIndex = index;

@@ -19,6 +19,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     if (!_isInitialized) {
       final args = ModalRoute.of(context)?.settings.arguments;
+      final signupController = Provider.of<SignupController>(context, listen: false);
 
       if (args is Map) {
         final signupController = Provider.of<SignupController>(context, listen: false);
@@ -35,6 +36,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
           signupController.emailChecked = true;
         }
       }
+
+      print('🟦 [SignUpScreen] args: $args');
+
+      print('🟦 provider=${signupController.provider}, '
+          'providerId=${signupController.providerId}, '
+          'prefillEmail="${signupController.emailController.text}"');
+
+      if (signupController.provider == 'kakao' &&
+          signupController.emailController.text.isEmpty) {
+        final kf = (args is Map ? args['kakaoFlags'] : null) as Map?;
+        print('⚠️ 카카오 이메일 미수신. flags -> '
+            'hasEmail=${kf?['hasEmail']} '
+            'emailNeedsAgreement=${kf?['emailNeedsAgreement']} '
+            'isEmailValid=${kf?['isEmailValid']} '
+            'isEmailVerified=${kf?['isEmailVerified']}');
+      }
+
+      signupController.bindPasswordListenerOnce();
 
       _isInitialized = true;
     }
@@ -79,6 +98,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 '중복검사',
                     () => signupController.checkNicknameDuplicate(context),
                 errorText: signupController.nicknameError,
+                successText: signupController.nicknameSuccess,
                 isButtonEnabled: !signupController.nicknameChecked,
               ),
               const SizedBox(height: 36),
@@ -95,12 +115,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ],
               if (signupController.provider == 'local') ...[
                 const SizedBox(height: 36),
-                _buildTextField('비밀번호', signupController.passwordController, obscureText: true),
+                _buildTextField(
+                  '비밀번호',
+                  signupController.passwordController,
+                  obscureText: true,
+                  hintText: '영문+숫자+특수문자 조합 8~16자리',                 // ✅ 흐린 힌트
+                  footerErrorText: signupController.passwordError,             // ✅ 형식 에러
+                ),
                 const SizedBox(height: 36),
                 _buildTextField('비밀번호 확인', signupController.confirmPasswordController, obscureText: true),
                 const SizedBox(height: 36),
               ],
-
+              SizedBox(height: 20,),
               // ✅ 휴대폰 번호 제목 + 버튼
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,8 +208,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       String label,
       TextEditingController controller,
       String buttonText,
+
       VoidCallback onPressed, {
         String? errorText,
+        String? successText,
         bool isButtonEnabled = true,
       }) {
     final buttonColor = isButtonEnabled
@@ -213,12 +241,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 4, left: 4),
             child: Text(errorText, style: const TextStyle(color: Colors.red, fontSize: 12)),
+          )
+        else if (successText != null && successText.isNotEmpty) // ✅ 성공 문구 표시
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(successText, style: const TextStyle(color: Colors.green, fontSize: 12)),
           ),
       ],
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool obscureText = false}) {
+  Widget _buildTextField(
+      String label,
+      TextEditingController controller, {
+        bool obscureText = false,
+        bool readOnly = false,
+        Widget? suffix,
+        String? hintText,
+        String? footerErrorText,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -234,7 +275,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: readOnly ? const Color(0xFFF7F7F7) : Colors.white,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -247,11 +288,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: TextField(
             controller: controller,
             obscureText: obscureText,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            readOnly: readOnly, // ← 추가
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
+              suffixIcon: suffix, // ← 추가
+              hintText: hintText, // ✅
+              hintStyle: const TextStyle(color: Colors.grey), // ✅ 흐리게
             ),
             style: const TextStyle(fontSize: 14),
           ),
@@ -259,4 +304,5 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ],
     );
   }
+
 }

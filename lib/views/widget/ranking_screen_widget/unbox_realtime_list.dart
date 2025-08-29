@@ -9,311 +9,212 @@ class UnboxRealtimeList extends StatelessWidget {
 
   const UnboxRealtimeList({super.key, required this.unboxedOrders});
 
+  // 상대 시간
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return '방금 전';
+    if (diff.inHours < 1) return '${diff.inMinutes}분 전';
+    if (diff.inDays < 1) return '${diff.inHours}시간 전';
+    if (diff.inDays < 7) return '${diff.inDays}일 전';
+    return DateFormat('MM/dd').format(dt);
+  }
+
+  // 안전한 가격 파싱
+  int _priceOf(Map<String, dynamic> order) {
+    final raw = order['unboxedProduct']?['product']?['consumerPrice'];
+    if (raw is num) return raw.toInt();
+    return int.tryParse('$raw') ?? 0;
+  }
+
+  // 서버 이미지 URL 보정
+  String? _imageUrl(dynamic raw) {
+    if (raw == null) return null;
+    final s = '$raw';
+    if (s.isEmpty) return null;
+    return s.startsWith('http') ? s : '${BaseUrl.value}:7778${s.startsWith('/') ? '' : '/'}$s';
+  }
+
+  // 공용 카드 위젯 (세로 리스트에서 사용)
+// 공통: 카드 UI 빌더
+  Widget _card({
+    String? profileName,
+    String rightTimeText = '',
+    String? brand,
+    String? productName,
+    int? price,
+    String? productImageUrl,
+    String? profileImage,   // ⬅️ 추가
+    String? decidedAtText,  // ⬅️ 추가
+    String? boxName,
+    bool isEmpty = false,
+  }) {
+    final formatCurrency = NumberFormat('#,###');
+
+    return Container(
+      width: 330.w,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2))],
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ⬅️ 상품 이미지
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8.r),
+            child: SizedBox(
+              width: 100.r,
+              height: 140.r,
+              child: productImageUrl != null && !isEmpty
+                  ? CachedNetworkImage(
+                imageUrl: productImageUrl,
+                fit: BoxFit.cover,
+                placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
+              )
+                  : Container(color: Colors.grey[200]),
+            ),
+          ),
+          SizedBox(width: 12.w),
+
+          // ▶️ 텍스트 영역
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    // ⬅️ 작은 프로필 원
+                    CircleAvatar(
+                      radius: 11.r,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: profileImage != null
+                          ? CachedNetworkImageProvider(profileImage!)
+                          : null,
+                      child: profileImage == null
+                          ? Icon(Icons.person, size: 13.r, color: Colors.grey[600])
+                          : null,
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Text(
+                        isEmpty ? '최근 내역이 없습니다.' : '${profileName ?? '익명'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.black54, fontSize: 18.sp,),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    Text(rightTimeText, style: TextStyle(color: Colors.black26, fontSize: 14.sp)),
+                  ],
+                ),
+                SizedBox(height: 2.h),
+
+                // 상품명
+                if (!isEmpty) ...[
+                  SizedBox(height: 4.h),
+                  Text(
+                    productName ?? '상품명 없음',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 22.sp),
+                  ),
+                ],
+
+                SizedBox(height: 2.h),
+                Text(
+                  isEmpty || price == null ? '' : '정가: ${formatCurrency.format(price)} 원',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.black87,  fontSize: 16.sp),
+                ),
+                SizedBox(height: 20.h),
+                if ((boxName ?? '').isNotEmpty) ...[
+                  SizedBox(height: 6.h),
+                  Text(
+                    boxName!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.black87, fontSize: 18.sp, fontWeight: FontWeight.bold),
+                  ),
+                ],
+                // ⬇️ decidedAt
+                if ((decidedAtText ?? '').isNotEmpty) ...[
+                  SizedBox(height: 2.h),
+                  Text(decidedAtText!, style: TextStyle(color: Colors.black38, fontSize: 14.sp)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
+    final formatCurrency = NumberFormat('#,###');
+
     if (unboxedOrders.isEmpty) {
       return SizedBox(
         height: 100.h,
-        child: Center(child: Text("최근 언박싱 기록이 없습니다.")),
+        child: const Center(child: Text("최근 언박싱 기록이 없습니다.")),
       );
     }
-    final List<Map<String, dynamic>> filteredOrders = unboxedOrders
-        .where((order) {
-      final consumerPrice = order['unboxedProduct']?['product']?['consumerPrice'] ?? 0;
-      return consumerPrice >= 20000 && consumerPrice < 100000;
-    })
+
+    // 🔧 좌우 슬라이더 제거: 모든 20,000원 이상을 세로 리스트로 노출
+    final visibleOrders = unboxedOrders
+     .where((o) { final p = _priceOf(o); return p >= 20000 && p < 100000; })
         .toList()
       ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
           .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
 
-    final List<Map<String, dynamic>> latest20Orders = filteredOrders
-        .take(20)
-        .toList();
-
-    final highValueOrders = unboxedOrders
-        .where((order) => (order['unboxedProduct']?['product']?['consumerPrice'] ?? 0) >= 100000)
-        .toList()
-      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '').compareTo(
-          DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
-
-    final recentHighValueOrders = highValueOrders.take(30).toList();
-    final formatCurrency = NumberFormat('#,###');
+    final latestOrders = visibleOrders.take(50).toList();
 
     return Container(
       color: Colors.white,
-      child: Column(
-        children: [
-          if (recentHighValueOrders.isNotEmpty)
-            SizedBox(
-              height: 170.h,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: recentHighValueOrders.length,
-                itemBuilder: (context, index) {
-                  final order = recentHighValueOrders[index];
-                  final user = order['user'];
-                  final product = order['unboxedProduct']?['product'];
-                  final box = order['box'];
-                  final rawProfileImage = user?['profileImage'];
-                  final userProfileImage = rawProfileImage != null && rawProfileImage.isNotEmpty
-                      ? (rawProfileImage.startsWith('http')
-                      ? rawProfileImage
-                      : '${BaseUrl.value}:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
-                      : null;
-                  final consumerPrice = product?['consumerPrice'] ?? 0;
+      child: ListView.builder(
+        padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 20.h, top: 4.h),
+        itemCount: latestOrders.length,
+        itemBuilder: (context, index) {
+          final order = latestOrders[index];
+          final user = order['user'];
+          final product = order['unboxedProduct']?['product'];
+          final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
+          final brand = product?['brand'] ?? product?['brandName'];
+          final name = product?['name'];
+          final price = _priceOf(order);
+          final productImgUrl = _imageUrl(product?['mainImage']);
+          final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
+          final profileImage = _imageUrl(user?['profileImage']);
+          final decidedAtText = decidedAt != null
+              ? DateFormat('yyyy-MM-dd HH:mm').format(decidedAt.toLocal())
+              : '';
+          final boxName = (() {
+            final box = order['box'];
+            final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
+            return bn?.toString();
+          })();
 
-                  // ✅ 30,000 미만이면 렌더링하지 않음
-                  if (consumerPrice < 100000) return const SizedBox.shrink();
-
-                  return Padding(
-                    padding: EdgeInsets.only(left: 16.w, right: 20.w, bottom: 40.h, top: 0.h),
-                    child: Container(
-                      width: 350.w,
-                      decoration: BoxDecoration(
-                        color: Color(0xFFFF5722),
-                        borderRadius: BorderRadius.circular(20.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4.r,
-                            offset: Offset(0, 2),
-                          )
-                        ],
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                   child: Row(
-                    children: [
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // 닉네임 + 프로필 사진
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 24.r,
-                                  backgroundColor: Colors.grey[300],
-                                  child: userProfileImage != null
-                                      ? ClipOval(
-                                    child: CachedNetworkImage(
-                                      imageUrl: userProfileImage,
-                                      fit: BoxFit.cover,
-                                      width: 48.r,
-                                      height: 48.r,
-                                      placeholder: (context, url) => Center(
-                                        child: CircularProgressIndicator(
-                                          color: Theme.of(context).primaryColor,
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      errorWidget: (context, url, error) =>
-                                          Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
-                                    ),
-                                  )
-                                      : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
-                                ),
-
-                                SizedBox(width: 12.w),
-                                Expanded(
-                                  child: Text(
-                                    user?['nickname'] ?? '익명',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.sp, color: Colors.white),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 20.h), // 여기로 이동!
-
-                            // 상품명 + 가격 + 날짜
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 상품 정보
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product?['name'] ?? '상품명 없음',
-                                        style: TextStyle(fontSize: 15.sp, color: Colors.white),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                      SizedBox(height: 4.h),
-                                      Text(
-                                        '정가: ${formatCurrency.format(consumerPrice)}원',
-                                        style: TextStyle(fontSize: 15.sp, color: Colors.white70),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(width: 12.w),
-                                // 박스 정보
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '${formatCurrency.format(box?['price'] ?? 0)}원 박스',
-                                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                                    ),
-                                    SizedBox(height: 4.h),
-                                    Text(
-                                      DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
-                                          ?.toLocal()
-                                          .toString()
-                                          .substring(0, 16) ??
-                                          '',
-                                      style: TextStyle(fontSize: 13.sp, color: Colors.white54),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    ],
-                  ),
-
-                  ),
-                  );
-                },
-              ),
+          // ✅ 아이템 여백: 세로만
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.h),
+            child: _card(
+              profileName: user?['nickname'],
+              rightTimeText: timeText,
+              brand: brand,
+              productName: name,
+              price: price,
+              productImageUrl: productImgUrl,
+              profileImage: profileImage,
+              decidedAtText: decidedAtText,
+              boxName: boxName,
             ),
-
-
-
-          ListView.builder(
-            padding: EdgeInsets.only(bottom: 20),
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: latest20Orders.length,
-            itemBuilder: (context, index) {
-              final order = latest20Orders[index];
-              final user = order['user'];
-              final product = order['unboxedProduct']?['product'];
-              final box = order['box'];
-              final consumerPrice = product?['consumerPrice'] ?? 0;
-
-              final rawProfileImage = user?['profileImage'];
-              final userProfileImage = rawProfileImage != null && rawProfileImage.isNotEmpty
-                  ? (rawProfileImage.startsWith('http')
-                  ? rawProfileImage
-                  : '${BaseUrl.value}:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
-                  : null;
-
-              return Padding(
-                padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 6.h),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20.r),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: Offset(0, 2))
-                    ],
-                  ),
-                  child: ListTile(
-
-                    title: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24.r,
-                          backgroundColor: Colors.grey[300],
-                          child: userProfileImage != null
-                              ? ClipOval(
-                            child: CachedNetworkImage(
-                              imageUrl: userProfileImage,
-                              fit: BoxFit.cover,
-                              width: 48.r,
-                              height: 48.r,
-                              placeholder: (context, url) => Center(
-                                child: CircularProgressIndicator(
-                                  color: Theme.of(context).primaryColor,
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                              errorWidget: (context, url, error) =>
-                                  Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
-                            ),
-                          )
-                              : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
-                        ),
-
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: Text(
-                            user?['nickname'] ?? '익명',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.sp),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: 20.h),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: double.infinity,
-                                    child:Text(
-                                      product?['name'] ?? '상품명 없음',
-                                      style: TextStyle(fontSize: 15.sp, color: Colors.black),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4.h),
-                                  Text(
-                                    '정가: ${formatCurrency.format(consumerPrice)}원',
-                                    style: TextStyle(fontSize: 15.sp, color: Color(0xFF465461)),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                            Text('${formatCurrency.format(box?['price'] ?? 0)}원 박스',
-                                    style: TextStyle(color: Colors.black, fontSize: 14.sp)),
-                                SizedBox(height: 4.h),
-                                Text(
-                                  DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
-                                      ?.toLocal()
-                                      .toString()
-                                      .substring(0, 16) ??
-                                      '',
-                                  style: TextStyle(fontSize: 13.sp, color: Colors.black45),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-
-
-                  ),
-                ),
-              );
-            },
-          ),
-          SizedBox(height: 80,)
-
-        ],
+          );
+        },
       ),
     );
   }
