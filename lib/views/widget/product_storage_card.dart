@@ -70,6 +70,43 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     });
   }
 
+  /// ✅ MainScreen과 동일한 로직: URL 유효성 체크 → Image.network / placeholder
+  Widget _buildMainImage() {
+    final url = widget.mainImageUrl.trim();
+    final hasUrl = url.isNotEmpty;
+
+    Widget placeholder = Container(
+      width: 100.w,
+      height: 100.h,
+      color: const Color(0xFFF5F6F6),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.image_not_supported,
+        size: 36,
+        color: Colors.grey[500],
+      ),
+    );
+
+    if (!hasUrl) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(15.r),
+        child: placeholder,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(15.r),
+      child: Image.network(
+        url,
+        width: 100.w,
+        height: 100.h,
+        fit: BoxFit.cover,           // ✅ MainScreen과 동일: cover
+        alignment: Alignment.center, // ✅ 중앙 기준 크롭
+        errorBuilder: (_, __, ___) => placeholder,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLocked = widget.isManuallyLocked;
@@ -86,10 +123,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
         children: [
           /// 체크박스 + 자물쇠 아이콘
           Row(
-
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
               Checkbox(
                 value: widget.isSelected,
                 onChanged: isFullyLocked ? null : widget.onSelectChanged,
@@ -106,7 +141,6 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
               GestureDetector(
                 onTap: () async {
                   if (!widget.isManuallyLocked) {
-                    // 🔓 → 🔒 전환: 잠금
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (context) {
@@ -126,7 +160,6 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                         );
                       },
                     );
-
                     if (confirm == true) {
                       setState(() {
                         widget.onManualLockChanged(true);
@@ -134,7 +167,6 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                       });
                     }
                   } else {
-                    // 🔒 → 🔓 전환: 잠금 해제
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (context) {
@@ -154,7 +186,6 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                         );
                       },
                     );
-
                     if (confirm == true) {
                       setState(() {
                         widget.onManualLockChanged(false);
@@ -167,9 +198,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                   color: widget.isManuallyLocked ? Colors.green : Colors.blue,
                   size: 20.w,
                 ),
-
               ),
-
             ],
           ),
 
@@ -177,29 +206,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(15.r),
-                child: Image.network(
-                  widget.mainImageUrl,
-                  width: 100.w,
-                  height: 100.h,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 100.w,
-                      height: 100.h,
-                      color: const Color(0xFFF5F6F6),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.inventory_2_outlined,
-                        size: 36,
-                        color: Colors.grey[500],
-                      ),
-                    );
-                  },
-                ),
-
-              ),
+              _buildMainImage(), // ✅ 여기만 바꾸면 MainScreen과 동일한 처리
               SizedBox(width: 12.w),
               Expanded(
                 child: Column(
@@ -213,8 +220,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                     SizedBox(height: 8.h),
                     Text(
                       widget.productName,
-                      style: TextStyle(
-                          fontSize: 14.sp, color: const Color(0xFF465461)),
+                      style: TextStyle(fontSize: 14.sp, color: const Color(0xFF465461)),
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -300,8 +306,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     try {
       final dateOnly = acquiredAt.split(' ').first;
       final acquired = DateTime.parse(dateOnly);
-      final expireDate =
-      acquired.add(const Duration(days: 90)).subtract(const Duration(seconds: 1));
+      final expireDate = acquired.add(const Duration(days: 90)).subtract(const Duration(seconds: 1));
       final today = DateTime.now();
       final diff = expireDate.difference(today).inDays;
       if (diff < 0) return '만료됨';
@@ -372,9 +377,9 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           ),
           padding: MaterialStateProperty.all<EdgeInsets>(EdgeInsets.zero),
         ),
-        child: Text(
+        child:  Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 14,

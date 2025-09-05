@@ -11,11 +11,23 @@ class UserInfoScreenController {
   String email = "";
   String phoneNumber = "";
   String referralCode = "";
-  String profileImage = "";
+  String profileImage = ""; // <- 화면에서 바로 쓸 수 있는 최종 URL 형태로 저장
   String createdAt = '';
   bool _fetched = false;
 
-  final storage = FlutterSecureStorage();
+  final storage = const FlutterSecureStorage();
+  String get _baseUrl => '${BaseUrl.value}:7778';
+
+  /// presigned/절대 URL이면 그대로,
+  /// /uploads/... 옛 로컬 경로면 baseUrl 붙이고,
+  /// 그 외(S3 key로 보이면)는 /media/{key} 프록시로 접근
+  String _resolveImage(dynamic value) {
+    if (value == null) return '';
+    final s = value.toString();
+    if (s.startsWith('http://') || s.startsWith('https://')) return s; // presigned or absolute
+    if (s.startsWith('/uploads/')) return '$_baseUrl$s';               // legacy local path
+    return '$_baseUrl/media/$s';                                       // s3 key -> proxy
+  }
 
   Future<void> fetchUserInfo(BuildContext context) async {
     if (_fetched) return; // 🔥 이미 불러왔으면 재요청 막기
@@ -24,7 +36,7 @@ class UserInfoScreenController {
       if (token == null || token.isEmpty) throw Exception('로그인 정보가 없습니다.');
 
       final response = await http.get(
-        Uri.parse('${BaseUrl.value}:7778/api/users/userinfoget'),
+        Uri.parse('$_baseUrl/api/users/userinfoget'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -35,12 +47,18 @@ class UserInfoScreenController {
         final data = json.decode(response.body);
         if (data['success'] == true && data['user'] != null) {
           final user = data['user'];
-          nickname = user['nickname'] ?? '';
-          email = user['email'] ?? '';
-          phoneNumber = user['phoneNumber'] ?? '';
-          referralCode = user['referralCode'] ?? '';
-          profileImage = user['profileImage'] ?? '';
-          createdAt = user['created_at'] ?? '';
+
+          nickname     = user['nickname']     ?.toString() ?? '';
+          email        = user['email']        ?.toString() ?? '';
+          phoneNumber  = user['phoneNumber']  ?.toString() ?? '';
+          referralCode = user['referralCode'] ?.toString() ?? '';
+          createdAt    = user['created_at']   ?.toString() ?? '';
+
+          // ✅ 프로필 이미지: presigned/절대 → 그대로, 키 → /media/{key}, /uploads → baseUrl 붙이기
+          // 백엔드가 profileImageUrl(프리사인)을 내려주는 경우 우선 사용
+          final rawProfile = user['profileImageUrl'] ?? user['profileImage'];
+          profileImage = _resolveImage(rawProfile);
+
           _fetched = true; // ✅ 캐싱 완료 표시
         } else {
           throw Exception('사용자 정보를 불러올 수 없습니다.');
@@ -49,9 +67,9 @@ class UserInfoScreenController {
         throw Exception('서버 오류: ${response.statusCode}');
       }
     } catch (error) {
-      print('사용자 정보 가져오기 오류: $error');
+      debugPrint('사용자 정보 가져오기 오류: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('사용자 정보를 가져오는 중 오류가 발생했습니다.')),
+        const SnackBar(content: Text('사용자 정보를 가져오는 중 오류가 발생했습니다.')),
       );
     }
   }
@@ -60,11 +78,10 @@ class UserInfoScreenController {
     _fetched = false;
   }
 
-
   // 사용자 정보 업데이트 (이름과 전화번호만)
   Future<void> updateUserInfo(BuildContext context, String updatedName, String updatedPhoneNumber) async {
     try {
-      // SharedPreferences에서 토큰 가져오기
+      // SharedPreferences에서 토큰 가져오기 (기존 코드 유지)
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
@@ -72,16 +89,15 @@ class UserInfoScreenController {
         throw Exception('로그인 정보가 없습니다. 다시 로그인해주세요.');
       }
 
-      // 서버 요청
       final response = await http.put(
-        Uri.parse('${BaseUrl.value}:7778/api/users/userinfoUpdate'), // 서버 주소에 맞게 수정
+        Uri.parse('$_baseUrl/api/users/userinfoUpdate'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // SharedPreferences에서 가져온 토큰 사용
+          'Authorization': 'Bearer $token',
         },
         body: json.encode({
-          'name': updatedName.trim(), // 이름 업데이트
-          'phoneNumber': updatedPhoneNumber.trim(), // 전화번호 업데이트
+          'name': updatedName.trim(),
+          'phoneNumber': updatedPhoneNumber.trim(),
         }),
       );
 
@@ -91,9 +107,11 @@ class UserInfoScreenController {
         if (data['success'] == true) {
           nickname = updatedName;
           phoneNumber = updatedPhoneNumber;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('사용자 정보가 성공적으로 업데이트되었습니다.')),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('사용자 정보가 성공적으로 업데이트되었습니다.')),
+            );
+          }
         } else {
           throw Exception('사용자 정보를 업데이트할 수 없습니다.');
         }
@@ -101,13 +119,14 @@ class UserInfoScreenController {
         throw Exception('서버 오류: ${response.statusCode}');
       }
     } catch (error) {
-      print('사용자 정보 업데이트 오류: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('사용자 정보를 업데이트하는 중 오류가 발생했습니다.')),
-      );
+      debugPrint('사용자 정보 업데이트 오류: $error');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('사용자 정보를 업데이트하는 중 오류가 발생했습니다.')),
+        );
+      }
     }
   }
-
 
   Future<bool> withdrawUser(BuildContext context) async {
     try {
@@ -115,7 +134,7 @@ class UserInfoScreenController {
       if (token == null || token.isEmpty) throw Exception('로그인 정보가 없습니다.');
 
       final response = await http.delete(
-        Uri.parse('${BaseUrl.value}:7778/api/users/withdraw'),
+        Uri.parse('$_baseUrl/api/users/withdraw'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -126,8 +145,6 @@ class UserInfoScreenController {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           await storage.delete(key: 'token');
-
-
           return true;
         } else {
           throw Exception(data['message'] ?? '탈퇴 처리 실패');
@@ -136,13 +153,13 @@ class UserInfoScreenController {
         throw Exception('서버 오류: ${response.statusCode}');
       }
     } catch (error) {
-      print('회원탈퇴 오류: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('회원 탈퇴 중 오류가 발생했습니다.')),
-      );
+      debugPrint('회원탈퇴 오류: $error');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('회원 탈퇴 중 오류가 발생했습니다.')),
+        );
+      }
       return false;
     }
   }
-
-
 }

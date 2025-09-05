@@ -26,6 +26,25 @@ class _RankingScreenState extends State<RankingScreen> {
   int totalPrice = 0;
   bool isLoading = true;
 
+  // ──────────────────────────────────────────────────
+  // 공통 이미지 URL Resolver (이벤트/프로필과 동일 규칙)
+  // presigned/절대 URL -> 그대로
+  // /uploads/...       -> baseUrl 붙이기
+  // 그 외(S3 key 추정)  -> /media/{key}
+  // ──────────────────────────────────────────────────
+  String get _baseUrl => '${BaseUrl.value}:7778';
+
+  String _resolveImage(dynamic value) {
+    if (value == null) return '';
+    final s = value.toString().trim();
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s; // presigned 포함
+    if (s.startsWith('/uploads/')) return '$_baseUrl$s';
+    final key = s.startsWith('/') ? s.substring(1) : s;
+    return '$_baseUrl/media/$key';
+  }
+
+
   @override
   void initState() {
     super.initState();
@@ -105,8 +124,7 @@ class _RankingScreenState extends State<RankingScreen> {
                 padding: EdgeInsets.only(top: 20.h),
                 child: Column(
                   children: [
-
-                    // ✅ 여기! 탭바 헤더 위에 배치되는 가로 슬라이드 카드(고가 언박싱 하이라이트)
+                    // ✅ 탭바 헤더 위 가로 슬라이드 카드(고가 언박싱 하이라이트)
                     _buildHighValueCarousel(context),
                   ],
                 ),
@@ -130,7 +148,7 @@ class _RankingScreenState extends State<RankingScreen> {
                   color: Colors.white,
                   child: showRealtimeLog
                       ? UnboxRealtimeList(unboxedOrders: unboxedOrders) // 실시간
-                      : UnboxWeeklyRanking(unboxedOrders: unboxedOrders),       // 주간 랭킹
+                      : UnboxWeeklyRanking(unboxedOrders: unboxedOrders), // 주간 랭킹
                 ),
               ),
             ],
@@ -140,7 +158,7 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-// 클래스 내부에 추가 헬퍼: 상대시간 표시
+  // 클래스 내부에 추가 헬퍼: 상대시간 표시
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return '방금 전';
@@ -160,16 +178,7 @@ class _RankingScreenState extends State<RankingScreen> {
       return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
     }
 
-    String? _imageUrl(dynamic raw) {
-      if (raw == null) return null;
-      final s = '$raw';
-      if (s.isEmpty) return null;
-      return s.startsWith('http')
-          ? s
-          : '${BaseUrl.value}:7778${s.startsWith('/') ? '' : '/'}$s';
-    }
-
-    // ✅ 상세 페이지에 맞춰 product를 정규화
+    // ✅ 상세 페이지에 맞춰 product를 정규화 (이미지 경로 절대화)
     Map<String, dynamic> _sanitizeProductForDetail(dynamic rawProduct) {
       final Map<String, dynamic> p = Map<String, dynamic>.from(rawProduct ?? {});
 
@@ -182,14 +191,14 @@ class _RankingScreenState extends State<RankingScreen> {
       // 메인 이미지 후보 → 절대경로화
       final mainCandidate =
           p['mainImageUrl'] ?? p['mainImage'] ?? p['image'] ?? p['main_image'];
-      final mainAbs = _imageUrl(mainCandidate);
-      if (mainAbs != null && mainAbs.isNotEmpty) {
+      final mainAbs = _resolveImage(mainCandidate);
+      if (mainAbs.isNotEmpty) {
         p['mainImageUrl'] = mainAbs;
       } else if (p['mainImageUrl'] != null) {
         p['mainImageUrl'] = p['mainImageUrl'].toString();
       }
 
-      // 추가 이미지 (List/CSV/JSON 문자열/Map 모두 지원) → CSV로 저장 + 절대경로화
+      // 추가 이미지 다양한 포맷 지원 → 절대경로 리스트로 통일
       dynamic aiu = p['additionalImageUrls'] ??
           p['additionalImages'] ??
           p['detailImages'] ??
@@ -222,7 +231,7 @@ class _RankingScreenState extends State<RankingScreen> {
         }
         if (candidate == null || candidate.isEmpty) return;
 
-        final abs = _imageUrl(candidate) ?? candidate;
+        final abs = _resolveImage(candidate);
         final t = abs.trim();
         if (t.isNotEmpty) urls.add(t);
       }
@@ -337,7 +346,7 @@ class _RankingScreenState extends State<RankingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height:4.h),
+                  SizedBox(height: 4.h),
                   Row(
                     children: [
                       Expanded(
@@ -400,7 +409,6 @@ class _RankingScreenState extends State<RankingScreen> {
                           ),
                       ],
                     )
-
                 ],
               ),
             ),
@@ -442,10 +450,9 @@ class _RankingScreenState extends State<RankingScreen> {
           final brand = product?['brand'] ?? product?['brandName'];
           final name = product?['name'];
           final price = _priceOf(order);
-          final productImgUrl = _imageUrl(product?['mainImage'] ?? product?['mainImageUrl']);
+          final productImgUrl = _resolveImage(product?['mainImageUrl'] ?? product?['mainImage'] ?? product?['image']);
           final productId = (product?['_id'] ?? product?['id'] ?? product?['productId'] ?? '').toString();
           final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
-
 
           return Padding(
             padding: EdgeInsets.only(left: index == 0 ? 16.w : 8.w, right: 12.w),
@@ -479,11 +486,6 @@ class _RankingScreenState extends State<RankingScreen> {
       ),
     );
   }
-
-
-
-
-
 }
 
 /// 본문 리스트에서 "상단 슬라이더"는 제거한 버전
@@ -491,6 +493,19 @@ class _RankingScreenState extends State<RankingScreen> {
 class UnboxRealtimeListNoHeader extends StatelessWidget {
   final List<Map<String, dynamic>> unboxedOrders;
   const UnboxRealtimeListNoHeader({super.key, required this.unboxedOrders});
+
+  String get _baseUrl => '${BaseUrl.value}:7778';
+
+  // 이벤트/프로필과 동일 규칙
+  String _resolveImage(dynamic value) {
+    if (value == null) return '';
+    final s = value.toString().trim();
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    if (s.startsWith('/uploads/')) return '$_baseUrl$s';
+    final key = s.startsWith('/') ? s.substring(1) : s;
+    return '$_baseUrl/media/$key';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -523,17 +538,17 @@ class UnboxRealtimeListNoHeader extends StatelessWidget {
         final box = order['box'];
         final consumerPrice = product?['consumerPrice'] ?? 0;
 
-        final rawProfileImage = user?['profileImage'];
-        final userProfileImage = (rawProfileImage != null && rawProfileImage.isNotEmpty)
-            ? (rawProfileImage.startsWith('http')
-            ? rawProfileImage
-            : '${BaseUrl.value}:7778${rawProfileImage.startsWith('/') ? '' : '/'}$rawProfileImage')
-            : null;
+        // ✅ profileImageUrl 우선, 없으면 profileImage
+        final rawProfileImage = user?['profileImageUrl'] ?? user?['profileImage'];
+        final userProfileImage = () {
+          final u = _resolveImage(rawProfileImage);
+          return u.isEmpty ? null : u;
+        }();
+
         final boxNameText = (() {
           final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
           return (bn == null || bn.toString().trim().isEmpty) ? '' : bn.toString();
         })();
-
 
         return Padding(
           padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 6.h),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import '../../controllers/order_screen_controller.dart';
-import '../../controllers/giftcode_controller.dart'; // ✅ 선물코드 체크
+import '../../controllers/giftcode_controller.dart';
 import '../../main.dart';
 import '../../routes/base_url.dart';
 import '../widget/video_player.dart';
@@ -19,9 +19,72 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
   bool loading = true;
   bool _isInit = false;
 
-  // ✅ 열 수 있는(미개봉 + 선물코드 없음) 박스 주문 ID들
   List<String> _openableOrderIds = [];
   bool _checkingOpenables = true;
+
+  // ─────────────────────────────────────────────
+  // URL 유틸: OrderScreen/ProductStorageCard와 동일 규칙
+  // ─────────────────────────────────────────────
+  String get _root => BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
+
+  String get _base {
+    final u = Uri.tryParse(_root);
+    if (u != null && u.hasPort) return _root; // 이미 포트가 있으면 그대로
+    return '$_root:7778';
+  }
+
+  String _join(String a, String b) {
+    final left = a.replaceAll(RegExp(r'/+$'), '');
+    final right = b.replaceAll(RegExp(r'^/+'), '');
+    return '$left/$right';
+  }
+
+  // 절대 URL인데 host:port 뒤 슬래시가 없을 때 보정
+  String _fixAbsoluteUrl(String s) {
+    final m = RegExp(r'^(https?:\/\/[^\/\s]+)(\/?.*)$').firstMatch(s);
+    if (m == null) return s; // 절대 URL 아님
+    final authority = m.group(1)!; // http(s)://host[:port]
+    var rest = m.group(2)!;        // path or /path or ""
+    if (rest.isEmpty) return s;
+    if (!rest.startsWith('/')) rest = '/$rest';
+    return '$authority$rest';
+  }
+
+  /// presigned/절대 URL이면 그대로(슬래시 보정),
+  /// /uploads/...는 base 붙이고,
+  /// 그 외(S3 key)는 /media/{encodeURIComponent(key)}
+  String _resolveImage(dynamic value) {
+    if (value == null) {
+      debugPrint('[BoxOpen][_resolveImage] value=null → ""');
+      return '';
+    }
+    final raw = value.toString().trim();
+    if (raw.isEmpty) {
+      debugPrint('[BoxOpen][_resolveImage] value="" → ""');
+      return '';
+    }
+
+    debugPrint('[BoxOpen][_resolveImage] IN   base=$_base raw="$raw"');
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      final fixed = _fixAbsoluteUrl(raw);
+      debugPrint('[BoxOpen][_resolveImage] ABS  "$raw" → "$fixed"');
+      return fixed;
+    }
+
+    if (raw.startsWith('/uploads/')) {
+      final url = _join(_base, raw);
+      debugPrint('[BoxOpen][_resolveImage] UP   "$raw" → "$url"');
+      return url;
+    }
+
+    final encodedKey = Uri.encodeComponent(raw);
+    final url = _join(_base, _join('media', encodedKey));
+    debugPrint('[BoxOpen][_resolveImage] KEY  "$raw" → "$url"');
+    return url;
+  }
+
+  // ─────────────────────────────────────────────
 
   @override
   void didChangeDependencies() {
@@ -38,7 +101,7 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
 
   Future<void> _initAll(String orderId) async {
     await _loadOrderData(orderId);
-    await _loadOpenableOrders(); // ✅ 미개봉 & 선물X 박스 목록 산출
+    await _loadOpenableOrders();
   }
 
   Future<void> _loadOrderData(String orderId) async {
@@ -52,7 +115,6 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
 
   Future<void> _loadOpenableOrders() async {
     try {
-      // ✅ userId 확보: 서버 응답 구조에 따라 user 또는 userId로 들어올 수 있음
       final userId = orderData?['user']?['_id']
           ?? orderData?['userId']
           ?? orderData?['user'];
@@ -65,18 +127,14 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
         return;
       }
 
-      // ✅ 사용자 전체 주문
       final orders = await OrderScreenController.getOrdersByUserId(userId);
 
-      // ✅ 미개봉 후보(박스 주문만)
       final unopenedCandidates = orders.where((o) {
         final isBox = o['box'] != null || (o['type'] == 'box');
         final notOpened = (o['unboxedProduct'] == null);
-        // 필요시 상태 체크 추가 가능: final isPaid = (o['status'] == 'paid');
         return isBox && notOpened;
       }).toList();
 
-      // ✅ 선물코드 없는 것만 남기기
       final resultIds = <String>[];
       for (final o in unopenedCandidates) {
         final orderId = (o['_id'] ?? o['orderId'])?.toString();
@@ -105,7 +163,6 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
     }
   }
 
-  // ✅ N개 열기 → OpenBoxVideoScreen 이동
   Future<void> _openNextBoxes(int n) async {
     if (_openableOrderIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,8 +177,8 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => OpenBoxVideoScreen(
-          orderId: n == 1 ? ids.first : null, // 단일
-          orderIds: n > 1 ? ids : null,       // 다건
+          orderId: n == 1 ? ids.first : null,
+          orderIds: n > 1 ? ids : null,
           isBatch: n > 1,
         ),
       ),
@@ -139,9 +196,10 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
     final product = orderData?['unboxedProduct']?['product'];
     final productName = product?['name'] ?? '상품명 없음';
     final brand = product?['brand'] ?? '브랜드 없음';
-    final imageUrl = product?['mainImage'] != null
-        ? '${BaseUrl.value}:7778${product?['mainImage']}'
-        : '';
+
+    // ✅ 동일 규칙 적용: presigned → 그대로, /uploads → base, key → /media/{key}
+    final imageUrl = _resolveImage(product?['mainImageUrl'] ?? product?['mainImage']);
+
     final price = product?['consumerPrice'] ?? 0;
 
     final hasOpenable = _openableOrderIds.isNotEmpty;
@@ -152,7 +210,6 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // 본문 스크롤
             SingleChildScrollView(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
@@ -184,6 +241,7 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
+                          debugPrint('[BoxOpen] Image error: $error');
                           return Container(
                             width: 260.w,
                             height: 260.w,
@@ -231,8 +289,6 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                       ),
                     ),
                     SizedBox(height: 50.h),
-
-                    // ✅ 버튼 스위칭
                     if (hasOpenable)
                       Row(
                         children: [
@@ -263,7 +319,8 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                               onPressed: canOpenTen ? () => _openNextBoxes(10) : null,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFF5722),
-                                disabledBackgroundColor: const Color(0xFFFF5722).withOpacity(0.35),
+                                disabledBackgroundColor:
+                                const Color(0xFFFF5722).withOpacity(0.35),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12.r),
                                 ),
@@ -290,7 +347,8 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
+                                    builder: (_) =>
+                                    const MainScreenWithFooter(initialTabIndex: 2),
                                   ),
                                 );
                               },
@@ -318,7 +376,8 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const MainScreenWithFooter(initialTabIndex: 4),
+                                    builder: (_) =>
+                                    const MainScreenWithFooter(initialTabIndex: 4),
                                   ),
                                 );
                               },
@@ -341,14 +400,11 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                           ),
                         ],
                       ),
-
                     SizedBox(height: 80.h),
                   ],
                 ),
               ),
             ),
-
-            // ✅ 상단 왼쪽 X 버튼 (보관함으로 이동)
             Positioned(
               top: 8.h,
               left: 8.w,
@@ -359,14 +415,14 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
+                        builder: (_) =>
+                        const MainScreenWithFooter(initialTabIndex: 2),
                       ),
                     );
                   },
                   borderRadius: BorderRadius.circular(20.r),
                   child: Container(
                     padding: EdgeInsets.all(8.r),
-
                     child: Icon(
                       Icons.close_rounded,
                       size: 28.r,

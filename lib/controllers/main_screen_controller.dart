@@ -62,48 +62,74 @@ class MainScreenController extends ChangeNotifier {
 
   Future<List<Map<String, dynamic>>> getPromotions() async {
     try {
-      final token = await storage.read(key: 'token'); // ✅ SecureStorage에서 토큰 읽기
+      final token = await storage.read(key: 'token');
       if (token == null || token.isEmpty) {
         throw Exception('토큰이 없습니다. 로그인 상태를 확인하세요.');
       }
 
+      final baseUrl = '${BaseUrl.value}:7778';
+
+      // presigned/절대 URL -> 그대로
+      // /uploads/... -> baseUrl 붙이기
+      // 그 외(S3 key로 간주) -> /media/{key}
+      String _resolveImage(dynamic value) {
+        if (value == null) return '';
+        final s = value.toString();
+        if (s.startsWith('http://') || s.startsWith('https://')) return s;
+        if (s.startsWith('/uploads/')) return '$baseUrl$s';
+        return '$baseUrl/media/$s';
+      }
+
+      List<String> _resolveImageList(dynamic images) {
+        if (images is List) {
+          return images.map((e) => _resolveImage(e)).toList().cast<String>();
+        }
+        return const [];
+      }
+
       final response = await http.get(
-        Uri.parse('${BaseUrl.value}:7778/api/promotion/read'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse('$baseUrl/api/promotion/read'),
+        headers: { 'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
-        final decodedResponse = json.decode(response.body);
-        if (decodedResponse is Map<String, dynamic> &&
-            decodedResponse['promotions'] is List<dynamic>) {
-          final promotions = decodedResponse['promotions'] as List<dynamic>;
-          const serverUrl = '${BaseUrl.value}:7778';
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic> &&
+            decoded['promotions'] is List<dynamic>) {
+          final promotions = decoded['promotions'] as List<dynamic>;
 
-          return promotions.map((promotion) {
-            final promotionMap = promotion as Map<String, dynamic>;
-            final promotionImage = promotionMap['promotionImage'] as List<dynamic>?;
+          return promotions.map<Map<String, dynamic>>((p) {
+            final m = (p as Map<String, dynamic>);
+
+            // 우선순위: promotionImageUrls(프리사인) → promotionImage(키/레거시) → ''
+            String mainImageUrl = '';
+            if (m['promotionImageUrls'] is List &&
+                (m['promotionImageUrls'] as List).isNotEmpty) {
+              mainImageUrl = _resolveImage(m['promotionImageUrls'][0]);
+            } else if (m['promotionImage'] is List &&
+                (m['promotionImage'] as List).isNotEmpty) {
+              mainImageUrl = _resolveImage(m['promotionImage'][0]);
+            } else if (m['promotionImage'] is String) {
+              mainImageUrl = _resolveImage(m['promotionImage']);
+            }
 
             return {
-              'id': promotionMap['_id'] ?? '',
-              'name': promotionMap['name']?.toString() ?? '',
-              'link': promotionMap['link']?.toString() ?? '',
-              'promotionImageUrl': promotionImage != null && promotionImage.isNotEmpty
-                  ? '$serverUrl${promotionImage[0]}'
-                  : '',
+              'id': m['_id']?.toString() ?? '',
+              'name': m['name']?.toString() ?? '',
+              'link': m['link']?.toString() ?? '',
+              'promotionImageUrl': mainImageUrl,
             };
           }).toList();
         } else {
-          print('Unexpected data format: $decodedResponse');
+          print('Unexpected data format: $decoded');
           return [];
         }
       } else {
         print('API 호출 실패: ${response.statusCode}, ${response.body}');
         return [];
       }
-    } catch (error) {
-      print('제품 이미지 조회 중 오류 발생: $error');
+    } catch (e) {
+      print('프로모션 조회 오류: $e');
       return [];
     }
   }

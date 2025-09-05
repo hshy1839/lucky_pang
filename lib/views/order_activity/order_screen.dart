@@ -10,6 +10,7 @@ import '../../routes/base_url.dart';
 import '../widget/box_storage_card.dart';
 import '../widget/product_storage_card.dart';
 import '../widget/video_player.dart';
+import 'package:intl/intl.dart';
 
 class OrderScreen extends StatefulWidget {
   final void Function(int)? onTabChanged;
@@ -32,6 +33,52 @@ class _OrderScreenState extends State<OrderScreen> {
   Set<String> selectedBoxOrderIds = {};
   bool isBoxSelected(String orderId) => selectedBoxOrderIds.contains(orderId);
   Map<String, bool> lockedProductIds = {};
+
+  // ─────────────────────────────────────────────
+  // URL 유틸: MainScreen/ProductStorageCard와 동일 규칙
+  // ─────────────────────────────────────────────
+  String get _root => BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
+
+  String get _base {
+    final u = Uri.tryParse(_root);
+    if (u != null && u.hasPort) return _root; // 이미 포트가 있으면 그대로
+    return '$_root:7778';
+  }
+
+  String _join(String a, String b) {
+    final left = a.replaceAll(RegExp(r'/+$'), '');
+    final right = b.replaceAll(RegExp(r'^/+'), '');
+    return '$left/$right';
+  }
+
+  // 절대 URL인데 host:port 뒤 슬래시가 없을 때 보정
+  String _fixAbsoluteUrl(String s) {
+    final m = RegExp(r'^(https?:\/\/[^\/\s]+)(\/?.*)$').firstMatch(s);
+    if (m == null) return s; // 절대 URL 아님
+    final authority = m.group(1)!; // http(s)://host[:port]
+    var rest = m.group(2)!;        // path or /path or ""
+    if (rest.isEmpty) return s;
+    if (!rest.startsWith('/')) rest = '/$rest';
+    return '$authority$rest';
+  }
+
+  /// presigned/절대 URL이면 그대로(슬래시 보정),
+  /// /uploads/...는 base 붙이고,
+  /// 그 외(S3 key)는 /media/{encodeURIComponent(key)}
+  String _resolveImage(dynamic value) {
+    if (value == null) return '';
+    final s = value.toString().trim();
+    if (s.isEmpty) return '';
+
+    if (s.startsWith('http://') || s.startsWith('https://')) {
+      return _fixAbsoluteUrl(s);
+    }
+    if (s.startsWith('/uploads/')) {
+      return _join(_base, s);
+    }
+    final encodedKey = Uri.encodeComponent(s);
+    return _join(_base, _join('media', encodedKey));
+  }
 
   @override
   void initState() {
@@ -59,6 +106,7 @@ class _OrderScreenState extends State<OrderScreen> {
       }
     });
   }
+
   void toggleBoxSelection(String orderId, bool selected) {
     setState(() {
       if (selected) {
@@ -70,17 +118,14 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
   Future<void> _handleBatchOpenBoxes() async {
-    // ✅ 진짜 유효한 박스만 필터링: 선택됐고, 선물코드 없고, 아직 언박싱되지 않은 것만
     final validSelectedOrders = paidOrders.where((o) {
       final isSelected = selectedBoxOrderIds.contains(o['_id']);
       final hasGiftCode = o['giftCode'] != null;
       final isUnboxed = o['unboxedProduct'] != null && o['unboxedProduct']['product'] != null;
-
       return isSelected && !hasGiftCode && !isUnboxed;
     }).toList();
 
     if (validSelectedOrders.isEmpty) {
-      // ✅ 필터링 후에도 열 수 있는 게 없다면 다이얼로그 표시
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -109,10 +154,9 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
 
-    await loadOrders(); // 리프레시
-    setState(() => selectedBoxOrderIds.clear()); // ✅ 선택 초기화
+    await loadOrders();
+    setState(() => selectedBoxOrderIds.clear());
   }
-
 
   bool _isBoxSelectable(Map<String, dynamic> o) {
     final hasGiftCodeField = o['giftCode'] != null;
@@ -120,7 +164,6 @@ class _OrderScreenState extends State<OrderScreen> {
     final isUnboxed = o['unboxedProduct'] != null && o['unboxedProduct']['product'] != null;
     return !hasGiftCodeField && !hasGiftCodeExists && !isUnboxed;
   }
-
 
   Future<void> loadUnboxedProducts() async {
     setState(() { isLoading = true; });
@@ -134,7 +177,6 @@ class _OrderScreenState extends State<OrderScreen> {
       if ((o['refunded']?['point'] ?? 0) > 0) continue;
       if (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null) continue;
 
-      // ✅ 선물코드 존재 여부 확인
       final exists = await GiftCodeController.checkGiftCodeExists(
         type: 'product',
         orderId: o['_id'],
@@ -149,15 +191,14 @@ class _OrderScreenState extends State<OrderScreen> {
       unboxedProducts = temp;
       isLoading = false;
     });
-
   }
+
   Future<void> loadUnboxedShippedProducts() async {
     setState(() { isLoading = true; });
     final userId = await storage.read(key: 'userId');
     if (userId == null) return;
     final result = await OrderScreenController.getUnboxedProducts(userId);
 
-    // 정렬 추가!
     final list = (result ?? []).where((o) => o['status'] == 'shipped').toList();
     list.sort((a, b) {
       final aDate = DateTime.tryParse(a['unboxedProduct']?['decidedAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -179,7 +220,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
     final orders = await OrderScreenController.getOrdersByUserId(userId);
 
-// 각 박스에 대해 선물코드 존재 여부 확인 후 필드 추가
     final futures = orders.map((o) async {
       final exists = await GiftCodeController.checkGiftCodeExists(
         type: 'box',
@@ -192,7 +232,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
     final ordersWithGiftCode = await Future.wait(futures);
 
-
     print('📦 전체 주문 수: ${orders.length}');
     print('📦 paid: ${orders.where((o) => o['status'] == 'paid').length}');
 
@@ -203,10 +242,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
     setState(() {
       paidOrders = filtered;
-    });
-
-// ✅ 여기서 isLoading false는 따로 마지막에!
-    setState(() {
       isLoading = false;
     });
   }
@@ -216,16 +251,16 @@ class _OrderScreenState extends State<OrderScreen> {
       context: context,
       barrierDismissible: false,
       barrierLabel: 'loading',
-      barrierColor: Colors.black54, // 화면 어둡게
+      barrierColor: Colors.black54,
       pageBuilder: (_, __, ___) {
         return WillPopScope(
-          onWillPop: () async => false, // 뒤로가기 막기
+          onWillPop: () async => false,
           child: Center(
             child: SizedBox(
               width: 56,
               height: 56,
               child: CircularProgressIndicator(
-                color: Theme.of(context).primaryColor, // 프라이머리 색상
+                color: Theme.of(context).primaryColor,
                 strokeWidth: 3,
               ),
             ),
@@ -240,15 +275,28 @@ class _OrderScreenState extends State<OrderScreen> {
     if (nav.canPop()) nav.pop();
   }
 
-
   Future<void> _handleBatchRefund() async {
-    final selectedOrders = unboxedProducts.where((o) => selectedOrderIds.contains(o['_id'])).toList();
+    final selectedOrders = unboxedProducts
+        .where((o) => selectedOrderIds.contains(o['_id']))
+        .toList();
+
+    int totalRefundPoints = 0;
+    for (final order in selectedOrders) {
+      final product = order['unboxedProduct']['product'];
+      final refundRateStr = product['refundProbability']?.toString() ?? '0';
+      final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+      final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
+      final int refundAmount = (purchasePrice * refundRate / 100).floor();
+      totalRefundPoints += refundAmount;
+    }
+
+    final formattedTotal = NumberFormat('#,###').format(totalRefundPoints);
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('일괄 환급'),
-        content: Text('${selectedOrders.length}개의 상품을 환급하시겠습니까?'),
+        content: Text('${selectedOrders.length}개의 상품을 $formattedTotal 포인트로 환급하시겠습니까?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('환급')),
@@ -275,13 +323,12 @@ class _OrderScreenState extends State<OrderScreen> {
         if (refunded != null) successCnt++;
       }
 
-      // 리스트/선택 갱신
       setState(() {
         unboxedProducts.removeWhere((o) => selectedOrderIds.contains(o['_id']));
         selectedOrderIds.clear();
       });
-    } catch (e) {
-      // 실패 토스트/다이얼로그 필요하면 여기서
+    } catch (_) {
+      // 에러 처리 필요 시 추가
     } finally {
       if (mounted) _hideFullscreenLoader();
     }
@@ -298,8 +345,6 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -338,54 +383,28 @@ class _OrderScreenState extends State<OrderScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'assets/images/BoxEmptyStateImage.png',
-                          width: 192.w,
-                          height: 192.w,
-                        ),
+                        Image.asset('assets/images/BoxEmptyStateImage.png', width: 192.w, height: 192.w),
                         SizedBox(height: 24.h),
-                        Text(
-                          '아직 당첨된 상품이 없습니다',
-                          style: TextStyle(
-                            fontSize: 23.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
+                        Text('아직 당첨된 상품이 없습니다',
+                          style: TextStyle(fontSize: 23.sp, fontWeight: FontWeight.w700, color: Colors.black),
                         ),
                         SizedBox(height: 10),
-                        Text(
-                          '다음 럭키박스 당첨의 주인공이 되어보세요!',
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF465461),
-                          ),
+                        Text('다음 럭키박스 당첨의 주인공이 되어보세요!',
+                          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w400, color: Color(0xFF465461)),
                         ),
                         SizedBox(height: 64.h),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 24.w),
                           child: SizedBox(
-                            width: double.infinity,
-                            height: 48.h,
+                            width: double.infinity, height: 48.h,
                             child: ElevatedButton(
-                              onPressed: () {
-                                if (widget.onTabChanged != null) {
-                                  widget.onTabChanged!(4);
-                                }
-                              },
+                              onPressed: () => widget.onTabChanged?.call(4),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFFFF5C43),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.r),
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                               ),
-                              child: Text(
-                                '럭키박스 구매하기',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.sp,
-                                ),
+                              child: Text('럭키박스 구매하기',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                               ),
                             ),
                           ),
@@ -394,26 +413,16 @@ class _OrderScreenState extends State<OrderScreen> {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 24.w),
                           child: SizedBox(
-                            width: double.infinity,
-                            height: 48.h,
+                            width: double.infinity, height: 48.h,
                             child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.pushNamed(context, '/giftCode');
-                              },
+                              onPressed: () => Navigator.pushNamed(context, '/giftCode'),
                               icon: Icon(Icons.qr_code, color: Color(0xFFFF5C43)),
-                              label: Text(
-                                '선물코드 입력하기',
-                                style: TextStyle(
-                                  color: Color(0xFFFF5C43),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.sp,
-                                ),
+                              label: Text('선물코드 입력하기',
+                                style: TextStyle(color: Color(0xFFFF5C43), fontWeight: FontWeight.bold, fontSize: 14.sp),
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Color(0xFFFF5C43)),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.r),
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                               ),
                             ),
                           ),
@@ -427,7 +436,6 @@ class _OrderScreenState extends State<OrderScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   child: Row(
                     children: [
-                      // 전체 선택 체크박스
                       Checkbox(
                         value: unboxedProducts
                             .where((o) =>
@@ -452,33 +460,24 @@ class _OrderScreenState extends State<OrderScreen> {
                             }
                           });
                         },
-
-                        // ✅ 스타일 추가 부분
-                        fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-                          if (states.contains(MaterialState.selected)) {
-                            return Colors.black; // 체크 시 배경색: 검정
-                          }
-                          return Colors.white; // 미체크 시 배경색: 흰색
+                        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+                          if (states.contains(MaterialState.selected)) return Colors.black;
+                          return Colors.white;
                         }),
-                        checkColor: Colors.white, // 체크 아이콘 색상: 흰색
-                        side: const BorderSide(color: Colors.black), // 미체크 시 테두리: 검정
+                        checkColor: Colors.white,
+                        side: const BorderSide(color: Colors.black),
                         visualDensity: VisualDensity.compact,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-
-
                       Text('전체 ${unboxedProducts.length}개  |  ${selectedOrderIds.length}개 선택'),
                       Spacer(),
                       TextButton(
                         onPressed: selectedOrderIds.isEmpty ? null : _handleBatchRefund,
                         style: TextButton.styleFrom(
-                          foregroundColor: selectedOrderIds.isEmpty
-                              ? Colors.grey // 비활성화 시 회색
-                              : Theme.of(context).primaryColor, // 활성화 시 primary
+                          foregroundColor: selectedOrderIds.isEmpty ? Colors.grey : Theme.of(context).primaryColor,
                         ),
                         child: Text('일괄환급하기'),
                       ),
-
                     ],
                   ),
                 ),
@@ -494,7 +493,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
                       return ProductStorageCard(
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
-                        mainImageUrl: '${BaseUrl.value}:7778${product['mainImage']}',
+                        mainImageUrl: _resolveImage(product['mainImageUrl'] ?? product['mainImage']),
                         productName: '${product['name']}',
                         isManuallyLocked: lockedProductIds[order['_id']] ?? false,
                         onManualLockChanged: (val) {
@@ -517,7 +516,6 @@ class _OrderScreenState extends State<OrderScreen> {
                           final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
                           final refundAmount = (purchasePrice * refundRate / 100).floor();
 
-                          // ✅ 현재 context 저장
                           final dialogContext = context;
 
                           showDialog(
@@ -526,22 +524,16 @@ class _OrderScreenState extends State<OrderScreen> {
                               title: Text('포인트 환급'),
                               content: Text('$refundAmount원으로 환급하시겠습니까?'),
                               actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('아니요'),
-                                ),
+                                TextButton(onPressed: () => Navigator.pop(context), child: Text('아니요')),
                                 TextButton(
                                   onPressed: () async {
                                     Navigator.pop(context);
-
                                     final refunded = await OrderScreenController.refundOrder(
-                                      order['_id'],
-                                      refundRate,
+                                      order['_id'], refundRate,
                                       description: '[${product['brand']}] ${product['name']} 포인트 환급',
                                     );
                                     debugPrint('✅ refundOrder 응답: $refunded');
 
-                                    // ✅ context 유효성 검사 후 다이얼로그 표시
                                     if (refunded != null && dialogContext.mounted) {
                                       await showDialog(
                                         context: dialogContext,
@@ -568,10 +560,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                           title: Text('환급 실패'),
                                           content: Text('서버 오류로 환급이 처리되지 않았습니다.'),
                                           actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(dialogContext),
-                                              child: Text('확인'),
-                                            )
+                                            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text('확인')),
                                           ],
                                         ),
                                       );
@@ -593,9 +582,9 @@ class _OrderScreenState extends State<OrderScreen> {
                               'orderId': order['_id'],
                             },
                           ).then((_) async {
-                            await loadOrders(); // ✅ giftCodeExists 포함 최신 데이터 로드
+                            await loadOrders();
                             setState(() {
-                              selectedBoxOrderIds.remove(order['_id']); // ✅ 방금 선물한 박스 선택 해제
+                              selectedBoxOrderIds.remove(order['_id']);
                             });
                           });
                         },
@@ -611,7 +600,6 @@ class _OrderScreenState extends State<OrderScreen> {
                             },
                           );
                         },
-
                       );
                     },
                   ),
@@ -629,8 +617,7 @@ class _OrderScreenState extends State<OrderScreen> {
                         o['giftCode'] == null &&
                             o['giftCodeExists'] != true &&
                             (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null))
-                            .every((o) => selectedBoxOrderIds.contains(o['_id'])), // ✅ 선택 가능한 항목이 전부 선택되어 있으면 체크됨
-
+                            .every((o) => selectedBoxOrderIds.contains(o['_id'])),
                         onChanged: (val) {
                           setState(() {
                             if (val == true) {
@@ -647,91 +634,55 @@ class _OrderScreenState extends State<OrderScreen> {
                             }
                           });
                         },
-                        fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-                          if (states.contains(MaterialState.selected)) {
-                            return Colors.black;
-                          }
+                        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+                          if (states.contains(MaterialState.selected)) return Colors.black;
                           return Colors.white;
                         }),
                         checkColor: Colors.white,
                       ),
-
-
                       Text('전체 ${paidOrders.where((o) => o['giftCode'] == null).length}개  |  ${selectedBoxOrderIds.length}개 선택'),
-
                       const Spacer(),
                       TextButton(
                         onPressed: selectedBoxOrderIds.isEmpty ? null : _handleBatchOpenBoxes,
                         style: TextButton.styleFrom(
-                          foregroundColor: selectedBoxOrderIds.isEmpty
-                              ? Colors.grey // 비활성화 시 회색
-                              : Theme.of(context).primaryColor, // 활성화 시 프라이머리 컬러
+                          foregroundColor: selectedBoxOrderIds.isEmpty ? Colors.grey : Theme.of(context).primaryColor,
                         ),
                         child: const Text('일괄열기'),
                       ),
-
                     ],
                   ),
                 ),
               ],
               isLoading
-                  ? CircularProgressIndicator(
-                color: Theme.of(context).primaryColor,
-              )
+                  ? CircularProgressIndicator(color: Theme.of(context).primaryColor)
                   : !isLoading && paidOrders.isEmpty
                   ? Expanded(
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(
-                        'assets/images/BoxEmptyStateImage.png',
-                        width: 192.w,
-                        height: 192.w,
-                      ),
+                      Image.asset('assets/images/BoxEmptyStateImage.png', width: 192.w, height: 192.w),
                       SizedBox(height: 24.h),
-                      Text(
-                        '아직 구매한 박스가 없습니다',
-                        style: TextStyle(
-                          fontSize: 23.sp,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
+                      Text('아직 구매한 박스가 없습니다',
+                        style: TextStyle(fontSize: 23.sp, fontWeight: FontWeight.w700, color: Colors.black),
                       ),
                       SizedBox(height: 10.h),
-                      Text(
-                        '다음 럭키박스 당첨의 주인공이 되어보세요!',
-                        style: TextStyle(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFF465461),
-                        ),
+                      Text('다음 럭키박스 당첨의 주인공이 되어보세요!',
+                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w400, color: Color(0xFF465461)),
                       ),
                       SizedBox(height: 64.h),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 24.w),
                         child: SizedBox(
-                          width: double.infinity,
-                          height: 48.h,
+                          width: double.infinity, height: 48.h,
                           child: ElevatedButton(
-                            onPressed: () {
-                              if (widget.onTabChanged != null) {
-                                widget.onTabChanged!(4);
-                              }
-                            },
+                            onPressed: () => widget.onTabChanged?.call(4),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFFFF5C43),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15.r),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                             ),
-                            child: Text(
-                              '럭키박스 구매하기',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14.sp,
-                              ),
+                            child: Text('럭키박스 구매하기',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                             ),
                           ),
                         ),
@@ -740,26 +691,16 @@ class _OrderScreenState extends State<OrderScreen> {
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 24.w),
                         child: SizedBox(
-                          width: double.infinity,
-                          height: 48.h,
+                          width: double.infinity, height: 48.h,
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/giftCode');
-                            },
+                            onPressed: () => Navigator.pushNamed(context, '/giftCode'),
                             icon: Icon(Icons.qr_code, color: Color(0xFFFF5C43)),
-                            label: Text(
-                              '선물코드 입력하기',
-                              style: TextStyle(
-                                color: Color(0xFFFF5C43),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14.sp,
-                              ),
+                            label: Text('선물코드 입력하기',
+                              style: TextStyle(color: Color(0xFFFF5C43), fontWeight: FontWeight.bold, fontSize: 14.sp),
                             ),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(color: Color(0xFFFF5C43)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15.r),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                             ),
                           ),
                         ),
@@ -787,11 +728,12 @@ class _OrderScreenState extends State<OrderScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => OpenBoxVideoScreen(
-                                orderId: order['_id'],
-                              isBatch: true,),
+                              orderId: order['_id'],
+                              isBatch: true,
+                            ),
                           ),
                         );
-                        await loadOrders(); // 새로고침
+                        await loadOrders();
                       },
                       onGiftPressed: () {
                         Navigator.pushNamed(
@@ -803,9 +745,9 @@ class _OrderScreenState extends State<OrderScreen> {
                             'orderId': order['_id'],
                           },
                         ).then((_) async {
-                          await loadOrders(); // ✅ giftCodeExists 포함 최신 데이터 로드
+                          await loadOrders();
                           setState(() {
-                            selectedBoxOrderIds.remove(order['_id']); // ✅ 방금 선물한 박스 선택 해제
+                            selectedBoxOrderIds.remove(order['_id']);
                           });
                         });
                       },
@@ -816,62 +758,35 @@ class _OrderScreenState extends State<OrderScreen> {
                   },
                 ),
               ),
-            ]
-           else if (selectedTab == 'shipped') ...[
+            ] else if (selectedTab == 'shipped') ...[
               if (unboxedShippedProducts.isEmpty) ...[
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Image.asset(
-                          'assets/images/BoxEmptyStateImage.png',
-                          width: 192.w,
-                          height: 192.w,
-                        ),
+                        Image.asset('assets/images/BoxEmptyStateImage.png', width: 192.w, height: 192.w),
                         SizedBox(height: 24.h),
-                        Text(
-                          '아직 배송 신청한 상품이 없습니다',
-                          style: TextStyle(
-                            fontSize: 23.sp,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
+                        Text('아직 배송 신청한 상품이 없습니다',
+                          style: TextStyle(fontSize: 23.sp, fontWeight: FontWeight.w700, color: Colors.black),
                         ),
                         SizedBox(height: 10),
-                        Text(
-                          '다음 럭키박스 당첨의 주인공이 되어보세요!',
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF465461),
-                          ),
+                        Text('다음 럭키박스 당첨의 주인공이 되어보세요!',
+                          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w400, color: Color(0xFF465461)),
                         ),
                         SizedBox(height: 64.h),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 24.w),
                           child: SizedBox(
-                            width: double.infinity,
-                            height: 48.h,
+                            width: double.infinity, height: 48.h,
                             child: ElevatedButton(
-                              onPressed: () {
-                                if (widget.onTabChanged != null) {
-                                  widget.onTabChanged!(4);
-                                }
-                              },
+                              onPressed: () => widget.onTabChanged?.call(4),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFFFF5C43),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.r),
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                               ),
-                              child: Text(
-                                '럭키박스 구매하기',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.sp,
-                                ),
+                              child: Text('럭키박스 구매하기',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                               ),
                             ),
                           ),
@@ -880,26 +795,16 @@ class _OrderScreenState extends State<OrderScreen> {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 24.w),
                           child: SizedBox(
-                            width: double.infinity,
-                            height: 48.h,
+                            width: double.infinity, height: 48.h,
                             child: OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.pushNamed(context, '/giftCode');
-                              },
+                              onPressed: () => Navigator.pushNamed(context, '/giftCode'),
                               icon: Icon(Icons.qr_code, color: Color(0xFFFF5C43)),
-                              label: Text(
-                                '선물코드 입력하기',
-                                style: TextStyle(
-                                  color: Color(0xFFFF5C43),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14.sp,
-                                ),
+                              label: Text('선물코드 입력하기',
+                                style: TextStyle(color: Color(0xFFFF5C43), fontWeight: FontWeight.bold, fontSize: 14.sp),
                               ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: Color(0xFFFF5C43)),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.r),
-                                ),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                               ),
                             ),
                           ),
@@ -920,7 +825,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
                       return ShippedProductCard(
                         productId: order['unboxedProduct']?['product']['_id'] ?? '',
-                        mainImageUrl: '${BaseUrl.value}:7778${product['mainImage']}',
+                        mainImageUrl: _resolveImage(product['mainImageUrl'] ?? product['mainImage']),
                         productName: '${product['name']}',
                         orderId: order['_id'],
                         acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
@@ -929,71 +834,56 @@ class _OrderScreenState extends State<OrderScreen> {
                         brand: '${product['brand']}',
                         dDay: 'D-90',
                         isLocked: false,
-                          onCopyPressed: () {
-                            final trackingNumber = order['trackingNumber'];
+                        onCopyPressed: () {
+                          final trackingNumber = order['trackingNumber'];
 
-                            if (trackingNumber == null || trackingNumber.toString().isEmpty) {
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: Text('알림'),
-                                  content: Text('아직 운송장 번호가 등록되지 않은 상품입니다!'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text('확인'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            } else {
-                              Clipboard.setData(ClipboardData(text: trackingNumber.toString()));
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: Text('복사 완료'),
-                                  content: Text('운송장 번호가 클립보드에 복사되었습니다!'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text('확인'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          },
-                          onTrackPressed: () async {
-                            const url = 'https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=%EC%9A%B4%EC%86%A1%EC%9E%A5+%EC%A1%B0%ED%9A%8C';
-
-                            if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: Text('오류'),
-                                  content: Text('브라우저를 열 수 없습니다.'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: Text('확인'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
+                          if (trackingNumber == null || trackingNumber.toString().isEmpty) {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text('알림'),
+                                content: Text('아직 운송장 번호가 등록되지 않은 상품입니다!'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context), child: Text('확인')),
+                                ],
+                              ),
+                            );
+                          } else {
+                            Clipboard.setData(ClipboardData(text: trackingNumber.toString()));
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text('복사 완료'),
+                                content: Text('운송장 번호가 클립보드에 복사되었습니다!'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context), child: Text('확인')),
+                                ],
+                              ),
+                            );
                           }
-
-
+                        },
+                        onTrackPressed: () async {
+                          const url = 'https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=%EC%9A%B4%EC%86%A1%EC%9E%A5+%EC%A1%B0%ED%9A%8C';
+                          if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
+                            showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text('오류'),
+                                content: Text('브라우저를 열 수 없습니다.'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context), child: Text('확인')),
+                                ],
+                              ),
+                            );
+                          }
+                        },
                       );
-
                     },
                   ),
                 ),
               ],
             ]
           ],
-
-
         ),
       ),
     );
@@ -1010,7 +900,6 @@ class _OrderScreenState extends State<OrderScreen> {
               isLoading = true;
             });
 
-            // 탭 변경 후 해당 데이터 다시 로딩
             if (key == 'box') {
               await loadOrders();
             } else if (key == 'product') {
@@ -1042,5 +931,4 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
   }
-
 }

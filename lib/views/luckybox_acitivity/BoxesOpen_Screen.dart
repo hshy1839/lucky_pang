@@ -20,10 +20,70 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
   List<Map<String, dynamic>> unboxedProducts = [];
   bool isLoading = true;
 
-  // ✅ 추가: 하단 버튼 스위칭용 상태
+  // 하단 버튼 스위칭용 상태
   String? _userId;
   List<String> _openableOrderIds = [];
   bool _checkingOpenables = true;
+
+  // ─────────────────────────────────────────────
+  // URL 유틸: BoxOpenScreen / ProductStorageCard와 동일 규칙 + 레거시 보강
+  // ─────────────────────────────────────────────
+  String get _root => BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
+
+  String get _base {
+    final u = Uri.tryParse(_root);
+    if (u != null && u.hasPort) return _root; // 이미 포트가 있으면 그대로
+    return '$_root:7778';
+  }
+
+  String _join(String a, String b) {
+    final left = a.replaceAll(RegExp(r'/+$'), '');
+    final right = b.replaceAll(RegExp(r'^/+'), '');
+    return '$left/$right';
+  }
+
+  // 절대 URL인데 host:port 뒤 슬래시가 없을 때 보정
+  String _fixAbsoluteUrl(String s) {
+    final m = RegExp(r'^(https?:\/\/[^\/\s]+)(\/?.*)$').firstMatch(s);
+    if (m == null) return s; // 절대 URL 아님
+    final authority = m.group(1)!; // http(s)://host[:port]
+    var rest = m.group(2)!;        // path or /path or ""
+    if (rest.isEmpty) return s;
+    if (!rest.startsWith('/')) rest = '/$rest';
+    return '$authority$rest';
+  }
+
+  /// presigned/절대 URL이면 그대로(슬래시 보정),
+  /// /uploads/...는 base 붙이고,
+  /// 레거시(/product_main_images/... 또는 product_main_images/...)는 key로 간주해 /media/{key},
+  /// 그 외(S3 key)는 /media/{encodeURIComponent(key)}
+  String _resolveImage(dynamic value) {
+    if (value == null) return '';
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return '';
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      final fixed = _fixAbsoluteUrl(raw);
+      debugPrint('[Boxesopen][_resolveImage] ABS  base=$_base raw="$raw" -> "$fixed"');
+      return fixed;
+    }
+
+    if (raw.startsWith('/uploads/')) {
+      final url = _join(_base, raw);
+      debugPrint('[Boxesopen][_resolveImage] UP   base=$_base raw="$raw" -> "$url"');
+      return url;
+    }
+
+    // 레거시: /product_main_images/... 또는 product_main_images/... → key로 취급
+    final looksLegacyMain = raw.startsWith('/product_main_images/') || raw.startsWith('product_main_images/');
+    final key = looksLegacyMain ? raw.replaceFirst(RegExp(r'^/'), '') : raw;
+
+    final encodedKey = Uri.encodeComponent(key);
+    final url = _join(_base, _join('media', encodedKey));
+    debugPrint('[Boxesopen][_resolveImage] KEY  base=$_base raw="$raw" -> "$url"');
+    return url;
+  }
+  // ─────────────────────────────────────────────
 
   @override
   void initState() {
@@ -32,6 +92,13 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
   }
 
   Future<void> _fetchProducts() async {
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        unboxedProducts = []; // hot reload 시 구형 URL 잔재 제거
+      });
+    }
+
     final List<Map<String, dynamic>> temp = [];
     String? tempUserId;
 
@@ -40,34 +107,43 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
       final data = await OrderScreenController.unboxOrder(orderId);
       final product = data?['unboxedProduct']?['product'];
 
-      // ✅ userId 확보 (첫 응답에서 가져옴)
+      // userId 확보 (첫 응답에서 가져옴)
       tempUserId ??= (data?['user']?['_id'] ?? data?['userId'] ?? data?['user'])?.toString();
 
       if (product != null) {
+        // 메인이미지 결정: mainImageUrl → mainImage → images[0]
+        final dynamic rawMain =
+            product['mainImageUrl'] ?? product['mainImage'] ??
+                (product['images'] is List && (product['images'] as List).isNotEmpty
+                    ? product['images'][0]
+                    : null);
+
+        final resolved = _resolveImage(rawMain);
+
         temp.add({
           'productName': product['name'],
           'brand': product['brand'],
-          'mainImageUrl': product['mainImage'] != null
-              ? '${BaseUrl.value}:7778${product['mainImage']}'
-              : null,
+          'mainImageUrl': resolved,                 // 항상 resolver를 거친 값만 저장
           'consumerPrice': product['consumerPrice'] ?? 0,
         });
       }
     }
 
+    if (!mounted) return;
     setState(() {
       unboxedProducts = temp;
       _userId = tempUserId;
       isLoading = false;
     });
 
-    // ✅ 잔여 열 수 있는 박스 계산
+    // 잔여 열 수 있는 박스 계산
     await _loadOpenableOrders();
   }
 
   Future<void> _loadOpenableOrders() async {
     try {
       if (_userId == null) {
+        if (!mounted) return;
         setState(() {
           _openableOrderIds = [];
           _checkingOpenables = false;
@@ -82,7 +158,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
       final unopenedCandidates = orders.where((o) {
         final isBox = o['box'] != null || (o['type'] == 'box');
         final notOpened = (o['unboxedProduct'] == null);
-        // 필요하면 상태 조건 추가: final isPaid = o['status'] == 'paid';
         return isBox && notOpened;
       }).toList();
 
@@ -106,7 +181,8 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
         _openableOrderIds = resultIds;
         _checkingOpenables = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[Boxesopen] _loadOpenableOrders error: $e');
       if (!mounted) return;
       setState(() {
         _openableOrderIds = [];
@@ -115,7 +191,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
     }
   }
 
-  // ✅ N개 열기 → OpenBoxVideoScreen 이동
+  // N개 열기 → OpenBoxVideoScreen 이동
   Future<void> _openNextBoxes(int n) async {
     if (_openableOrderIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -174,7 +250,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 SizedBox(height: 40.h),
                 Expanded(
                   child: Padding(
@@ -190,6 +265,8 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                       ),
                       itemBuilder: (context, index) {
                         final product = unboxedProducts[index];
+                        final imgUrl = (product['mainImageUrl'] ?? '').toString();
+
                         return Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12.r),
@@ -206,9 +283,9 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                 ),
                                 child: AspectRatio(
                                   aspectRatio: 1,
-                                  child: (product['mainImageUrl'] != null && product['mainImageUrl'].toString().isNotEmpty)
+                                  child: (imgUrl.isNotEmpty)
                                       ? Image.network(
-                                    product['mainImageUrl'],
+                                    imgUrl,
                                     fit: BoxFit.cover,
                                     loadingBuilder: (context, child, progress) {
                                       if (progress == null) return child;
@@ -219,6 +296,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                       );
                                     },
                                     errorBuilder: (context, error, stackTrace) {
+                                      debugPrint('[Boxesopen] Image error: $error, $imgUrl');
                                       return Container(
                                         color: const Color(0xFFF5F6F6),
                                         alignment: Alignment.center,
@@ -248,7 +326,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        product['brand'] ?? '',
+                                        (product['brand'] ?? '').toString(),
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 13.sp,
@@ -256,7 +334,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                       ),
                                       SizedBox(height: 2.h),
                                       Text(
-                                        product['productName'] ?? '',
+                                        (product['productName'] ?? '').toString(),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -266,7 +344,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                       ),
                                       const Spacer(),
                                       Text(
-                                        '정가: ${currency.format(product['consumerPrice'])}원',
+                                        '정가: ${currency.format(product['consumerPrice'] ?? 0)}원',
                                         style: TextStyle(
                                           fontSize: 14.sp,
                                           color: Colors.redAccent,
@@ -287,7 +365,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
               ],
             ),
 
-            // ⬇️ 상단 왼쪽 X 버튼 (보관함으로 이동)
+            // 상단 왼쪽 X 버튼 (보관함으로 이동)
             Positioned(
               top: 8.h,
               left: 8.w,
@@ -306,7 +384,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                     borderRadius: BorderRadius.circular(20.r),
                     child: Container(
                       padding: EdgeInsets.all(8.r),
-
                       child: Icon(
                         Icons.close_rounded,
                         size: 28.r,
@@ -318,7 +395,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
               ),
             ),
 
-            // ⬇️ 하단 버튼 영역
+            // 하단 버튼 영역
             Positioned(
               bottom: 10.h,
               left: 24.w,
