@@ -316,7 +316,7 @@ class _SignupAgreeScreenState extends State<SignupAgreeScreen> {
               _agreeRow(
                 value: agreeSystemPush,
                 onChanged: (v) => setState(() => agreeSystemPush = v),
-                label: '트레이드온, 시스템 알림 동의',
+                label: '시스템 알림 동의',
                 tagText: '선택',
               ),
               _agreeRow(

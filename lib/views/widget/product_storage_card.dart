@@ -10,7 +10,7 @@ class ProductStorageCard extends StatefulWidget {
   final String brand;
   final int purchasePrice;
   final int consumerPrice;
-  final String dDay;
+  final String dDay; // (미사용: 내부 계산 사용)
   final bool isLocked;
   final VoidCallback onRefundPressed;
   final VoidCallback onDeliveryPressed;
@@ -70,6 +70,11 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     });
   }
 
+  /// 숫자 → "3,000원 박스" 같은 형태로
+  String _formatPriceBox(int price) {
+    return '${NumberFormat('#,###').format(price)}원 박스';
+  }
+
   /// ✅ MainScreen과 동일한 로직: URL 유효성 체크 → Image.network / placeholder
   Widget _buildMainImage() {
     final url = widget.mainImageUrl.trim();
@@ -112,6 +117,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     final isLocked = widget.isManuallyLocked;
     final isFullyLocked = isLocked || _giftCodeExists;
 
+    final ddayText = _calculateDDay(widget.acquiredAt); // 폰트/스타일은 기존 유지(17.sp)
+
     return Container(
       padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
@@ -121,9 +128,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          /// 체크박스 + 자물쇠 아이콘
+          /// 체크박스 + (자물쇠 + D-Day)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Checkbox(
                 value: widget.isSelected,
@@ -138,6 +144,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                 }),
                 checkColor: Colors.white,
               ),
+              const Spacer(),
+              // 자물쇠 + 보관기한(D-Day) 세로 배치
               GestureDetector(
                 onTap: () async {
                   if (!widget.isManuallyLocked) {
@@ -193,10 +201,25 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                     }
                   }
                 },
-                child: Icon(
-                  widget.isManuallyLocked ? Icons.lock : Icons.lock_open,
-                  color: widget.isManuallyLocked ? Colors.green : Colors.blue,
-                  size: 20.w,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Icon(
+                      widget.isManuallyLocked ? Icons.lock : Icons.lock_open,
+                      color: widget.isManuallyLocked ? Colors.green : Colors.blue,
+                      size: 20.w,
+                    ),
+                    SizedBox(height: 6.h),
+                    // ✅ 보관기한을 자물쇠 밑으로 이동 (폰트크기 기존 17.sp)
+                    Text(
+                      ddayText,
+                      style: TextStyle(
+                        fontSize: 17.sp,
+                        color: const Color(0xFF465461),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -206,7 +229,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _buildMainImage(), // ✅ 여기만 바꾸면 MainScreen과 동일한 처리
+              _buildMainImage(),
               SizedBox(width: 12.w),
               Expanded(
                 child: Column(
@@ -225,31 +248,41 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 8.h),
+
+                    /// 가격 라인
                     Row(
                       children: [
-                        Text(
-                          '${NumberFormat('#,###').format(widget.purchasePrice)} 원',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            color: const Color(0xFFFF5722),
-                          ),
+                        // ✅ 구매가: "5,000원 박스" 형식
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Text(
+                              _formatPriceBox(widget.purchasePrice),
+                              style: TextStyle(
+                                fontSize: 18.sp,
+                                color: const Color(0xFFFF5722),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0, // ✅ 밑줄을 더 아래로 내림
+                              child: Container(
+                                height: 1.5,
+                                color: const Color(0xFFFF5722),
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 12.w),
+
+                        const Spacer(),
+                        // ✅ 정가를 오른쪽 끝으로 보내고 취소선 제거
                         Text(
                           '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
                           style: TextStyle(
                             fontSize: 17.sp,
                             color: const Color(0xFF8D969D),
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Text(
-                          _calculateDDay(widget.acquiredAt),
-                          style: TextStyle(
-                            fontSize: 17.sp,
-                            color: const Color(0xFF465461),
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
@@ -377,9 +410,9 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           ),
           padding: MaterialStateProperty.all<EdgeInsets>(EdgeInsets.zero),
         ),
-        child:  Text(
+        child: Text(
           text,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 14,
