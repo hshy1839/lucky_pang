@@ -27,7 +27,6 @@ class UnboxRealtimeList extends StatelessWidget {
 
   // ──────────────────────────────────────────────────
   // URL Sanitizer (절대 URL이 앞에 서버 주소가 붙은 경우 교정)
-  // 예: http://192...https://bucket... -> https://bucket...
   // ──────────────────────────────────────────────────
   String _sanitizeAbsolute(String value) {
     final v = value.trim();
@@ -47,34 +46,17 @@ class UnboxRealtimeList extends StatelessWidget {
     if (u == null) return false;
     final host = (u.host).toLowerCase();
     final qp = u.queryParameters;
-    // 프리사인드 특징: s3 도메인 + X-Amz-* 쿼리 파라미터들
     final hasS3 = host.contains('amazonaws.com');
     final hasSig = qp.keys.any((k) => k.toLowerCase().startsWith('x-amz-')) ||
         qp.containsKey('X-Amz-Algorithm') ||
         qp.containsKey('X-Amz-Signature');
     return hasS3 && hasSig;
   }
-  // ──────────────────────────────────────────────────
+
   // 우리 서버 베이스
-  // ──────────────────────────────────────────────────
   String get _server => '${BaseUrl.value}:7778';
 
-  bool _isOurMediaUrl(String s) {
-    return s.startsWith('$_server/media/');
-  }
-
-  bool _isOurUploadsUrl(String s) {
-    return s.startsWith('$_server/uploads/') || s.startsWith('/uploads/');
-  }
-
-  // ──────────────────────────────────────────────────
   // 프로필/상품 이미지 공용 URL 빌더
-  // 규칙:
-  //  1) 이미 /media/… 절대 URL이면 그대로
-  //  2) 이미 /uploads/… (절대/상대)면 서버 베이스 붙여 반환
-  //  3) 절대 URL 중 S3 or .heic → /media/{key} 프록시로 강제
-  //  4) 나머지가 키처럼 보이면 /media/{key}
-  // ──────────────────────────────────────────────────
   String? _buildImageUrl(dynamic raw, {bool isProfile = false}) {
     if (raw == null) return null;
     String s = raw.toString().trim();
@@ -90,12 +72,8 @@ class UnboxRealtimeList extends StatelessWidget {
       final uri = Uri.tryParse(s);
       final lower = s.toLowerCase();
 
-      // ✅ (A) 프로필: 프리사인드 S3면 "항상" 그대로 사용
-      if (isProfile && _isPresignedS3(uri)) {
-        return s;
-      }
+      if (isProfile && _isPresignedS3(uri)) return s;
 
-      // ✅ (B) 프로필이 아닌 경우(상품 등) HEIC는 프록시로 우회
       final isHeic = lower.endsWith('.heic') || lower.contains('.heic?');
       if (!isProfile && isHeic) {
         final rawPath = uri?.path ?? '';
@@ -103,30 +81,21 @@ class UnboxRealtimeList extends StatelessWidget {
         final encodedKey = key.split('/').map(Uri.encodeComponent).join('/');
         return '$_server/media/$encodedKey';
       }
-
-      // 그 외 절대 URL은 그대로
       return s;
     }
 
-    // 키처럼 보이면 프록시
     final key = s.startsWith('/') ? s.substring(1) : s;
     final encodedKey = key.split('/').map(Uri.encodeComponent).join('/');
     return '$_server/media/$encodedKey';
   }
 
-  // ──────────────────────────────────────────────────
-  // 제품 상세로 넘길 때 데이터 정리 (이미지/가격 등)
-  // ──────────────────────────────────────────────────
   Map<String, dynamic> _sanitizeProductForDetail(dynamic rawProduct) {
     final Map<String, dynamic> p = Map<String, dynamic>.from(rawProduct ?? {});
-
-    // 숫자 → 문자열
     for (final key in ['consumerPrice', 'price']) {
       final v = p[key];
       if (v is num) p[key] = v.toString();
     }
 
-    // 메인 이미지 후보 → 절대 URL로
     final mainCandidate =
         p['mainImageUrl'] ?? p['mainImage'] ?? p['image'] ?? p['main_image'];
     final mainAbs = _buildImageUrl(mainCandidate);
@@ -136,7 +105,6 @@ class UnboxRealtimeList extends StatelessWidget {
       p['mainImageUrl'] = p['mainImageUrl'].toString();
     }
 
-    // 추가 이미지 다양한 포맷 지원 → 절대 URL 리스트로 통일
     dynamic aiu = p['additionalImageUrls'] ??
         p['additionalImages'] ??
         p['detailImages'] ??
@@ -208,18 +176,12 @@ class UnboxRealtimeList extends StatelessWidget {
       }
     }
 
-    // 중복 제거 & 비어있는 값 제거
     final cleaned = urls.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
-
-    // 메인 이미지가 비었으면 첫 추가 이미지를 메인으로 승격
     if ((p['mainImageUrl'] == null || p['mainImageUrl'].toString().isEmpty) && cleaned.isNotEmpty) {
       p['mainImageUrl'] = cleaned.first;
     }
-
-    // 상세 화면에서 CSV로 쓰는 경우 대비
     p['additionalImageUrls'] = cleaned.join(',');
 
-    // 문자열 필드 방어
     for (final key in ['brand', 'brandName', 'name', 'category']) {
       if (p[key] != null) p[key] = p[key].toString();
     }
@@ -236,32 +198,34 @@ class UnboxRealtimeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatCurrency = NumberFormat('#,###');
+    // 요청사항: 20,000원 이상 + 최신순 + 최대 30개
+    final visibleOrders = unboxedOrders
+        .where((o) => _priceOf(o) >= 20000)
+        .toList()
+      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
+          .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
 
-    if (unboxedOrders.isEmpty) {
+    final latestOrders = visibleOrders.take(30).toList();
+
+    if (latestOrders.isEmpty) {
       return SizedBox(
         height: 100.h,
         child: const Center(child: Text("최근 언박싱 기록이 없습니다.")),
       );
     }
 
-    // 20,000원 이상 ~ 100,000원 미만만 노출
-    final visibleOrders = unboxedOrders
-        .where((o) {
-      final p = _priceOf(o);
-      return p >= 20000 && p < 100000;
-    })
-        .toList()
-      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
-          .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
-
-    final latestOrders = visibleOrders.take(50).toList();
+    // 카드 사이즈 축소(한 화면에 더 많은 카드 노출)
+    final double kImage = 96.r;          // 이미지 한 변
+    final double kCardHeight = kImage;   // 텍스트 영역도 같은 높이
+    final double kGap = 8.w;             // 좌우 간격 축소
+    final double kPad = 10.w;            // 카드 내부 패딩 축소
 
     return Container(
       color: Colors.white,
-      child: ListView.builder(
-        padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 20.h, top: 4.h),
+      child: ListView.separated(
+        padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 12.h),
         itemCount: latestOrders.length,
+        separatorBuilder: (_, __) => SizedBox(height: 8.h), // 아이템 간 간격 축소
         itemBuilder: (context, index) {
           final order = latestOrders[index];
           final user = order['user'];
@@ -269,20 +233,17 @@ class UnboxRealtimeList extends StatelessWidget {
 
           final productId = (product?['_id'] ?? product?['id'] ?? product?['productId'] ?? '').toString();
           final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
-          final brand = product?['brand'] ?? product?['brandName'];
-          final name = product?['name'];
+          final brand = (product?['brand'] ?? product?['brandName'])?.toString();
+          final name = product?['name']?.toString() ?? '상품명 없음';
           final price = _priceOf(order);
 
-          // ✅ 이미지 URL 빌드
           final productImgUrl = _buildImageUrl(
             product?['mainImageUrl'] ?? product?['mainImage'] ?? product?['image'],
           );
-          final rawProfile = user?['profileImageUrl'] ?? user?['profileImage'];
           final profileImgUrl = _buildImageUrl(
             user?['profileImageUrl'] ?? user?['profileImage'],
             isProfile: true,
           );
-          debugPrint('[RANK] profile raw=$rawProfile -> final=$profileImgUrl');
 
           final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
           final decidedAtText = decidedAt != null
@@ -291,33 +252,133 @@ class UnboxRealtimeList extends StatelessWidget {
           final boxName = (() {
             final box = order['box'];
             final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
-            return bn?.toString();
+            return bn?.toString() ?? '';
           })();
 
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.h),
-            child: _card(
-              profileName: user?['nickname'],
-              rightTimeText: timeText,
-              brand: brand,
-              productName: name,
-              price: price,
-              productImageUrl: productImgUrl,
-              profileImage: profileImgUrl, // ✅ 안전한 규칙 적용
-              decidedAtText: decidedAtText,
-              boxName: boxName,
-              onImageTap: () {
-                final sanitized = _sanitizeProductForDetail(product);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProductDetailScreen(
-                      product: sanitized,
-                      productId: productId,
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10.r),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 3.r, offset: const Offset(0, 1))],
+              border: Border.all(color: const Color(0x11000000)),
+            ),
+            padding: EdgeInsets.all(kPad),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 상품 이미지 (더 작게)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: GestureDetector(
+                    onTap: productImgUrl != null
+                        ? () {
+                      final sanitized = _sanitizeProductForDetail(product);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProductDetailScreen(
+                            product: sanitized,
+                            productId: productId,
+                          ),
+                        ),
+                      );
+                    }
+                        : null,
+                    child: SizedBox(
+                      width: kImage,
+                      height: kImage,
+                      child: productImgUrl != null
+                          ? CachedNetworkImage(
+                        imageUrl: productImgUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
+                      )
+                          : Container(color: Colors.grey[200]),
                     ),
                   ),
-                );
-              },
+                ),
+                SizedBox(width: kGap,),
+                // 텍스트 영역(폰트/줄간격 축소)
+                Expanded(
+                  child: SizedBox(
+                    height: kCardHeight,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 프로필 + 닉네임 + 시간 (한 줄에 타이트하게)
+                        Row(
+                          children: [
+                            _profileAvatar(profileImgUrl, 9.r),
+                            SizedBox(width: 6.w),
+                            Expanded(
+                              child: Text(
+                                user?['nickname']?.toString() ?? '익명',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(color: Colors.black54, fontSize: 12.sp),
+                              ),
+                            ),
+
+                          ],
+                        ),
+
+                        SizedBox(height: 4.h),
+
+                        // 상품명 (조금 작게, bold 유지)
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 18.sp),
+                        ),
+
+                        SizedBox(height: 2.h),
+
+                        // 정가
+                        Text(
+                          '정가: ${NumberFormat('#,###').format(price)} 원',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.black45, fontSize: 14.sp),
+                        ),
+
+                        const Spacer(),
+
+                        // 박스명 + 결정 시각 (오른쪽 정렬, 더 타이트)
+                        if (boxName.isNotEmpty || decidedAtText.isNotEmpty)
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (boxName.isNotEmpty)
+                                  Text(
+                                    boxName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                if (decidedAtText.isNotEmpty) ...[
+                                  SizedBox(height: 1.h),
+                                  Text(
+                                    decidedAtText,
+                                    style: TextStyle(color: Colors.black38, fontSize: 10.sp),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -325,9 +386,7 @@ class UnboxRealtimeList extends StatelessWidget {
     );
   }
 
-  // ──────────────────────────────────────────────────
-  // 프로필 아바타 (에러/플레이스홀더 포함)
-  // ──────────────────────────────────────────────────
+  // 프로필 아바타 (에러/플레이스홀더 포함) — 더 작게
   Widget _profileAvatar(String? url, double radius) {
     return CircleAvatar(
       radius: radius,
@@ -339,141 +398,12 @@ class UnboxRealtimeList extends StatelessWidget {
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
-          placeholder: (c, _) =>
-              Center(child: SizedBox(width: radius, height: radius, child: const CircularProgressIndicator(strokeWidth: 2))),
+          placeholder: (c, _) => Center(
+            child: SizedBox(width: radius, height: radius, child: const CircularProgressIndicator(strokeWidth: 2)),
+          ),
           errorWidget: (c, _, __) => Icon(Icons.person, size: radius * 1.6, color: Colors.grey[600]),
         )
             : Icon(Icons.person, size: radius * 1.6, color: Colors.grey[600]),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────────
-  // 공용 카드 위젯
-  // ──────────────────────────────────────────────────
-  Widget _card({
-    String? profileName,
-    String rightTimeText = '',
-    String? brand,
-    String? productName,
-    int? price,
-    String? productImageUrl,
-    String? profileImage,   // ✅ 절대 URL
-    String? decidedAtText,
-    String? boxName,
-    VoidCallback? onImageTap,
-    bool isEmpty = false,
-  }) {
-    final formatCurrency = NumberFormat('#,###');
-
-    return Container(
-      width: 330.w,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2))],
-      ),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 상품 이미지
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8.r),
-            child: GestureDetector(
-              onTap: (productImageUrl != null && !isEmpty) ? onImageTap : null,
-              child: SizedBox(
-                width: 140.r,
-                height: 140.r,
-                child: productImageUrl != null && !isEmpty
-                    ? CachedNetworkImage(
-                  imageUrl: productImageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                  errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
-                )
-                    : Container(color: Colors.grey[200]),
-              ),
-            ),
-          ),
-          SizedBox(width: 12.w),
-
-          // 텍스트 영역
-          Expanded(
-            child: SizedBox(
-              height: 140.r,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 프로필 + 닉네임
-                  Row(
-                    children: [
-                      _profileAvatar(profileImage, 11.r),
-                      SizedBox(width: 10.w),
-                      Expanded(
-                        child: Text(
-                          isEmpty ? '최근 내역이 없습니다.' : '${profileName ?? '익명'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.black54, fontSize: 18.sp),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  if (!isEmpty) ...[
-                    SizedBox(height: 6.h),
-                    Text(
-                      productName ?? '상품명 없음',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20.sp),
-                    ),
-                  ],
-
-                  SizedBox(height: 4.h),
-                  Text(
-                    isEmpty || price == null ? '' : '정가: ${formatCurrency.format(price)} 원',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                  ),
-
-                  const Spacer(),
-
-                  // 오른쪽 하단: 박스명 + 시간
-                  if ((boxName ?? '').isNotEmpty || (decidedAtText ?? '').isNotEmpty)
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if ((boxName ?? '').isNotEmpty)
-                            Text(
-                              boxName!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          if ((decidedAtText ?? '').isNotEmpty) ...[
-                            SizedBox(height: 2.h),
-                            Text(
-                              decidedAtText!,
-                              style: TextStyle(color: Colors.black38, fontSize: 12.sp),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

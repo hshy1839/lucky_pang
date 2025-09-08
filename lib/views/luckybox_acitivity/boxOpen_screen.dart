@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+
 import '../../controllers/order_screen_controller.dart';
 import '../../controllers/giftcode_controller.dart';
 import '../../main.dart';
 import '../../routes/base_url.dart';
-import '../widget/video_player.dart';
+import '../widget/video_player.dart'; // OpenBoxVideoScreen
 
 class BoxOpenScreen extends StatefulWidget {
   const BoxOpenScreen({super.key});
@@ -15,15 +17,16 @@ class BoxOpenScreen extends StatefulWidget {
 }
 
 class _BoxOpenScreenState extends State<BoxOpenScreen> {
-  Map<String, dynamic>? orderData;
-  bool loading = true;
+  // 서버의 응답에서 "order" 객체만 저장 (기존: 전체 응답을 저장 → NPE/Key mismatch 원인)
+  Map<String, dynamic>? _order; // ← 단일 주문 객체
+  bool _loading = true;
   bool _isInit = false;
 
   List<String> _openableOrderIds = [];
   bool _checkingOpenables = true;
 
   // ─────────────────────────────────────────────
-  // URL 유틸: OrderScreen/ProductStorageCard와 동일 규칙
+  // URL 유틸
   // ─────────────────────────────────────────────
   String get _root => BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
 
@@ -52,36 +55,32 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
 
   /// presigned/절대 URL이면 그대로(슬래시 보정),
   /// /uploads/...는 base 붙이고,
+  /// 레거시(/product_main_images/... 또는 product_main_images/...)는 key로 간주해 /media/{key},
   /// 그 외(S3 key)는 /media/{encodeURIComponent(key)}
   String _resolveImage(dynamic value) {
     if (value == null) {
-      debugPrint('[BoxOpen][_resolveImage] value=null → ""');
       return '';
     }
     final raw = value.toString().trim();
     if (raw.isEmpty) {
-      debugPrint('[BoxOpen][_resolveImage] value="" → ""');
       return '';
     }
 
-    debugPrint('[BoxOpen][_resolveImage] IN   base=$_base raw="$raw"');
-
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      final fixed = _fixAbsoluteUrl(raw);
-      debugPrint('[BoxOpen][_resolveImage] ABS  "$raw" → "$fixed"');
-      return fixed;
+      return _fixAbsoluteUrl(raw);
     }
 
     if (raw.startsWith('/uploads/')) {
-      final url = _join(_base, raw);
-      debugPrint('[BoxOpen][_resolveImage] UP   "$raw" → "$url"');
-      return url;
+      return _join(_base, raw);
     }
 
-    final encodedKey = Uri.encodeComponent(raw);
-    final url = _join(_base, _join('media', encodedKey));
-    debugPrint('[BoxOpen][_resolveImage] KEY  "$raw" → "$url"');
-    return url;
+    // 레거시: /product_main_images/... 또는 product_main_images/... → key로 취급
+    final looksLegacyMain =
+        raw.startsWith('/product_main_images/') || raw.startsWith('product_main_images/');
+    final key = looksLegacyMain ? raw.replaceFirst(RegExp(r'^/'), '') : raw;
+
+    final encodedKey = Uri.encodeComponent(key);
+    return _join(_base, _join('media', encodedKey));
   }
 
   // ─────────────────────────────────────────────
@@ -89,35 +88,90 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_isInit) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map?;
-      final orderId = args?['orderId'];
-      if (orderId != null) {
-        _initAll(orderId);
-        _isInit = true;
-      }
+    if (_isInit) return;
+
+    final args = ModalRoute.of(context)?.settings.arguments as Map?;
+    final String? orderId = args?['orderId']?.toString();
+
+    // ✅ OpenBoxVideoScreen에서 미리 받아온 단건 결과(preResult)가 있으면 즉시 씀
+    final Map<String, dynamic>? preResult = args?['preResult'];
+    if (preResult != null && preResult['success'] == true && preResult['order'] != null) {
+      _order = Map<String, dynamic>.from(preResult['order'] as Map);
+      _loading = false;
+      _isInit = true;
+      setState(() {});
+      _loadOpenableOrders(); // 잔여 열 수 있는 박스 계산
+      return;
+    }
+
+    // preResult 없으면 서버 배치 API를 단건으로 사용 (boxes와 동일한 경로)
+    if (orderId != null) {
+      _initAll(orderId);
+      _isInit = true;
+    } else {
+      // 인자 없음 → 예외 처리
+      _loading = false;
+      setState(() {});
     }
   }
 
   Future<void> _initAll(String orderId) async {
-    await _loadOrderData(orderId);
+    await _loadOrderDataBatch(orderId); // ← 배치 API로 단건 언박싱
     await _loadOpenableOrders();
   }
 
-  Future<void> _loadOrderData(String orderId) async {
-    final data = await OrderScreenController.unboxOrder(orderId);
-    if (!mounted) return;
-    setState(() {
-      orderData = data;
-      loading = false;
-    });
+  /// boxes처럼 "배치 API"를 사용하되, 단건 리스트로 호출
+  Future<void> _loadOrderDataBatch(String orderId) async {
+    setState(() => _loading = true);
+
+    try {
+      final results = await OrderScreenController.unboxOrdersBatch([orderId]);
+      // 서버: [{ orderId, success, order, message }] 형태
+      if (results.isNotEmpty && results.first['success'] == true && results.first['order'] != null) {
+        _order = Map<String, dynamic>.from(results.first['order'] as Map);
+      } else {
+        final msg = (results.isNotEmpty ? results.first['message'] : '언박싱 실패')?.toString() ?? '언박싱 실패';
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text('박스 열기 실패'),
+              content: Text(msg),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('오류'),
+            content: Text('언박싱 중 오류가 발생했습니다.\n$e'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인')),
+            ],
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
   Future<void> _loadOpenableOrders() async {
     try {
-      final userId = orderData?['user']?['_id']
-          ?? orderData?['userId']
-          ?? orderData?['user'];
+      // _order는 "주문 객체"이므로, 여기서 user id 추출
+      final userId =
+          _order?['user']?['_id'] ?? _order?['userId'] ?? _order?['user'];
 
       if (userId == null) {
         setState(() {
@@ -127,12 +181,15 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
         return;
       }
 
-      final orders = await OrderScreenController.getOrdersByUserId(userId);
+      final orders = await OrderScreenController.getOrdersByUserId(userId.toString());
 
+      // 미개봉 & 결제완료 상태만
       final unopenedCandidates = orders.where((o) {
         final isBox = o['box'] != null || (o['type'] == 'box');
-        final notOpened = (o['unboxedProduct'] == null);
-        return isBox && notOpened;
+        final notOpened =
+            (o['unboxedProduct'] == null) || (o['unboxedProduct']?['product'] == null);
+        final isPaid = (o['status'] == 'paid');
+        return isBox && notOpened && isPaid;
       }).toList();
 
       final resultIds = <String>[];
@@ -165,6 +222,7 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
 
   Future<void> _openNextBoxes(int n) async {
     if (_openableOrderIds.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('열 수 있는 박스가 없습니다.')),
       );
@@ -173,6 +231,7 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
     final take = _openableOrderIds.length >= n ? n : _openableOrderIds.length;
     final ids = _openableOrderIds.take(take).toList();
 
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -189,18 +248,24 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
   Widget build(BuildContext context) {
     final formatCurrency = NumberFormat('#,###', 'ko_KR');
 
-    if (loading || _checkingOpenables) {
+    if (_loading || _checkingOpenables) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final product = orderData?['unboxedProduct']?['product'];
+    // _order는 단일 주문 객체
+    final product = _order?['unboxedProduct']?['product'];
     final productName = product?['name'] ?? '상품명 없음';
     final brand = product?['brand'] ?? '브랜드 없음';
-
-    // ✅ 동일 규칙 적용: presigned → 그대로, /uploads → base, key → /media/{key}
-    final imageUrl = _resolveImage(product?['mainImageUrl'] ?? product?['mainImage']);
-
     final price = product?['consumerPrice'] ?? 0;
+
+    // presigned → 그대로, /uploads → base, key → /media/{key}
+    final imageUrl = _resolveImage(
+      product?['mainImageUrl'] ??
+          product?['mainImage'] ??
+          (product?['images'] is List && (product?['images'] as List).isNotEmpty
+              ? product['images'][0]
+              : null),
+    );
 
     final hasOpenable = _openableOrderIds.isNotEmpty;
     final canOpenTen = _openableOrderIds.length >= 10;
@@ -241,7 +306,6 @@ class _BoxOpenScreenState extends State<BoxOpenScreen> {
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
-                          debugPrint('[BoxOpen] Image error: $error');
                           return Container(
                             width: 260.w,
                             height: 260.w,

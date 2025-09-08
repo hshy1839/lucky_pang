@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class RankingTabBarHeader extends StatelessWidget {
-  final bool isSelected;
+  final bool isSelected;               // 실시간 로그 선택 여부
   final void Function(bool) onTap;
+  final bool showMessage;              // "당첨을 축하드립니다!" 노출 여부
 
   const RankingTabBarHeader({
     super.key,
     required this.isSelected,
     required this.onTap,
+    this.showMessage = true,           // 기본값: true (보이게)
   });
 
   @override
@@ -21,11 +23,11 @@ class RankingTabBarHeader extends StatelessWidget {
       child: Container(
         color: Colors.white,
         alignment: Alignment.topCenter,
-        padding: EdgeInsets.only(top: 40.h), // ✅ 원래 값 유지
+        padding: EdgeInsets.only(top: 40.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 좌우 22.w 여백 + 버튼 간 16.w 간격 유지
+            // 탭 버튼
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 22.w),
               child: Row(
@@ -50,24 +52,9 @@ class RankingTabBarHeader extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 25.h), // ✅ 원래 간격 유지
-            Text(
-              "당첨을 축하드립니다!",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.bold,
-                foreground: Paint()
-                  ..shader = const LinearGradient(
-                    colors: [
-                      Color(0xFFBF00FF), // 보라
-                      Color(0xFFFF4081), // 핑크
-                      Color(0xFFFF5722), // 주황
-                    ],
-                  ).createShader(Rect.fromLTWH(0.0, 0.0, 380.0, 70.0)),
-              ),
-            ),
-            SizedBox(height: 20.h),
+
+            // 👇 showMessage 가 true일 때만 노출
+           SizedBox(height: 30,),
           ],
         ),
       ),
@@ -87,7 +74,7 @@ class RankingTabBarHeader extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFFF5722) : Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(10.r), // ✅ 버튼 radius 유지
+          borderRadius: BorderRadius.circular(10.r),
         ),
         child: Text(
           label,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -20,39 +21,183 @@ class RankingScreen extends StatefulWidget {
 }
 
 class _RankingScreenState extends State<RankingScreen> {
+  // 탭 상태
   bool showRealtimeLog = true;
+
+  // 본문 리스트용 데이터
   List<Map<String, dynamic>> unboxedOrders = [];
   int highestPrice = 0;
   int totalPrice = 0;
-  bool isLoading = true;
+  bool isLoadingBody = true;
 
-  // ──────────────────────────────────────────────────
-  // 공통 이미지 URL Resolver (이벤트/프로필과 동일 규칙)
-  // presigned/절대 URL -> 그대로
-  // /uploads/...       -> baseUrl 붙이기
-  // 그 외(S3 key 추정)  -> /media/{key}
-  // ──────────────────────────────────────────────────
+  // 상단 프리미엄(10만원↑) 슬라이드용 데이터 — 탭 전환과 무관하게 유지
+  List<Map<String, dynamic>> premiumOrders = [];
+  bool isLoadingPremium = true;
+
+  // 무한 슬라이드 컨트롤러/타이머
+  late final PageController _premiumCtrl;
+  int _premiumPageIndex = 0;
+  Timer? _premiumAutoTimer;
+  bool _userDraggingPremium = false;
+
+  // 무한 슬라이드 구현용 가상 페이지 폭
+  static const int _kVirtualCycles = 100000;
+  int _virtualBase(int itemCount) =>
+      (itemCount <= 0) ? 0 : (itemCount * (_kVirtualCycles ~/ 2));
+  int _currentVirtualPage() => _premiumCtrl.hasClients
+      ? (_premiumCtrl.page?.round() ?? _premiumCtrl.initialPage)
+      : _premiumCtrl.initialPage;
+
   String get _baseUrl => '${BaseUrl.value}:7778';
 
   String _resolveImage(dynamic value) {
     if (value == null) return '';
     final s = value.toString().trim();
     if (s.isEmpty) return '';
-    if (s.startsWith('http://') || s.startsWith('https://')) return s; // presigned 포함
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
     if (s.startsWith('/uploads/')) return '$_baseUrl$s';
     final key = s.startsWith('/') ? s.substring(1) : s;
     return '$_baseUrl/media/$key';
   }
 
+  /// ✅ 닉네임 안전 추출 (API 응답 형태 다양성 대응)
+  String _nicknameOf(Map<String, dynamic> order) {
+    // user가 문자열(ObjectId)로 오고, 평면 닉네임이 있는 경우
+    if (order['user'] is String && order['nickname'] is String) {
+      final n = (order['nickname'] as String).trim();
+      if (n.isNotEmpty) return n;
+    }
+
+    // 1) populate된 일반 케이스
+    final u = order['user'];
+    if (u is Map) {
+      final n1 =
+      (u['nickname'] ?? u['nickName'] ?? u['name'] ?? '').toString().trim();
+      if (n1.isNotEmpty) return n1;
+    }
+
+    // 2) 다른 키명으로 유저 객체가 올 수 있는 케이스
+    final alt = order['userInfo'] ??
+        order['buyer'] ??
+        order['owner'] ??
+        order['userDoc'] ??
+        order['profile'] ??
+        order['member'];
+    if (alt is Map) {
+      final n2 = (alt['nickname'] ?? alt['nickName'] ?? alt['name'] ?? '')
+          .toString()
+          .trim();
+      if (n2.isNotEmpty) return n2;
+    }
+
+    // 3) 납작한(플랫) 형태로 닉네임이 바로 들어오는 케이스
+    final flat = (order['userNickname'] ??
+        order['nickname'] ??
+        order['user_name'] ??
+        order['userNick'])
+        ?.toString()
+        .trim();
+    if (flat != null && flat.isNotEmpty) return flat;
+
+    // 4) 전부 없으면 익명
+    return '익명';
+  }
 
   @override
   void initState() {
     super.initState();
-    fetchUnboxedLogs();
+
+    // 프리미엄 데이터 로드 전 초기값 0
+    _premiumCtrl = PageController(initialPage: 0);
+
+    // 상단 슬라이드와 본문을 각각 로드 (분리!)
+    _fetchPremiumOrders(); // 한 번만 로드해서 유지
+    _fetchBodyOrders(); // 탭 전환 시마다 다시 로드
+
+    // 3초 자동 슬라이드
+    _premiumAutoTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      final count = _premiumItemCount;
+      if (count <= 1) return;
+      if (_userDraggingPremium) return;
+      if (!_premiumCtrl.hasClients) return;
+
+      // ✔ 무한 루프: 단순히 다음 페이지로만 진행
+      _premiumCtrl.nextPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+      );
+
+      // ✔ 드리프트 방지: 양 끝단에 가까워지면 가운데로 점프(사용자 체감 없음)
+      final vp = _currentVirtualPage();
+      final leftEdge = count * 2;
+      final rightEdge = count * (_kVirtualCycles - 2);
+      if (vp <= leftEdge || vp >= rightEdge) {
+        final target = _virtualBase(count) + (vp % count);
+        _premiumCtrl.jumpToPage(target);
+      }
+    });
   }
 
-  Future<void> fetchUnboxedLogs() async {
-    setState(() => isLoading = true);
+  @override
+  void dispose() {
+    _premiumAutoTimer?.cancel();
+    _premiumCtrl.dispose();
+    super.dispose();
+  }
+
+  int get _premiumItemCount => premiumOrders.length;
+
+  // ──────────────────────────────────────────────────
+  // 상단 프리미엄 슬라이드: 앱 시작 시 1회 로드 후 유지(닉네임 캐싱 포함)
+  // ──────────────────────────────────────────────────
+  Future<void> _fetchPremiumOrders() async {
+    setState(() => isLoadingPremium = true);
+
+    final orders = await OrderScreenController.getAllUnboxedOrders();
+
+    int _priceOf(Map<String, dynamic> o) {
+      final raw = o['unboxedProduct']?['product']?['consumerPrice'];
+      return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
+    }
+
+    // 10만원 이상만, 최신순 정렬 후 20개
+    final highValue = orders.where((o) => _priceOf(o) >= 100000).toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a['unboxedProduct']?['decidedAt'] ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final db = DateTime.tryParse(b['unboxedProduct']?['decidedAt'] ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        return db.compareTo(da);
+      });
+
+    // ✅ 표시용 닉네임을 한 번만 계산해서 캐싱
+    final prepared = highValue.take(20).map<Map<String, dynamic>>((o) {
+      return {
+        ...o,
+        '_displayNickname': _nicknameOf(o),
+      };
+    }).toList();
+
+    setState(() {
+      premiumOrders = prepared;
+      isLoadingPremium = false;
+    });
+
+    // ✔ 아이템이 준비되면, 가상의 가운데 페이지로 점프(무한 루프 시작점)
+    final count = _premiumItemCount;
+    if (count > 0 && _premiumCtrl.hasClients) {
+      final start = _virtualBase(count);
+      _premiumCtrl.jumpToPage(start);
+      _premiumPageIndex = 0; // 사용자에게 보이는 실제 인덱스
+    }
+  }
+
+  // ──────────────────────────────────────────────────
+  // 본문 리스트: 탭 전환 시마다 24시간/이번주로 필터 로드
+  // ──────────────────────────────────────────────────
+  Future<void> _fetchBodyOrders() async {
+    setState(() => isLoadingBody = true);
 
     final orders = await OrderScreenController.getAllUnboxedOrders();
 
@@ -74,7 +219,7 @@ class _RankingScreenState extends State<RankingScreen> {
     for (var order in filteredOrders) {
       final product = order['unboxedProduct']?['product'];
       final rawPrice = product?['consumerPrice'] ?? 0;
-      final price = rawPrice is int ? rawPrice : (rawPrice as num).toInt();
+      final price = rawPrice is int ? rawPrice : (rawPrice as num?)?.toInt() ?? 0;
       if (price > maxPrice) maxPrice = price;
       sumPrice += price;
     }
@@ -83,23 +228,13 @@ class _RankingScreenState extends State<RankingScreen> {
       unboxedOrders = filteredOrders;
       highestPrice = maxPrice;
       totalPrice = sumPrice;
-      isLoading = false;
+      isLoadingBody = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: const Size(375, 812));
-
-    final now = DateTime.now();
-    final weekday = now.weekday;
-    final monday = now.subtract(Duration(days: weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
-    final todayStr =
-        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-    final dateFormat =
-        "${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}"
-        " ~ ${sunday.year}-${sunday.month.toString().padLeft(2, '0')}-${sunday.day.toString().padLeft(2, '0')}";
 
     return Scaffold(
       body: Container(
@@ -114,31 +249,30 @@ class _RankingScreenState extends State<RankingScreen> {
           ),
         ),
         child: SafeArea(
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 상단 타이틀 & 날짜
+              // 상단 프리미엄(10만원↑) 자동 슬라이드 — 탭과 무관하게 유지
               Padding(
                 padding: EdgeInsets.only(top: 20.h),
-                child: Column(
-                  children: [
-                    // ✅ 탭바 헤더 위 가로 슬라이드 카드(고가 언박싱 하이라이트)
-                    _buildHighValueCarousel(context),
-                  ],
-                ),
+                child: isLoadingPremium
+                    ? SizedBox(
+                  height: 150.h,
+                  child: const Center(child: CircularProgressIndicator()),
+                )
+                    : _buildHighValueCarousel(context),
               ),
 
-              // 탭바 헤더
+              // 탭 헤더
               Padding(
                 padding: EdgeInsets.only(top: 30.h),
                 child: RankingTabBarHeader(
                   isSelected: showRealtimeLog,
                   onTap: (selected) async {
                     setState(() => showRealtimeLog = selected);
-                    await fetchUnboxedLogs();
+                    await _fetchBodyOrders(); // ← 프리미엄은 재로드 안 함!
                   },
+                  showMessage: showRealtimeLog, // 실시간에서만 "당첨을 축하드립니다!" 보임
                 ),
               ),
 
@@ -146,9 +280,11 @@ class _RankingScreenState extends State<RankingScreen> {
               Expanded(
                 child: Container(
                   color: Colors.white,
-                  child: showRealtimeLog
-                      ? UnboxRealtimeList(unboxedOrders: unboxedOrders) // 실시간
-                      : UnboxWeeklyRanking(unboxedOrders: unboxedOrders), // 주간 랭킹
+                  child: isLoadingBody
+                      ? const Center(child: CircularProgressIndicator())
+                      : (showRealtimeLog
+                      ? UnboxRealtimeList(unboxedOrders: unboxedOrders)
+                      : UnboxWeeklyRanking(unboxedOrders: unboxedOrders)),
                 ),
               ),
             ],
@@ -158,7 +294,6 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-  // 클래스 내부에 추가 헬퍼: 상대시간 표시
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return '방금 전';
@@ -168,9 +303,17 @@ class _RankingScreenState extends State<RankingScreen> {
     return DateFormat('MM/dd').format(dt);
   }
 
-  /// 상단 가로 슬라이드 카드 영역 (최근 고가 언박싱 하이라이트)
+  // 상단 프리미엄(10만원↑) 자동 슬라이드 — 무한 루프 구현
   Widget _buildHighValueCarousel(BuildContext context) {
-    const int highValueThreshold = 100000; // ✅ 10만원 이상만
+    final items = premiumOrders; // ← 이미 정렬/상한 20개로 준비됨
+
+    if (items.isEmpty) {
+      return SizedBox(
+        height: 150.h,
+        child: const Center(child: Text("최근 고가 언박싱 내역이 없습니다.")),
+      );
+    }
+
     final formatCurrency = NumberFormat('#,###');
 
     int _priceOf(Map<String, dynamic> o) {
@@ -178,492 +321,130 @@ class _RankingScreenState extends State<RankingScreen> {
       return raw is num ? raw.toInt() : int.tryParse('$raw') ?? 0;
     }
 
-    // ✅ 상세 페이지에 맞춰 product를 정규화 (이미지 경로 절대화)
-    Map<String, dynamic> _sanitizeProductForDetail(dynamic rawProduct) {
-      final Map<String, dynamic> p = Map<String, dynamic>.from(rawProduct ?? {});
+    final count = items.length;
 
-      // 숫자 -> 문자열 (Detail 화면이 String을 기대)
-      for (final key in ['consumerPrice', 'price']) {
-        final v = p[key];
-        if (v is num) p[key] = v.toString();
-      }
-
-      // 메인 이미지 후보 → 절대경로화
-      final mainCandidate =
-          p['mainImageUrl'] ?? p['mainImage'] ?? p['image'] ?? p['main_image'];
-      final mainAbs = _resolveImage(mainCandidate);
-      if (mainAbs.isNotEmpty) {
-        p['mainImageUrl'] = mainAbs;
-      } else if (p['mainImageUrl'] != null) {
-        p['mainImageUrl'] = p['mainImageUrl'].toString();
-      }
-
-      // 추가 이미지 다양한 포맷 지원 → 절대경로 리스트로 통일
-      dynamic aiu = p['additionalImageUrls'] ??
-          p['additionalImages'] ??
-          p['detailImages'] ??
-          p['images'] ??
-          p['detailImageUrls'] ??
-          p['detail_images'];
-
-      final List<String> urls = [];
-
-      String? _fromMap(dynamic m) {
-        if (m is Map) {
-          for (final k in ['url', 'imageUrl', 'image', 'src', 'path', 'fileUrl', 'uri']) {
-            if (m[k] != null && m[k].toString().trim().isNotEmpty) {
-              return m[k].toString().trim();
-            }
-          }
-        }
-        return null;
-      }
-
-      void _add(dynamic e) {
-        String? candidate;
-        if (e == null) return;
-        if (e is String) {
-          candidate = e.trim();
-        } else if (e is Map) {
-          candidate = _fromMap(e);
-        } else {
-          candidate = e.toString().trim();
-        }
-        if (candidate == null || candidate.isEmpty) return;
-
-        final abs = _resolveImage(candidate);
-        final t = abs.trim();
-        if (t.isNotEmpty) urls.add(t);
-      }
-
-      if (aiu is List) {
-        for (final e in aiu) _add(e);
-      } else if (aiu is Map) {
-        for (final k in ['urls', 'images', 'list', 'data']) {
-          if (aiu[k] is List) {
-            for (final e in aiu[k]) _add(e);
-          }
-        }
-        final one = _fromMap(aiu);
-        if (one != null) _add(one);
-      } else if (aiu is String && aiu.trim().isNotEmpty) {
-        final s = aiu.trim();
-        if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
-          try {
-            final decoded = jsonDecode(s);
-            if (decoded is List) {
-              for (final e in decoded) _add(e);
-            } else if (decoded is Map) {
-              for (final k in ['urls', 'images', 'list', 'data']) {
-                if (decoded[k] is List) {
-                  for (final e in decoded[k]) _add(e);
-                }
-              }
-              final one = _fromMap(decoded);
-              if (one != null) _add(one);
-            }
-          } catch (_) {
-            for (final part in s.split(RegExp(r'[,\|\n]'))) _add(part);
-          }
-        } else {
-          for (final part in s.split(RegExp(r'[,\|\n]'))) _add(part);
-        }
-      }
-
-      final cleaned = urls.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList();
-
-      // 메인 이미지가 없고 추가 이미지가 있으면 첫 이미지를 메인으로
-      if ((p['mainImageUrl'] == null || p['mainImageUrl'].toString().isEmpty) && cleaned.isNotEmpty) {
-        p['mainImageUrl'] = cleaned.first;
-      }
-
-      p['additionalImageUrls'] = cleaned.join(',');
-
-      for (final key in ['brand', 'brandName', 'name', 'category']) {
-        if (p[key] != null) p[key] = p[key].toString();
-      }
-
-      return p;
-    }
-
-    // ✅ 10만원 이상만 필터 + 최신순 정렬
-    final highValueOrders = unboxedOrders
-        .where((o) => _priceOf(o) >= highValueThreshold)
-        .toList()
-      ..sort((a, b) {
-        final da = DateTime.tryParse(a['unboxedProduct']?['decidedAt'] ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        final db = DateTime.tryParse(b['unboxedProduct']?['decidedAt'] ?? '') ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        return db.compareTo(da);
-      });
-
-    final items = highValueOrders.take(20).toList(); // ✅ 최근 20개만
-
-    // 카드 UI (이미지 탭 가능)
-    Widget _card({
-      String? profileName,
-      String rightTimeText = '',
-      String? brand,
-      String? productName,
-      int? price,
-      String? productImageUrl,
-      String? boxName,
-      VoidCallback? onImageTap, // 👈 추가
-      bool isEmpty = false,
-    }) {
-      return Container(
-        width: 330.w,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2))],
-        ),
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8.r),
-              child: GestureDetector(
-                onTap: (productImageUrl != null && !isEmpty) ? onImageTap : null, // 👈 탭 이동
-                child: SizedBox(
-                  width: 130.r,
-                  height: 130.r,
-                  child: productImageUrl != null && !isEmpty
-                      ? CachedNetworkImage(
-                    imageUrl: productImageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
-                  )
-                      : Container(color: Colors.grey[200]),
-                ),
-              ),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 4.h),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isEmpty ? '최근 내역이 없습니다.' : '${profileName ?? '익명'}님이 당첨됐어요!',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.black87, fontSize: 16.sp, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                    ],
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    isEmpty ? '' : (brand ?? ''),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.black45, fontSize: 16.sp),
-                  ),
-                  if (!isEmpty) ...[
-                    SizedBox(height: 4.h),
-                    Text(
-                      productName ?? '상품명 없음',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.black54, fontSize: 18.sp),
-                    ),
-                  ],
-                  SizedBox(height: 4.h),
-                  if (!(isEmpty || price == null))
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '정가: ${formatCurrency.format(price)} 원',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xFFFF5722),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16.sp,
-                          ),
-                        ),
-                        if ((boxName ?? '').trim().isNotEmpty)
-                          Padding(
-                            padding: EdgeInsets.only(top: 2.h),
-                            child: Align(
-                              alignment: Alignment.centerRight, // ✅ 정가 '아랫줄'의 '우측'
-                              child: Text(
-                                boxName!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.black26, // ✅ 요청 색상
-                                  fontSize: 14.sp,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 데이터 없을 때
-    if (items.isEmpty) {
-      return SizedBox(
-        height: 150.h,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: [
-            Padding(
-              padding: EdgeInsets.only(left: 16.w, right: 12.w),
-              child: _card(
-                isEmpty: true,
-                rightTimeText: showRealtimeLog ? '최근 24시간' : '이번주',
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // 데이터 있을 때
     return SizedBox(
       height: 150.h,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final order = items[index];
-          final user = order['user'];
-          final product = order['unboxedProduct']?['product'];
-          final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
-          final brand = product?['brand'] ?? product?['brandName'];
-          final name = product?['name'];
-          final price = _priceOf(order);
-          final productImgUrl = _resolveImage(product?['mainImageUrl'] ?? product?['mainImage'] ?? product?['image']);
-          final productId = (product?['_id'] ?? product?['id'] ?? product?['productId'] ?? '').toString();
-          final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
+      child: Listener(
+        onPointerDown: (_) => _userDraggingPremium = true,
+        onPointerUp: (_) => _userDraggingPremium = false,
+        child: PageView.builder(
+          // ✔ itemCount 생략 → 사실상 무한
+          controller: _premiumCtrl,
+          onPageChanged: (page) {
+            // ✔ 실제 노출 인덱스는 모듈로 계산
+            setState(() => _premiumPageIndex = count == 0 ? 0 : (page % count));
+          },
+          itemBuilder: (context, page) {
+            final index = count == 0 ? 0 : (page % count);
+            final order = items[index];
 
-          return Padding(
-            padding: EdgeInsets.only(left: index == 0 ? 16.w : 8.w, right: 12.w),
-            child: _card(
-              profileName: user?['nickname'],
-              rightTimeText: timeText,
-              brand: brand,
-              productName: name,
-              price: price,
-              productImageUrl: productImgUrl,
-              boxName: (() {
-                final box = order['box'];
-                final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
-                return (bn == null || bn.toString().trim().isEmpty) ? '' : bn.toString();
-              })(),
-              onImageTap: () {
-                final sanitized = _sanitizeProductForDetail(product);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProductDetailScreen(
-                      product: sanitized,
-                      productId: productId,
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
+            // ✅ 캐싱된 닉네임 우선 사용 (없으면 백업으로 _nicknameOf)
+            final displayNickname = (order['_displayNickname'] as String?)?.trim();
+            final nickname = (displayNickname?.isNotEmpty ?? false)
+                ? displayNickname!
+                : _nicknameOf(order);
 
-/// 본문 리스트에서 "상단 슬라이더"는 제거한 버전
-/// (중복 노출 방지용: 기존 UnboxRealtimeList에서 상단 가로 슬라이드를 빼고 리스트만 남긴 형태)
-class UnboxRealtimeListNoHeader extends StatelessWidget {
-  final List<Map<String, dynamic>> unboxedOrders;
-  const UnboxRealtimeListNoHeader({super.key, required this.unboxedOrders});
+            final product = order['unboxedProduct']?['product'];
+            final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
+            final brand = product?['brand'] ?? product?['brandName'];
+            final name = product?['name'];
+            final price = _priceOf(order);
+            final productImgUrl = _resolveImage(
+              product?['mainImageUrl'] ?? product?['mainImage'] ?? product?['image'],
+            );
+            final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
 
-  String get _baseUrl => '${BaseUrl.value}:7778';
-
-  // 이벤트/프로필과 동일 규칙
-  String _resolveImage(dynamic value) {
-    if (value == null) return '';
-    final s = value.toString().trim();
-    if (s.isEmpty) return '';
-    if (s.startsWith('http://') || s.startsWith('https://')) return s;
-    if (s.startsWith('/uploads/')) return '$_baseUrl$s';
-    final key = s.startsWith('/') ? s.substring(1) : s;
-    return '$_baseUrl/media/$key';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (unboxedOrders.isEmpty) {
-      return SizedBox(
-        height: 100.h,
-        child: const Center(child: Text("최근 언박싱 기록이 없습니다.")),
-      );
-    }
-
-    final filteredOrders = unboxedOrders
-        .where((order) {
-      final consumerPrice = order['unboxedProduct']?['product']?['consumerPrice'] ?? 0;
-      return consumerPrice >= 20000 && consumerPrice < 100000;
-    })
-        .toList()
-      ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
-          .compareTo(DateTime.parse(a['unboxedProduct']?['decidedAt'] ?? '')));
-
-    final latest20Orders = filteredOrders.take(20).toList();
-    final formatCurrency = NumberFormat('#,###');
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 20),
-      itemCount: latest20Orders.length,
-      itemBuilder: (context, index) {
-        final order = latest20Orders[index];
-        final user = order['user'];
-        final product = order['unboxedProduct']?['product'];
-        final box = order['box'];
-        final consumerPrice = product?['consumerPrice'] ?? 0;
-
-        // ✅ profileImageUrl 우선, 없으면 profileImage
-        final rawProfileImage = user?['profileImageUrl'] ?? user?['profileImage'];
-        final userProfileImage = () {
-          final u = _resolveImage(rawProfileImage);
-          return u.isEmpty ? null : u;
-        }();
-
-        final boxNameText = (() {
-          final bn = box?['name'] ?? box?['title'] ?? box?['boxName'];
-          return (bn == null || bn.toString().trim().isEmpty) ? '' : bn.toString();
-        })();
-
-        return Padding(
-          padding: EdgeInsets.only(left: 16.w, right: 16.w, bottom: 6.h),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20.r),
-              boxShadow: [
-                BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: ListTile(
-              title: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24.r,
-                    backgroundColor: Colors.grey[300],
-                    child: userProfileImage != null
-                        ? ClipOval(
+            return Padding(
+              key: ValueKey('${order['_id'] ?? 'v'}-$index'),
+              padding: EdgeInsets.symmetric(horizontal: 12.w),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12.r),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black12, blurRadius: 4.r, offset: const Offset(0, 2))
+                  ],
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
                       child: CachedNetworkImage(
-                        imageUrl: userProfileImage,
+                        imageUrl: productImgUrl,
+                        width: 130.r,
+                        height: 130.r,
                         fit: BoxFit.cover,
-                        width: 48.r,
-                        height: 48.r,
-                        placeholder: (context, url) => Center(
-                          child: CircularProgressIndicator(
-                            color: Theme.of(context).primaryColor,
-                            strokeWidth: 2,
-                          ),
-                        ),
-                        errorWidget: (context, url, error) =>
-                            Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
+                        errorWidget: (_, __, ___) => Container(color: Colors.grey[200]),
                       ),
-                    )
-                        : Icon(Icons.person, size: 28.r, color: Colors.grey[600]),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: Text(
-                      user?['nickname'] ?? '익명',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.sp),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 20.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // 상품 정보
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: Text(
-                                product?['name'] ?? '상품명 없음',
-                                style: TextStyle(fontSize: 15.sp, color: Colors.black),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    '정가: ${formatCurrency.format(consumerPrice)}원',
-                                    style: const TextStyle(fontSize: 15, color: Color(0xFF465461)),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (boxNameText.isNotEmpty)
-                                  Text(
-                                    boxNameText,
-                                    style: TextStyle(fontSize: 14.sp, color: Colors.black26),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      // 박스/시간
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${formatCurrency.format(box?['price'] ?? 0)}원 박스',
-                            style: TextStyle(color: Colors.black, fontSize: 14.sp),
+                            '$nickname님이 당첨됐어요!',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp),
+                          ),
+                          SizedBox(height: 6.h),
+
+                          // 브랜드
+                          Text(
+                            brand ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.black45),
                           ),
                           SizedBox(height: 4.h),
+
+                          // 상품명
                           Text(
-                            DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '')
-                                ?.toLocal()
-                                .toString()
-                                .substring(0, 16) ??
-                                '',
-                            style: const TextStyle(fontSize: 13, color: Colors.black45),
+                            name ?? '상품명 없음',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 18.sp, color: Colors.black54),
+                          ),
+                          SizedBox(height: 6.h),
+
+                          // 정가
+                          Text(
+                            '정가: ${formatCurrency.format(price)}원',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFFF5722),
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+
+                          // 정가 아래: (좌) 박스가 / (우) 당첨 시간
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${formatCurrency.format(order['box']?['price'] ?? 0)}원 박스',
+                                style: TextStyle(fontSize: 14.sp, color: Colors.black26),
+                              ),
+                              Text(
+                                timeText,
+                                style: TextStyle(fontSize: 13.sp, color: Colors.black45),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }

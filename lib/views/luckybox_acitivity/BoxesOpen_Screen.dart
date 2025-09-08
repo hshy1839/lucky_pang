@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
+
 import '../../controllers/order_screen_controller.dart';
 import '../../controllers/giftcode_controller.dart';
 import '../../main.dart';
@@ -17,73 +19,51 @@ class BoxesopenScreen extends StatefulWidget {
 }
 
 class _BoxesopenScreenState extends State<BoxesopenScreen> {
+  static const int _maxBatchOpen = 10;
+
   List<Map<String, dynamic>> unboxedProducts = [];
   bool isLoading = true;
 
-  // 하단 버튼 스위칭용 상태
   String? _userId;
   List<String> _openableOrderIds = [];
   bool _checkingOpenables = true;
 
-  // ─────────────────────────────────────────────
-  // URL 유틸: BoxOpenScreen / ProductStorageCard와 동일 규칙 + 레거시 보강
-  // ─────────────────────────────────────────────
   String get _root => BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
-
   String get _base {
     final u = Uri.tryParse(_root);
-    if (u != null && u.hasPort) return _root; // 이미 포트가 있으면 그대로
+    if (u != null && u.hasPort) return _root;
     return '$_root:7778';
   }
-
   String _join(String a, String b) {
     final left = a.replaceAll(RegExp(r'/+$'), '');
     final right = b.replaceAll(RegExp(r'^/+'), '');
     return '$left/$right';
   }
-
-  // 절대 URL인데 host:port 뒤 슬래시가 없을 때 보정
   String _fixAbsoluteUrl(String s) {
     final m = RegExp(r'^(https?:\/\/[^\/\s]+)(\/?.*)$').firstMatch(s);
-    if (m == null) return s; // 절대 URL 아님
-    final authority = m.group(1)!; // http(s)://host[:port]
-    var rest = m.group(2)!;        // path or /path or ""
+    if (m == null) return s;
+    final authority = m.group(1)!;
+    var rest = m.group(2)!;
     if (rest.isEmpty) return s;
     if (!rest.startsWith('/')) rest = '/$rest';
     return '$authority$rest';
   }
-
-  /// presigned/절대 URL이면 그대로(슬래시 보정),
-  /// /uploads/...는 base 붙이고,
-  /// 레거시(/product_main_images/... 또는 product_main_images/...)는 key로 간주해 /media/{key},
-  /// 그 외(S3 key)는 /media/{encodeURIComponent(key)}
   String _resolveImage(dynamic value) {
     if (value == null) return '';
     final raw = value.toString().trim();
     if (raw.isEmpty) return '';
-
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
       final fixed = _fixAbsoluteUrl(raw);
-      debugPrint('[Boxesopen][_resolveImage] ABS  base=$_base raw="$raw" -> "$fixed"');
       return fixed;
     }
-
     if (raw.startsWith('/uploads/')) {
-      final url = _join(_base, raw);
-      debugPrint('[Boxesopen][_resolveImage] UP   base=$_base raw="$raw" -> "$url"');
-      return url;
+      return _join(_base, raw);
     }
-
-    // 레거시: /product_main_images/... 또는 product_main_images/... → key로 취급
-    final looksLegacyMain = raw.startsWith('/product_main_images/') || raw.startsWith('product_main_images/');
+    final looksLegacyMain =
+        raw.startsWith('/product_main_images/') || raw.startsWith('product_main_images/');
     final key = looksLegacyMain ? raw.replaceFirst(RegExp(r'^/'), '') : raw;
-
-    final encodedKey = Uri.encodeComponent(key);
-    final url = _join(_base, _join('media', encodedKey));
-    debugPrint('[Boxesopen][_resolveImage] KEY  base=$_base raw="$raw" -> "$url"');
-    return url;
+    return _join(_base, _join('media', Uri.encodeComponent(key)));
   }
-  // ─────────────────────────────────────────────
 
   @override
   void initState() {
@@ -95,37 +75,50 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
     if (mounted) {
       setState(() {
         isLoading = true;
-        unboxedProducts = []; // hot reload 시 구형 URL 잔재 제거
+        unboxedProducts = [];
       });
     }
 
     final List<Map<String, dynamic>> temp = [];
     String? tempUserId;
 
-    // 선택된 orderId들 언박싱
-    for (final orderId in widget.orderIds) {
-      final data = await OrderScreenController.unboxOrder(orderId);
-      final product = data?['unboxedProduct']?['product'];
+    // 한 번에 최대 10개
+    final ids = widget.orderIds.take(_maxBatchOpen).toList();
 
-      // userId 확보 (첫 응답에서 가져옴)
-      tempUserId ??= (data?['user']?['_id'] ?? data?['userId'] ?? data?['user'])?.toString();
+    // ✅ 배치 언박싱 호출
+    final results = await OrderScreenController.unboxOrdersBatch(ids);
 
-      if (product != null) {
-        // 메인이미지 결정: mainImageUrl → mainImage → images[0]
-        final dynamic rawMain =
-            product['mainImageUrl'] ?? product['mainImage'] ??
-                (product['images'] is List && (product['images'] as List).isNotEmpty
-                    ? product['images'][0]
-                    : null);
+    int successCnt = 0;
+    int failCnt = 0;
 
-        final resolved = _resolveImage(rawMain);
-
-        temp.add({
-          'productName': product['name'],
-          'brand': product['brand'],
-          'mainImageUrl': resolved,                 // 항상 resolver를 거친 값만 저장
-          'consumerPrice': product['consumerPrice'] ?? 0,
-        });
+    for (final r in results) {
+      if (r['success'] == true && r['order'] != null) {
+        final order = r['order'] as Map<String, dynamic>;
+        final product = order['unboxedProduct']?['product'];
+        tempUserId ??= (order['user']?['_id'] ?? order['userId'] ?? order['user'])?.toString();
+        if (product != null) {
+          final dynamic rawMain = product['mainImageUrl'] ??
+              product['mainImage'] ??
+              (product['images'] is List && (product['images'] as List).isNotEmpty
+                  ? product['images'][0]
+                  : null);
+          final resolved = _resolveImage(rawMain);
+          temp.add({
+            'productName': product['name'],
+            'brand': product['brand'],
+            'mainImageUrl': resolved,
+            'consumerPrice': product['consumerPrice'] ?? 0,
+          });
+          successCnt++;
+        } else {
+          failCnt++;
+        }
+      } else {
+        failCnt++;
+        if (mounted && r['message'] != null) {
+          // 필요시 사용자 안내
+          // ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('언박싱 실패: ${r['message']}')));
+        }
       }
     }
 
@@ -136,7 +129,12 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
       isLoading = false;
     });
 
-    // 잔여 열 수 있는 박스 계산
+    if (failCnt > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('언박싱 완료: $successCnt개, 실패: $failCnt개')),
+      );
+    }
+
     await _loadOpenableOrders();
   }
 
@@ -151,17 +149,16 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
         return;
       }
 
-      // 사용자 전체 주문 조회
       final orders = await OrderScreenController.getOrdersByUserId(_userId!);
 
-      // 미개봉 후보 (박스 주문만)
       final unopenedCandidates = orders.where((o) {
         final isBox = o['box'] != null || (o['type'] == 'box');
-        final notOpened = (o['unboxedProduct'] == null);
-        return isBox && notOpened;
+        final notOpened =
+            (o['unboxedProduct'] == null) || (o['unboxedProduct']?['product'] == null);
+        final isPaid = (o['status'] == 'paid');
+        return isBox && notOpened && isPaid;
       }).toList();
 
-      // 선물코드 없는 것만 남기기
       final resultIds = <String>[];
       for (final o in unopenedCandidates) {
         final orderId = (o['_id'] ?? o['orderId'])?.toString();
@@ -182,7 +179,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
         _checkingOpenables = false;
       });
     } catch (e) {
-      debugPrint('[Boxesopen] _loadOpenableOrders error: $e');
       if (!mounted) return;
       setState(() {
         _openableOrderIds = [];
@@ -191,9 +187,9 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
     }
   }
 
-  // N개 열기 → OpenBoxVideoScreen 이동
   Future<void> _openNextBoxes(int n) async {
     if (_openableOrderIds.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('열 수 있는 박스가 없습니다.')),
       );
@@ -202,12 +198,13 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
     final take = _openableOrderIds.length >= n ? n : _openableOrderIds.length;
     final ids = _openableOrderIds.take(take).toList();
 
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => OpenBoxVideoScreen(
-          orderId: n == 1 ? ids.first : null, // 단건이면 orderId로
-          orderIds: n > 1 ? ids : null,       // 다건이면 orderIds로
+          orderId: n == 1 ? ids.first : null,
+          orderIds: n > 1 ? ids : null,
           isBatch: n > 1,
         ),
       ),
@@ -218,7 +215,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
   Widget build(BuildContext context) {
     final currency = NumberFormat('#,###', 'ko_KR');
 
-    // 로딩 중(언박싱 로딩 또는 잔여 체크 로딩)엔 스피너
     if (isLoading || _checkingOpenables) {
       return Scaffold(
         backgroundColor: Colors.white,
@@ -245,10 +241,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                 SizedBox(height: 30.h),
                 Text(
                   '당첨을 축하드립니다!',
-                  style: TextStyle(
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 40.h),
                 Expanded(
@@ -283,7 +276,7 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                 ),
                                 child: AspectRatio(
                                   aspectRatio: 1,
-                                  child: (imgUrl.isNotEmpty)
+                                  child: imgUrl.isNotEmpty
                                       ? Image.network(
                                     imgUrl,
                                     fit: BoxFit.cover,
@@ -295,27 +288,16 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                         child: const CircularProgressIndicator(strokeWidth: 2),
                                       );
                                     },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      debugPrint('[Boxesopen] Image error: $error, $imgUrl');
-                                      return Container(
-                                        color: const Color(0xFFF5F6F6),
-                                        alignment: Alignment.center,
-                                        child: Icon(
-                                          Icons.inventory_2_outlined,
-                                          size: 40,
-                                          color: Colors.grey[500],
-                                        ),
-                                      );
-                                    },
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: const Color(0xFFF5F6F6),
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.inventory_2_outlined, size: 40, color: Colors.grey[500]),
+                                    ),
                                   )
                                       : Container(
                                     color: const Color(0xFFF5F6F6),
                                     alignment: Alignment.center,
-                                    child: Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 40,
-                                      color: Colors.grey[500],
-                                    ),
+                                    child: Icon(Icons.inventory_2_outlined, size: 40, color: Colors.grey[500]),
                                   ),
                                 ),
                               ),
@@ -327,29 +309,19 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                                     children: [
                                       Text(
                                         (product['brand'] ?? '').toString(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13.sp,
-                                        ),
+                                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.sp),
                                       ),
                                       SizedBox(height: 2.h),
                                       Text(
                                         (product['productName'] ?? '').toString(),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 12.sp,
-                                          color: const Color(0xFF465461),
-                                        ),
+                                        style: TextStyle(fontSize: 12.sp, color: const Color(0xFF465461)),
                                       ),
                                       const Spacer(),
                                       Text(
                                         '정가: ${currency.format(product['consumerPrice'] ?? 0)}원',
-                                        style: TextStyle(
-                                          fontSize: 14.sp,
-                                          color: Colors.redAccent,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: TextStyle(fontSize: 14.sp, color: Colors.redAccent, fontWeight: FontWeight.w600),
                                       ),
                                     ],
                                   ),
@@ -364,8 +336,6 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                 ),
               ],
             ),
-
-            // 상단 왼쪽 X 버튼 (보관함으로 이동)
             Positioned(
               top: 8.h,
               left: 8.w,
@@ -376,26 +346,18 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
-                        ),
+                        MaterialPageRoute(builder: (_) => const MainScreenWithFooter(initialTabIndex: 2)),
                       );
                     },
                     borderRadius: BorderRadius.circular(20.r),
                     child: Container(
                       padding: EdgeInsets.all(8.r),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 28.r,
-                        color: const Color(0xFF465461),
-                      ),
+                      child: Icon(Icons.close_rounded, size: 28.r, color: const Color(0xFF465461)),
                     ),
                   ),
                 ),
               ),
             ),
-
-            // 하단 버튼 영역
             Positioned(
               bottom: 10.h,
               left: 24.w,
@@ -411,19 +373,11 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Color(0xFFFF5722)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                         padding: EdgeInsets.symmetric(vertical: 16.h),
                       ),
-                      child: const Text(
-                        '1개 열기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFFF5722),
-                        ),
-                      ),
+                      child: const Text('1개 열기',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFFF5722))),
                     ),
                   ),
                   SizedBox(height: 12.h),
@@ -434,19 +388,11 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5722),
                         disabledBackgroundColor: const Color(0xFFFF5722).withOpacity(0.35),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                         padding: EdgeInsets.symmetric(vertical: 16.h),
                       ),
-                      child: const Text(
-                        '10개 열기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: const Text('10개 열기',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                     ),
                   ),
                 ],
@@ -460,27 +406,17 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const MainScreenWithFooter(initialTabIndex: 2),
-                          ),
+                          MaterialPageRoute(builder: (_) => const MainScreenWithFooter(initialTabIndex: 2)),
                         );
                       },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Color(0xFFFF5722)),
                         backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                         padding: EdgeInsets.symmetric(vertical: 16.h),
                       ),
-                      child: const Text(
-                        '박스 보관함',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFFFF5722),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('박스 보관함',
+                          style: TextStyle(fontSize: 16, color: Color(0xFFFF5722), fontWeight: FontWeight.w600)),
                     ),
                   ),
                   SizedBox(height: 12.h),
@@ -490,26 +426,16 @@ class _BoxesopenScreenState extends State<BoxesopenScreen> {
                       onPressed: () {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const MainScreenWithFooter(initialTabIndex: 4),
-                          ),
+                          MaterialPageRoute(builder: (_) => const MainScreenWithFooter(initialTabIndex: 4)),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5722),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                         padding: EdgeInsets.symmetric(vertical: 16.h),
                       ),
-                      child: const Text(
-                        '박스 다시 구매하기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('박스 다시 구매하기',
+                          style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

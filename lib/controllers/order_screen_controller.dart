@@ -1,5 +1,6 @@
 // controllers/order_screen_controller.dart
 import 'dart:convert';
+import 'dart:math';
 import 'package:bootpay/bootpay.dart';
 import 'package:bootpay/model/item.dart';
 import 'package:bootpay/model/payload.dart';
@@ -8,12 +9,29 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../routes/base_url.dart';
 import 'box_controller.dart'; // 박스 목록 접근용
 
 class OrderScreenController {
   static final _storage = FlutterSecureStorage();
 
+  // ─────────────────────────────────────────────
+  // HTTP 유틸
+  // ─────────────────────────────────────────────
+  static Uri _apiUri(String path, [Map<String, dynamic>? query]) {
+    // BaseUrl.value가 이미 포트(:7778)를 포함해도, 한 번만 붙도록 정리
+    final root = BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
+    final u = Uri.tryParse(root);
+    final base = (u != null && u.hasPort) ? root : '$root:7778';
+    return Uri.parse('$base$path').replace(queryParameters: query?.map(
+          (k, v) => MapEntry(k, v?.toString()),
+    ));
+  }
+
+  // ─────────────────────────────────────────────
+  // 주문 생성 (포인트 결제 or 부트페이 이후 서버 검증)
+  // ─────────────────────────────────────────────
   static Future<void> submitOrder({
     required BuildContext context,
     required String? selectedBoxId,
@@ -62,7 +80,7 @@ class OrderScreenController {
       return;
     }
 
-    // 💡 카드/계좌 결제: 부트페이 결제 → 성공 시 서버로 포인트/결제금액/수량 한번에 전송(혼합결제 포함)
+    // 카드/계좌 결제
     if (totalAmount > 0 && (paymentMethod == '신용/체크카드' || paymentMethod == '계좌이체')) {
       final String orderId = DateTime.now().millisecondsSinceEpoch.toString();
       await launchBootpayPayment(
@@ -73,8 +91,8 @@ class OrderScreenController {
         orderId: orderId,
         userPhone: '', // 필요시
         payMethod: paymentMethod == '계좌이체' ? 'bank' : 'card',
-        pointsUsed: pointsUsed,  // 👈 필수!
-        quantity: quantity,      // 👈 필수!
+        pointsUsed: pointsUsed,
+        quantity: quantity,
         onSuccess: () {
           Navigator.pushNamed(context, '/luckyboxOrder');
         },
@@ -85,9 +103,9 @@ class OrderScreenController {
       return;
     }
 
-    // ✅ 포인트 결제만
+    // 포인트 결제만
     final response = await http.post(
-      Uri.parse('${BaseUrl.value}:7778/api/order'),
+      _apiUri('/api/order'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -148,8 +166,107 @@ class OrderScreenController {
     }
   }
 
+  // ─────────────────────────────────────────────
+  // 언박싱: 단건(표준화된 반환 형태)
+  // { success: bool, order: Map? , message: String? } 형태로 항상 반환
+  // ─────────────────────────────────────────────
+  static Future<Map<String, dynamic>> unboxOrder(String orderId) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) {
+        return {
+          'success': false,
+          'order': null,
+          'message': '토큰 없음',
+        };
+      }
 
+      final response = await http.post(
+        _apiUri('/api/orders/$orderId/unbox'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
+      // 200: 서버가 { success, order, message } 혹은 { order } 등 어떤 형식이든 올 수 있으므로 표준화
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        // 서버가 success 필드를 주면 그대로, 없으면 order 존재 여부로 success 추정
+        final bool ok = decoded['success'] == true ||
+            (decoded['order']?['unboxedProduct']?['product'] != null);
+
+        return {
+          'success': ok,
+          'order': decoded['order'],
+          'message': decoded['message'],
+        };
+      }
+
+      // 실패 응답 바디에 message가 있으면 살려서 전달
+      Map<String, dynamic>? failJson;
+      try {
+        failJson = jsonDecode(response.body);
+      } catch (_) {}
+      return {
+        'success': false,
+        'order': null,
+        'message': failJson?['message'] ?? 'http ${response.statusCode}',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'order': null,
+        'message': e.toString(),
+      };
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  // 언박싱: 일괄 (최대 10개 + 지수 백오프 재시도)
+  // UI에서 바로 써도 되지만, 화면 코드는 가볍게 유지하는 걸 권장
+  // ─────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> unboxOrdersSequential(
+      List<String> orderIds, {
+        int maxOpen = 10,
+        int maxRetry = 3,
+      }) async {
+    final ids = orderIds.take(max(0, maxOpen)).toList();
+    final List<Map<String, dynamic>> results = [];
+
+    for (final id in ids) {
+      int attempt = 0;
+      Map<String, dynamic> lastRes = {};
+      while (true) {
+        attempt++;
+        final res = await unboxOrder(id);
+        lastRes = res;
+
+        // 성공: 바로 탈출
+        if (res['success'] == true) break;
+
+        final msg = (res['message'] ?? '').toString();
+        // "상품 선택 실패"만 재시도
+        if (msg.contains('상품 선택 실패') && attempt < maxRetry) {
+          await Future.delayed(Duration(milliseconds: 200 * attempt));
+          continue;
+        }
+        break;
+      }
+      results.add({
+        'orderId': id,
+        ...lastRes,
+      });
+
+      // 과도한 부하 방지
+      await Future.delayed(const Duration(milliseconds: 20));
+    }
+    return results;
+  }
+
+  // ─────────────────────────────────────────────
+  // 보조 API들
+  // ─────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> getOrdersByUserId(String userId) async {
     try {
@@ -160,7 +277,7 @@ class OrderScreenController {
       }
 
       final response = await http.get(
-        Uri.parse('${BaseUrl.value}:7778/api/order?userId=$userId'),
+        _apiUri('/api/order', {'userId': userId}),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -170,7 +287,7 @@ class OrderScreenController {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final orders = List<Map<String, dynamic>>.from(data['orders']);
-        return orders; // ✅ 모든 주문 반환
+        return orders;
       } else {
         debugPrint('❌ 주문 불러오기 실패: ${response.statusCode}');
         return [];
@@ -181,53 +298,22 @@ class OrderScreenController {
     }
   }
 
-
-
   static void handleBoxOpen(
       BuildContext context,
       String orderId,
       Function(Map<String, dynamic>) onSuccess,
       ) async {
     final result = await unboxOrder(orderId);
-    if (result != null) {
-      onSuccess(result);
+    if (result['success'] == true && result['order'] != null) {
+      onSuccess(result['order']);
     } else {
       showDialog(
         context: context,
-        builder: (_) => const AlertDialog(
-          title: Text('박스 열기 실패'),
-          content: Text('이미 열린 박스이거나 오류가 발생했습니다.'),
+        builder: (_) => AlertDialog(
+          title: const Text('박스 열기 실패'),
+          content: Text(result['message']?.toString() ?? '이미 열린 박스이거나 오류가 발생했습니다.'),
         ),
       );
-    }
-  }
-
-  static Future<Map<String, dynamic>?> unboxOrder(String orderId) async {
-    try {
-      final token = await _storage.read(key: 'token');
-      if (token == null) {
-        debugPrint('❌ 토큰 없음');
-        return null;
-      }
-
-      final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/orders/$orderId/unbox'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('🎁 언박싱 결과: ${jsonEncode(data)}');
-        return data['order'];
-      } else {
-        debugPrint('❌ 언박싱 실패: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      return null;
     }
   }
 
@@ -237,7 +323,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('${BaseUrl.value}:7778/api/orders/unboxed?userId=$userId'),
+        _apiUri('/api/orders/unboxed', {'userId': userId}),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -257,27 +343,25 @@ class OrderScreenController {
     }
   }
 
-
   static Future<int?> refundOrder(String orderId, double refundRate, {required String description}) async {
     try {
       final token = await _storage.read(key: 'token');
       if (token == null) return null;
 
       final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/orders/$orderId/refund'),
+        _apiUri('/api/orders/$orderId/refund'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
           'refundRate': refundRate,
-          'description': description, // ✅ 추가됨
+          'description': description,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['success'] == true && data['refundedAmount'] != null) {
           return data['refundedAmount'];
         } else {
@@ -300,7 +384,7 @@ class OrderScreenController {
       if (token == null) return [];
 
       final response = await http.get(
-        Uri.parse('${BaseUrl.value}:7778/api/orders/unboxed/all'),
+        _apiUri('/api/orders/unboxed/all'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -319,9 +403,32 @@ class OrderScreenController {
       return [];
     }
   }
+  static Future<List<Map<String, dynamic>>> unboxOrdersBatch(
+      List<String> orderIds) async {
+    try {
+      final token = await _storage.read(key: 'token');
+      if (token == null) return [];
 
+      final response = await http.post(
+        Uri.parse('${BaseUrl.value}:7778/api/orders/unbox/batch'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'orderIds': orderIds}),
+      );
 
-
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final results = List<Map<String, dynamic>>.from(data['results'] ?? []);
+        return results;
+      } else {
+        return [];
+      }
+    } catch (_) {
+      return [];
+    }
+  }
   static Future<void> requestCardPayment({
     required BuildContext context,
     required String boxId,
@@ -344,7 +451,7 @@ class OrderScreenController {
 
     try {
       final response = await http.post(
-        Uri.parse('${BaseUrl.value}:7778/api/payletter/request'),
+        _apiUri('/api/payletter/request'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -356,18 +463,11 @@ class OrderScreenController {
         }),
       );
 
-      print('🔁 서버 응답 statusCode: ${response.statusCode}');
-      print('🔁 서버 응답 body: ${response.body}');
-
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-
-        if (decoded['data'] != null &&
-            decoded['data']['paymentUrl'] != null &&
-            decoded['data']['paymentUrl'] is String) {
-          final paymentUrl = decoded['data']['paymentUrl'];
+        final paymentUrl = decoded['data']?['paymentUrl'];
+        if (paymentUrl is String) {
           final uri = Uri.parse(paymentUrl);
-
           if (await canLaunchUrl(uri)) {
             await launchUrl(uri, mode: LaunchMode.externalApplication);
           } else {
@@ -400,8 +500,7 @@ class OrderScreenController {
         ),
       );
     } catch (e, stack) {
-      print('❌ 예외 발생: $e');
-      print('❌ 스택트레이스: $stack');
+      debugPrint('❌ 예외 발생: $e\n$stack');
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -420,8 +519,8 @@ class OrderScreenController {
     required String orderId,
     required String userPhone,
     required String payMethod,
-    required int pointsUsed,        // 👈 추가
-    required int quantity,          // 👈 추가
+    required int pointsUsed,
+    required int quantity,
     required Function() onSuccess,
     Function(String error)? onError,
   }) async {
@@ -440,7 +539,7 @@ class OrderScreenController {
         name: boxName,
         qty: quantity,
         id: orderId,
-        price: (amount / quantity).toDouble(),
+        price: (amount / max(1, quantity)).toDouble(),
       ),
     ];
 
@@ -451,14 +550,14 @@ class OrderScreenController {
       onCancel: (data) {
         if (onError != null) onError('결제 취소');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('결제가 취소되었습니다.'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('결제가 취소되었습니다.'), backgroundColor: Colors.red),
         );
         Navigator.pop(context);
       },
       onError: (data) {
         if (onError != null) onError(data.toString());
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('결제 중 오류가 발생했습니다.'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('결제 중 오류가 발생했습니다.'), backgroundColor: Colors.red),
         );
         Navigator.pop(context);
       },
@@ -473,7 +572,7 @@ class OrderScreenController {
 
           // 서버에 결제검증+주문생성 요청(혼합결제 가능)
           final res = await http.post(
-            Uri.parse('${BaseUrl.value}:7778/api/bootpay/verify'),
+            _apiUri('/api/bootpay/verify'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
@@ -491,18 +590,18 @@ class OrderScreenController {
           if (res.statusCode == 200) {
             onSuccess();
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('결제 성공!')),
+              const SnackBar(content: Text('결제 성공!')),
             );
           } else {
             if (onError != null) onError('결제 검증 실패');
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('결제 검증에 실패했습니다.'), backgroundColor: Colors.red),
+              const SnackBar(content: Text('결제 검증에 실패했습니다.'), backgroundColor: Colors.red),
             );
           }
         } catch (e) {
           if (onError != null) onError('결제 검증 중 예외 발생');
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('결제 검증 중 오류'), backgroundColor: Colors.red),
+            const SnackBar(content: Text('결제 검증 중 오류'), backgroundColor: Colors.red),
           );
         }
       },
@@ -513,12 +612,11 @@ class OrderScreenController {
     required String orderId,
     required String status,
   }) async {
-    final storage = FlutterSecureStorage();
-    final token = await storage.read(key: 'token');
+    final token = await _storage.read(key: 'token');
     if (token == null) return;
 
     final response = await http.patch(
-      Uri.parse('${BaseUrl.value}:7778/api/order/$orderId'),
+      _apiUri('/api/order/$orderId'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -532,8 +630,4 @@ class OrderScreenController {
       debugPrint('✅ 주문 상태 업데이트 성공');
     }
   }
-
-
-
-
 }

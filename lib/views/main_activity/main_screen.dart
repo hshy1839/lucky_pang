@@ -412,7 +412,7 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   SizedBox(width: 20),
                   Text(
-                    '${NumberFormat('#,###').format(products.length)}개',
+    '${NumberFormat('#,###').format(filteredProducts.length)}개',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[700],

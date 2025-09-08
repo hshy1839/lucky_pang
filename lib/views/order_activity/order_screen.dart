@@ -117,33 +117,51 @@ class _OrderScreenState extends State<OrderScreen> {
     });
   }
 
+  static const int _maxBatchOpen = 10;
+
   Future<void> _handleBatchOpenBoxes() async {
+    // 선택 + 열 수 있는 박스만 필터
     final validSelectedOrders = paidOrders.where((o) {
       final isSelected = selectedBoxOrderIds.contains(o['_id']);
-      final hasGiftCode = o['giftCode'] != null;
+      final hasGiftCode = o['giftCode'] != null || o['giftCodeExists'] == true;
       final isUnboxed = o['unboxedProduct'] != null && o['unboxedProduct']['product'] != null;
       return isSelected && !hasGiftCode && !isUnboxed;
     }).toList();
 
     if (validSelectedOrders.isEmpty) {
-      showDialog(
+      await showDialog(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (_) => const AlertDialog(
           title: Text('선택 오류'),
           content: Text('열 수 있는 박스를 선택하세요.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('확인'),
-            ),
-          ],
         ),
       );
       return;
     }
 
-    final orderIds = validSelectedOrders.map((o) => o['_id'].toString()).toList();
+    // 최대 10개로 컷팅
+    List<Map<String, dynamic>> toOpen = validSelectedOrders;
+    if (validSelectedOrders.length > _maxBatchOpen) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('일괄열기'),
+          content: Text('선택된 ${validSelectedOrders.length}개 중\n'
+              '최대 $_maxBatchOpen개만 일괄 열기가 가능합니다.\n'
+              '진행 하시겠습니까?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('진행')),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+      toOpen = validSelectedOrders.take(_maxBatchOpen).toList(); // 최초 10개만
+    }
 
+    final orderIds = toOpen.map((o) => o['_id'].toString()).toList();
+
+    // 일괄 열기는 VideoScreen에서 "직렬 + 재시도"로 수행
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -155,7 +173,9 @@ class _OrderScreenState extends State<OrderScreen> {
     );
 
     await loadOrders();
-    setState(() => selectedBoxOrderIds.clear());
+    if (mounted) {
+      setState(() => selectedBoxOrderIds.clear());
+    }
   }
 
   bool _isBoxSelectable(Map<String, dynamic> o) {
@@ -647,7 +667,7 @@ class _OrderScreenState extends State<OrderScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: selectedBoxOrderIds.isEmpty ? Colors.grey : Theme.of(context).primaryColor,
                         ),
-                        child: const Text('일괄열기'),
+                        child: const Text('일괄열기(10개)'),
                       ),
                     ],
                   ),
