@@ -33,45 +33,22 @@ class PaginationBar extends StatelessWidget {
     if (tp == 0) return const SizedBox.shrink();
     if (tp == 1 && !showWhenSinglePage) return const SizedBox.shrink();
 
-    // 페이지 목록 구성: 현재 페이지는 항상 노출
-    final List<Object> tokens = []; // int(페이지) 또는 String('...')
+    // 현재 페이지를 기준으로 최대 5칸짜리 윈도우 구성
+    // 예) 1~5, 2~6, 3~7 ... (끝으로 갈수록 오른쪽으로 붙음)
+    final maxWindow = 5;
+    final maxStart = (tp - maxWindow + 1).clamp(1, tp); // 윈도우 시작의 최댓값
+    final int start = (() {
+      // 보통 currentPage-2로 시작해 가운데에 두되, 1~maxStart 범위로 클램프
+      final s = currentPage - 2;
+      if (s < 1) return 1;
+      if (s > maxStart) return maxStart;
+      return s;
+    })();
+    final int end = (start + maxWindow - 1).clamp(1, tp);
 
-    void addPage(int p) => tokens.add(p);
-    void addDots() {
-      if (tokens.isEmpty || tokens.last == '...') return;
-      tokens.add('...');
-    }
-
-    if (tp <= 7) {
-      // 페이지 수가 적으면 전부 표시
-      for (int i = 1; i <= tp; i++) addPage(i);
-    } else {
-      // 항상 첫 페이지
-      addPage(1);
-
-      if (currentPage <= 3) {
-        // 앞쪽에 있을 때: 1 2 3 4 … tp
-        addPage(2);
-        addPage(3);
-        addPage(4);
-        addDots();
-        addPage(tp);
-      } else if (currentPage >= tp - 2) {
-        // 뒤쪽에 있을 때: 1 … tp-3 tp-2 tp-1 tp
-        addDots();
-        addPage(tp - 3);
-        addPage(tp - 2);
-        addPage(tp - 1);
-        addPage(tp);
-      } else {
-        // 중간: 1 … cp-1 cp cp+1 … tp
-        addDots();
-        addPage(currentPage - 1);
-        addPage(currentPage);
-        addPage(currentPage + 1);
-        addDots();
-        addPage(tp);
-      }
+    final pages = <int>[];
+    for (int p = start; p <= end; p++) {
+      pages.add(p);
     }
 
     Widget numBtn(int p) => Padding(
@@ -101,11 +78,6 @@ class PaginationBar extends StatelessWidget {
       ),
     );
 
-    Widget dot() => const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 6),
-      child: Text('…', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
-    );
-
     Widget iconBtn({
       required IconData icon,
       required bool enabled,
@@ -116,7 +88,8 @@ class PaginationBar extends StatelessWidget {
         child: IconButton(
           onPressed: enabled ? onTap : null,
           icon: Icon(icon, size: 20),
-          color: enabled ? Theme.of(context).primaryColor : const Color(0xFF9CA3AF),
+          color:
+          enabled ? Theme.of(context).primaryColor : const Color(0xFF9CA3AF),
           splashRadius: 18,
           constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
           padding: EdgeInsets.zero,
@@ -135,12 +108,7 @@ class PaginationBar extends StatelessWidget {
           enabled: canPrev,
           onTap: () => onPageChanged(currentPage - 1),
         ),
-
-        ...tokens.map((t) {
-          if (t is String) return dot();
-          return numBtn(t as int);
-        }).toList(),
-
+        ...pages.map(numBtn),
         iconBtn(
           icon: Icons.chevron_right,
           enabled: canNext,

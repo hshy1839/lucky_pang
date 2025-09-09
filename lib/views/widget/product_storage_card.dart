@@ -11,15 +11,15 @@ class ProductStorageCard extends StatefulWidget {
   final int purchasePrice;
   final int consumerPrice;
   final String dDay; // (미사용: 내부 계산 사용)
-  final bool isLocked;
+  final bool isLocked; // 서버 락
   final VoidCallback onRefundPressed;
   final VoidCallback onDeliveryPressed;
-  final VoidCallback onGiftPressed;
+  final VoidCallback onGiftPressed; // (외부 로직이 필요하면 유지)
   final String orderId;
   final String productId;
   final bool isSelected;
   final ValueChanged<bool?> onSelectChanged;
-  final bool isManuallyLocked;
+  final bool isManuallyLocked; // 수동 락
   final ValueChanged<bool> onManualLockChanged;
 
   const ProductStorageCard({
@@ -64,10 +64,18 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
       productId: widget.productId,
     );
 
+    if (!mounted) return;
     setState(() {
       _giftCodeExists = exists;
       _loading = false;
     });
+
+    // 선물코드 생성되어 있으면 선택 해제(배치행동 차단)
+    if (exists && widget.isSelected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onSelectChanged(false);
+      });
+    }
   }
 
   /// 숫자 → "3,000원 박스" 같은 형태로
@@ -75,7 +83,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
     return '${NumberFormat('#,###').format(price)}원 박스';
   }
 
-  /// ✅ MainScreen과 동일한 로직: URL 유효성 체크 → Image.network / placeholder
+  /// ✅ URL 유효성 체크 → Image.network / placeholder
   Widget _buildMainImage() {
     final url = widget.mainImageUrl.trim();
     final hasUrl = url.isNotEmpty;
@@ -105,8 +113,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
         url,
         width: 100.w,
         height: 100.h,
-        fit: BoxFit.cover,           // ✅ MainScreen과 동일: cover
-        alignment: Alignment.center, // ✅ 중앙 기준 크롭
+        fit: BoxFit.cover,
+        alignment: Alignment.center,
         errorBuilder: (_, __, ___) => placeholder,
       ),
     );
@@ -114,10 +122,11 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isLocked = widget.isManuallyLocked;
-    final isFullyLocked = isLocked || _giftCodeExists;
+    final serverLocked = widget.isLocked;
+    final manualLocked = widget.isManuallyLocked;
+    final fullyLocked = serverLocked || manualLocked || _giftCodeExists;
 
-    final ddayText = _calculateDDay(widget.acquiredAt); // 폰트/스타일은 기존 유지(17.sp)
+    final ddayText = _calculateDDay(widget.acquiredAt);
 
     return Container(
       padding: EdgeInsets.all(12.w),
@@ -131,24 +140,30 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           /// 체크박스 + (자물쇠 + D-Day)
           Row(
             children: [
-              Checkbox(
-                value: widget.isSelected,
-                onChanged: isFullyLocked ? null : widget.onSelectChanged,
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return Colors.black;
-                  }
-                  return Colors.white;
-                }),
-                checkColor: Colors.white,
+              AbsorbPointer(
+                absorbing: fullyLocked,
+                child: Checkbox(
+                  value: widget.isSelected,
+                  onChanged: fullyLocked ? null : widget.onSelectChanged,
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  fillColor: MaterialStateProperty.resolveWith<Color>((Set<MaterialState> states) {
+                    if (states.contains(MaterialState.selected)) {
+                      return Colors.black;
+                    }
+                    return Colors.white;
+                  }),
+                  checkColor: Colors.white,
+                ),
               ),
               const Spacer(),
-              // 자물쇠 + 보관기한(D-Day) 세로 배치
+              // 자물쇠 + 보관기한(D-Day)
               GestureDetector(
                 onTap: () async {
-                  if (!widget.isManuallyLocked) {
+                  // 선물코드가 있거나 서버락이면 수동 토글 불가
+                  if (_giftCodeExists || serverLocked) return;
+
+                  if (!manualLocked) {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (context) {
@@ -205,12 +220,11 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Icon(
-                      widget.isManuallyLocked ? Icons.lock : Icons.lock_open,
-                      color: widget.isManuallyLocked ? Colors.green : Colors.blue,
+                      manualLocked ? Icons.lock : Icons.lock_open,
+                      color: manualLocked ? Colors.green : Colors.blue,
                       size: 20.w,
                     ),
                     SizedBox(height: 6.h),
-                    // ✅ 보관기한을 자물쇠 밑으로 이동 (폰트크기 기존 17.sp)
                     Text(
                       ddayText,
                       style: TextStyle(
@@ -252,7 +266,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                     /// 가격 라인
                     Row(
                       children: [
-                        // ✅ 구매가: "5,000원 박스" 형식
+                        // 구매가
                         Stack(
                           clipBehavior: Clip.none,
                           children: [
@@ -267,7 +281,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                             Positioned(
                               left: 0,
                               right: 0,
-                              bottom: 0, // ✅ 밑줄을 더 아래로 내림
+                              bottom: 0,
                               child: Container(
                                 height: 1.5,
                                 color: const Color(0xFFFF5722),
@@ -275,9 +289,8 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                             ),
                           ],
                         ),
-
                         const Spacer(),
-                        // ✅ 정가를 오른쪽 끝으로 보내고 취소선 제거
+                        // 정가
                         Text(
                           '정가: ${NumberFormat('#,###').format(widget.consumerPrice)}원',
                           style: TextStyle(
@@ -298,34 +311,48 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
           /// 버튼들
           Row(
             children: [
+              // 환급하기
               Expanded(
                 child: _buildOutlinedButton(
                   context,
                   text: '환급하기',
-                  onPressed: (!isLocked && !_giftCodeExists)
-                      ? widget.onRefundPressed
-                      : null,
-                  enabled: (!isLocked && !_giftCodeExists),
+                  onPressed: (!fullyLocked) ? widget.onRefundPressed : null,
+                  enabled: (!fullyLocked),
                 ),
               ),
               SizedBox(width: 8.w),
+
+              // 선물하기 / 선물코드 확인 (동작은 BoxStorageCard와 동일: 선물코드가 있으면 비활성)
               Expanded(
                 child: _buildOutlinedButton(
                   context,
                   text: _giftCodeExists ? '선물코드 확인' : '선물하기',
-                  onPressed: isLocked ? null : widget.onGiftPressed,
-                  enabled: !isLocked,
+                  onPressed: (_loading || widget.isLocked || widget.isManuallyLocked)
+                      ? null
+                      : () async {
+                    await Navigator.pushNamed(
+                      context,
+                      '/giftcode/create',
+                      arguments: {
+                        'type': 'product',
+                        'orderId': widget.orderId,
+                        'productId': widget.productId,
+                      },
+                    );
+                    await _checkGiftCode(); // 복귀 후 다시 확인
+                  },
+                  enabled: !(_loading || widget.isLocked || widget.isManuallyLocked),
                 ),
               ),
               SizedBox(width: 8.w),
+
+              // 배송신청
               Expanded(
                 child: _buildElevatedButton(
                   context,
                   text: '배송신청',
-                  onPressed: (!isLocked && !_giftCodeExists && !_loading)
-                      ? widget.onDeliveryPressed
-                      : () {},
-                  enabled: (!isLocked && !_giftCodeExists && !_loading),
+                  onPressed: (!fullyLocked && !_loading) ? widget.onDeliveryPressed : () {},
+                  enabled: (!fullyLocked && !_loading),
                 ),
               ),
             ],

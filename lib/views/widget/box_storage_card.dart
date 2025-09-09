@@ -171,7 +171,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!widget.isDisabled)
+
             Align(
               alignment: Alignment.topLeft,
               child: AbsorbPointer(

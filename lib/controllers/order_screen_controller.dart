@@ -272,28 +272,67 @@ class OrderScreenController {
     try {
       final token = await _storage.read(key: 'token');
       if (token == null) {
-        debugPrint('❌ 토큰이 없습니다.');
+        debugPrint('❌ [Orders] 토큰 없음');
         return [];
       }
 
-      final response = await http.get(
-        _apiUri('/api/order', {'userId': userId}),
+      // ✅ 서버 컨트롤러에 맞춰 복수형으로 호출
+      final uri = _apiUri('/api/orders', {'userId': userId});
+
+      final res = await http.get(
+        uri,
         headers: {
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final orders = List<Map<String, dynamic>>.from(data['orders']);
-        return orders;
-      } else {
-        debugPrint('❌ 주문 불러오기 실패: ${response.statusCode}');
+      debugPrint('[Orders] GET $uri -> ${res.statusCode}');
+      final raw = utf8.decode(res.bodyBytes);
+
+      if (res.statusCode != 200) {
+        final preview = raw.length > 400 ? raw.substring(0, 400) : raw;
+        debugPrint('❌ [Orders] status=${res.statusCode} body=$preview');
         return [];
       }
-    } catch (e) {
-      debugPrint('❌ 주문 불러오기 중 오류: $e');
+
+      dynamic data;
+      try {
+        data = json.decode(raw);
+      } catch (e) {
+        final preview = raw.length > 400 ? raw.substring(0, 400) : raw;
+        debugPrint('❌ [Orders] JSON 파싱 실패: $e body=$preview');
+        return [];
+      }
+
+      if (data is! Map) {
+        debugPrint('❌ [Orders] 예상치 못한 응답 타입: ${data.runtimeType}');
+        return [];
+      }
+
+      if (data['success'] == false) {
+        debugPrint('❌ [Orders] success=false message=${data['message']}');
+        return [];
+      }
+
+      // ✅ paged=false -> {orders: [...]}
+      // ✅ paged=true  -> {items: [...], totalCount, page, pageSize}
+      List list;
+      if (data['orders'] is List) {
+        list = data['orders'];
+        debugPrint('[Orders] using "orders" count=${list.length}');
+      } else if (data['items'] is List) {
+        list = data['items'];
+        debugPrint('[Orders] using "items" count=${list.length} total=${data['totalCount']} page=${data['page']} size=${data['pageSize']}');
+      } else {
+        debugPrint('❌ [Orders] orders/items 키가 없음. keys=${data.keys}');
+        return [];
+      }
+
+      return List<Map<String, dynamic>>.from(list);
+    } catch (e, st) {
+      debugPrint('❌ [Orders] 예외: $e\n$st');
       return [];
     }
   }

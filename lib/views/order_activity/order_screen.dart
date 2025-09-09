@@ -85,6 +85,12 @@ class _OrderScreenState extends State<OrderScreen> {
     return _join(_base, _join('media', encodedKey));
   }
 
+  // 날짜 16자리 안전 자르기
+  String _safeDate16(dynamic decidedAt) {
+    final s = (decidedAt ?? '').toString();
+    return s.length >= 16 ? s.substring(0, 16) : s;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -129,11 +135,26 @@ class _OrderScreenState extends State<OrderScreen> {
       // 각 아이템 giftCodeExists 보정 (페이지 내 최대 30개)
       final items = await Future.wait(list.map((raw) async {
         final o = Map<String, dynamic>.from(raw as Map);
-        final exists = await GiftCodeController.checkGiftCodeExists(
-          type: 'box',
-          boxId: o['box']?['_id'],
-          orderId: o['_id'],
-        );
+        final orderId = o['_id'];
+        final boxId   = o['box']?['_id'];
+
+        bool exists = false;
+        if (orderId != null && boxId != null) {
+          try {
+            exists = await GiftCodeController.checkGiftCodeExists(
+              type: 'box',
+              orderId: orderId,
+              boxId: boxId,
+            );
+          } catch (_) {
+            // 네트워크/서버 오류 시엔 서버 값이 true면 true로, 아니면 false로
+            exists = (o['giftCodeExists'] == true) || (o['giftCode'] != null);
+          }
+        } else {
+          // 박스/오더 정보가 없는 경우 서버 힌트 사용
+          exists = (o['giftCodeExists'] == true) || (o['giftCode'] != null);
+        }
+
         o['giftCodeExists'] = exists;
         return o;
       }));
@@ -142,7 +163,7 @@ class _OrderScreenState extends State<OrderScreen> {
         _boxPageItems = items.cast<Map<String, dynamic>>();
         _totalBoxCount = (body['totalCount'] ?? _boxPageItems.length) as int;
         _pageBox = page;
-        selectedBoxOrderIds.clear(); // 페이지 전환 시 선택 초기화
+        selectedBoxOrderIds.clear();
       });
     } catch (e) {
       debugPrint('[_fetchBoxPage] $e');
@@ -172,7 +193,7 @@ class _OrderScreenState extends State<OrderScreen> {
       final body = json.decode(res.body) as Map<String, dynamic>;
       final List list = (body['items'] ?? []) as List;
 
-      // 페이지 아이템의 giftCodeExists 보정
+      // 페이지 아이템의 giftCodeExists 보정 (최대 30개, 순차 확인)
       final items = await Future.wait(list.map((raw) async {
         final o = Map<String, dynamic>.from(raw as Map);
         final productId = o['unboxedProduct']?['product']?['_id'];
@@ -335,7 +356,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
     int totalRefundPoints = 0;
     for (final order in selectedOrders) {
-      final product = order['unboxedProduct']['product'];
+      final product = order['unboxedProduct']?['product'] ?? {};
       final refundRateStr = product['refundProbability']?.toString() ?? '0';
       final refundRate = double.tryParse(refundRateStr) ?? 0.0;
       final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
@@ -363,14 +384,14 @@ class _OrderScreenState extends State<OrderScreen> {
     int successCnt = 0;
     try {
       for (final order in selectedOrders) {
-        final product = order['unboxedProduct']['product'];
+        final product = order['unboxedProduct']?['product'] ?? {};
         final refundRateStr = product['refundProbability']?.toString() ?? '0';
         final refundRate = double.tryParse(refundRateStr) ?? 0.0;
 
         final refunded = await OrderScreenController.refundOrder(
           order['_id'],
           refundRate,
-          description: '[${product['brand']}] ${product['name']} 포인트 환급',
+          description: '[${product['brand'] ?? ''}] ${product['name'] ?? ''} 포인트 환급',
         );
         if (refunded != null) successCnt++;
       }
@@ -437,10 +458,11 @@ class _OrderScreenState extends State<OrderScreen> {
     o['unboxedProduct']?['product']?['isLocked'] != true &&
         (o['refunded']?['point'] ?? 0) == 0 &&
         o['giftCodeExists'] != true &&
-        (lockedProductIds[o['_id']] != true)
+        (lockedProductIds[(o['_id'] ?? '').toString()] != true)
     ).toList();
+
     final allSelectedProductOnPage = selectableProductOnPage.isNotEmpty &&
-        selectableProductOnPage.every((o) => selectedOrderIds.contains(o['_id']));
+        selectableProductOnPage.every((o) => selectedOrderIds.contains((o['_id'] ?? '').toString()));
 
     // 박스 탭 - 현재 페이지에서 선택 가능 대상
     final boxSelectableOnPage = _boxPageItems.where((o) =>
@@ -448,8 +470,9 @@ class _OrderScreenState extends State<OrderScreen> {
         o['giftCodeExists'] != true &&
         (o['unboxedProduct'] == null || o['unboxedProduct']['product'] == null)
     ).toList();
+
     final allBoxSelectedOnPage = boxSelectableOnPage.isNotEmpty &&
-        boxSelectableOnPage.every((o) => selectedBoxOrderIds.contains(o['_id']));
+        boxSelectableOnPage.every((o) => selectedBoxOrderIds.contains((o['_id'] ?? '').toString()));
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -494,13 +517,14 @@ class _OrderScreenState extends State<OrderScreen> {
                         value: allSelectedProductOnPage,
                         onChanged: (val) {
                           setState(() {
+                            // 현재 페이지의 모든 ID 제거
+                            selectedOrderIds.removeAll(
+                              _productPageItems.map((o) => (o['_id'] ?? '').toString()),
+                            );
+                            // 체크 시 선택 가능한 것만 다시 추가
                             if (val == true) {
                               selectedOrderIds.addAll(
-                                selectableProductOnPage.map((o) => o['_id'] as String),
-                              );
-                            } else {
-                              selectedOrderIds.removeAll(
-                                _productPageItems.map((o) => o['_id'] as String),
+                                selectableProductOnPage.map((o) => (o['_id'] ?? '').toString()),
                               );
                             }
                           });
@@ -534,14 +558,19 @@ class _OrderScreenState extends State<OrderScreen> {
                     itemCount: _productPageItems.length,
                     separatorBuilder: (_, __) => SizedBox(height: 16.h),
                     itemBuilder: (context, index) {
-                      final order = _productPageItems[index];
-                      final product = order['unboxedProduct']['product'];
-                      final orderId = order['_id'];
+                      final order = _productPageItems[index] as Map<String, dynamic>?;
+                      if (order == null) return const SizedBox.shrink();
+
+                      final orderId = (order['_id'] ?? '').toString();
+                      final Map<String, dynamic>? product =
+                      (order['unboxedProduct']?['product'] as Map?)?.cast<String, dynamic>();
+                      final decidedAt = order['unboxedProduct']?['decidedAt'];
+                      if (product == null) return const SizedBox.shrink();
 
                       return ProductStorageCard(
-                        productId: product['_id'] ?? '',
+                        productId: (product['_id'] ?? '').toString(),
                         mainImageUrl: _resolveImage(product['mainImageUrl'] ?? product['mainImage']),
-                        productName: '${product['name']}',
+                        productName: '${product['name'] ?? ''}',
                         isManuallyLocked: lockedProductIds[orderId] ?? false,
                         onManualLockChanged: (val) {
                           setState(() {
@@ -550,10 +579,10 @@ class _OrderScreenState extends State<OrderScreen> {
                           });
                         },
                         orderId: orderId,
-                        acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
-                        purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
-                        consumerPrice: product['consumerPrice'],
-                        brand: '${product['brand']}',
+                        acquiredAt: '${_safeDate16(decidedAt)} 획득',
+                        purchasePrice: ((order['paymentAmount'] ?? 0) as int) + ((order['pointUsed'] ?? 0) as int),
+                        consumerPrice: (product['consumerPrice'] ?? 0) as int,
+                        brand: '${product['brand'] ?? ''}',
                         isSelected: isSelected(orderId),
                         onSelectChanged: (val) => toggleSelection(orderId, val ?? false),
                         dDay: 'D-90',
@@ -561,8 +590,8 @@ class _OrderScreenState extends State<OrderScreen> {
                         onRefundPressed: () {
                           final refundRateStr = product['refundProbability']?.toString() ?? '0';
                           final refundRate = double.tryParse(refundRateStr) ?? 0.0;
-                          final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
-                          final refundAmount = (purchasePrice * refundRate / 100).floor();
+                          final purchasePrice = ((order['paymentAmount'] ?? 0) as int) + ((order['pointUsed'] ?? 0) as int);
+                          final int refundAmount = (purchasePrice * refundRate / 100).floor();
 
                           final dialogContext = context;
 
@@ -578,7 +607,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                     Navigator.pop(context);
                                     final refunded = await OrderScreenController.refundOrder(
                                       orderId, refundRate,
-                                      description: '[${product['brand']}] ${product['name']} 포인트 환급',
+                                      description: '[${product['brand'] ?? ''}] ${product['name'] ?? ''} 포인트 환급',
                                     );
 
                                     if (refunded != null && dialogContext.mounted) {
@@ -592,7 +621,7 @@ class _OrderScreenState extends State<OrderScreen> {
                                               onPressed: () {
                                                 Navigator.pop(dialogContext);
                                                 setState(() {
-                                                  _productPageItems.removeWhere((o) => o['_id'] == orderId);
+                                                  _productPageItems.removeWhere((o) => (o['_id'] ?? '').toString() == orderId);
                                                   selectedOrderIds.remove(orderId);
                                                 });
                                               },
@@ -622,27 +651,50 @@ class _OrderScreenState extends State<OrderScreen> {
                           );
                         },
                         onGiftPressed: () {
+                          final productId = (product['_id'] ?? '').toString();
                           Navigator.pushNamed(
                             context,
                             '/giftcode/create',
                             arguments: {
-                              'type': 'box',
-                              'boxId': order['box']['_id'],
+                              'type': 'product',        // ✅ 올바른 타입
                               'orderId': orderId,
+                              'productId': productId,   // ✅ productId 전달
                             },
                           ).then((_) async {
-                            await _fetchProductPage(_pageProduct);
+                            await _fetchProductPage(_pageProduct); // 돌아오면 최신반영
                           });
                         },
                         onDeliveryPressed: () {
+                          final productMap = Map<String, dynamic>.from(product);
+                          final boxInfo = Map<String, dynamic>.from(order['box'] ?? {});
+
+                          final log = {
+                            'event': 'onDeliveryPressed',
+                            'orderId': orderId,
+                            'productId': productMap['_id'],
+                            'name': productMap['name'],
+                            'brand': productMap['brand'],
+                            'shippingFee': productMap['shippingFee'],
+                            'price': productMap['price'],
+                            'consumerPrice': productMap['consumerPrice'],
+                            'mainImage': productMap['mainImage'] ?? productMap['mainImageUrl'],
+                            'createdAt': productMap['createdAt'],
+                            'box': {
+                              'boxId': boxInfo['_id'],
+                              'name': boxInfo['name'],
+                              'shippingFee': boxInfo['shippingFee'],
+                            },
+                          };
+                          debugPrint('[OrderScreen] ${jsonEncode(log)}');
+
                           Navigator.pushNamed(
                             context,
                             '/deliveryscreen',
                             arguments: {
-                              'product': product,
+                              'product': productMap,
                               'orderId': orderId,
-                              'decidedAt': order['unboxedProduct']['decidedAt'],
-                              'box': order['box'],
+                              'decidedAt': decidedAt,
+                              'box': boxInfo,
                             },
                           );
                         },
@@ -653,15 +705,19 @@ class _OrderScreenState extends State<OrderScreen> {
 
                 // 하단 페이징
                 Padding(
-                  padding: EdgeInsets.only(bottom: 8.h),
-                  child: PaginationBar(
-                    currentPage: _pageProduct,
-                    totalItems: _totalProductCount,
-                    pageSize: _pageSize,
-                    onPageChanged: (p) async { /* ... */ },
-                    showWhenSinglePage: true, // ✅ 단일 페이지여도 보이게
-                    showWhenEmpty: false,     // 비어있을 때는 숨김 (원하면 true로)
-                  )
+                    padding: EdgeInsets.only(bottom: 8.h),
+                    child: PaginationBar(
+                      currentPage: _pageProduct,
+                      totalItems: _totalProductCount,
+                      pageSize: _pageSize,
+                      onPageChanged: (p) async {
+                        setState(() => isLoading = true);
+                        await _fetchProductPage(p);
+                        if (mounted) setState(() => isLoading = false);
+                      },
+                      showWhenSinglePage: true,
+                      showWhenEmpty: false,
+                    )
                 ),
               ],
             ] else if (selectedTab == 'box') ...[
@@ -680,13 +736,14 @@ class _OrderScreenState extends State<OrderScreen> {
                         value: allBoxSelectedOnPage,
                         onChanged: (val) {
                           setState(() {
+                            // 1) 현재 페이지의 모든 박스 ID 제거
+                            selectedBoxOrderIds.removeAll(
+                              _boxPageItems.map((e) => (e['_id'] ?? '').toString()),
+                            );
+                            // 2) 체크면, 선택 가능한 것만 추가
                             if (val == true) {
                               selectedBoxOrderIds.addAll(
-                                boxSelectableOnPage.map((e) => e['_id'] as String),
-                              );
-                            } else {
-                              selectedBoxOrderIds.removeAll(
-                                _boxPageItems.map((e) => e['_id'] as String),
+                                boxSelectableOnPage.map((e) => (e['_id'] ?? '').toString()),
                               );
                             }
                           });
@@ -715,31 +772,34 @@ class _OrderScreenState extends State<OrderScreen> {
                   child: ListView.builder(
                     itemCount: _boxPageItems.length,
                     itemBuilder: (context, index) {
-                      final order = _boxPageItems[index];
-                      final box   = order['box'];
+                      final order = _boxPageItems[index] as Map<String, dynamic>?;
+                      if (order == null) return const SizedBox.shrink();
+
+                      final box = order['box'] as Map<String, dynamic>?;
+                      final orderId = (order['_id'] ?? '').toString();
 
                       return BoxStorageCard(
-                        key: ValueKey(order['_id'] ?? index),
+                        key: ValueKey(orderId.isEmpty ? index : orderId),
                         boxId: box?['_id'] ?? '',
-                        orderId: order['_id'] ?? '',
+                        orderId: orderId,
                         boxName: box?['name'] ?? '알 수 없음',
                         createdAt: order['createdAt'] ?? DateTime.now().toIso8601String(),
-                        paymentAmount: order['paymentAmount'] ?? 0,
-                        paymentType: order['paymentType'] ?? 'point',
-                        pointUsed: order['pointUsed'] ?? 0,
-                        boxPrice: box?['price'] ?? 0,
+                        paymentAmount: (order['paymentAmount'] ?? 0) as int,
+                        paymentType: (order['paymentType'] ?? 'point').toString(),
+                        pointUsed: (order['pointUsed'] ?? 0) as int,
+                        boxPrice: (box?['price'] ?? 0) as int,
                         status: (order['status'] ?? 'paid').toString(),
 
-                        isSelected: isBoxSelected(order['_id']),
-                        onSelectChanged: (val) => toggleBoxSelection(order['_id'], val ?? false),
-                        isDisabled: order['giftCode'] != null,
+                        isSelected: isBoxSelected(orderId),
+                        onSelectChanged: (val) => toggleBoxSelection(orderId, val ?? false),
+                        isDisabled: (order['giftCode'] != null) || (order['giftCodeExists'] == true),
 
                         onOpenPressed: () async {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => OpenBoxVideoScreen(
-                                orderId: order['_id'],
+                                orderId: orderId,
                                 isBatch: true,
                               ),
                             ),
@@ -753,7 +813,7 @@ class _OrderScreenState extends State<OrderScreen> {
                             arguments: {
                               'type': 'box',
                               'boxId': box?['_id'] ?? '',
-                              'orderId': order['_id'] ?? '',
+                              'orderId': orderId,
                             },
                           ).then((_) async {
                             await _fetchBoxPage(_pageBox);
@@ -769,7 +829,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   ),
                 ),
 
-                // ✅ 하단 페이징 (리스트 아래 같은 Column 레벨)
+                // 하단 페이징
                 Padding(
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: PaginationBar(
@@ -797,18 +857,24 @@ class _OrderScreenState extends State<OrderScreen> {
                     itemCount: _shippedPageItems.length,
                     separatorBuilder: (_, __) => SizedBox(height: 16.h),
                     itemBuilder: (context, index) {
-                      final order = _shippedPageItems[index];
-                      final product = order['unboxedProduct']['product'];
+                      final order = _shippedPageItems[index] as Map<String, dynamic>?;
+                      if (order == null) return const SizedBox.shrink();
+
+                      final Map<String, dynamic>? product =
+                      (order['unboxedProduct']?['product'] as Map?)?.cast<String, dynamic>();
+                      final decidedAt = order['unboxedProduct']?['decidedAt'];
+                      final orderId = (order['_id'] ?? '').toString();
+                      if (product == null) return const SizedBox.shrink();
 
                       return ShippedProductCard(
-                        productId: product['_id'] ?? '',
+                        productId: (product['_id'] ?? '').toString(),
                         mainImageUrl: _resolveImage(product['mainImageUrl'] ?? product['mainImage']),
-                        productName: '${product['name']}',
-                        orderId: order['_id'],
-                        acquiredAt: '${order['unboxedProduct']['decidedAt'].substring(0, 16)} 획득',
-                        purchasePrice: (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0),
-                        consumerPrice: product['consumerPrice'],
-                        brand: '${product['brand']}',
+                        productName: '${product['name'] ?? ''}',
+                        orderId: orderId,
+                        acquiredAt: '${_safeDate16(decidedAt)} 획득',
+                        purchasePrice: ((order['paymentAmount'] ?? 0) as int) + ((order['pointUsed'] ?? 0) as int),
+                        consumerPrice: (product['consumerPrice'] ?? 0) as int,
+                        brand: '${product['brand'] ?? ''}',
                         dDay: 'D-90',
                         isLocked: false,
                         onCopyPressed: () {

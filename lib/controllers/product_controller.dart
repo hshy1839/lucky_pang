@@ -181,6 +181,7 @@ class ProductController {
           'description': product['description'] ?? '',
           'sizeStock': product['sizeStock'] ?? {},
           'isSourceSoldOut': product['isSourceSoldOut'] ?? false,
+          'shippingFee': product['shippingFee'] ?? 0,
           'refundProbability': product['refundProbability']?.toString() ?? '',
         };
       }

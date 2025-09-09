@@ -7,11 +7,43 @@ import 'package:intl/intl.dart';
 
 import '../../../../routes/base_url.dart';
 import '../../product_activity/product_detail_screen.dart';
+// ✅ 내 정보 가져오기(컨트롤러는 수정하지 않음)
+import '../../../../controllers/userinfo_screen_controller.dart';
 
-class UnboxRealtimeList extends StatelessWidget {
+class UnboxRealtimeList extends StatefulWidget {
   final List<Map<String, dynamic>> unboxedOrders;
 
   const UnboxRealtimeList({super.key, required this.unboxedOrders});
+
+  @override
+  State<UnboxRealtimeList> createState() => _UnboxRealtimeListState();
+}
+
+class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
+  // ✅ 내 정보(컨트롤러는 그대로 사용)
+  final UserInfoScreenController _controller = UserInfoScreenController();
+  String myNickname = '';
+  String? myProfileImage = '';
+  bool meLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyInfo(); // ProfileScreen처럼 가져오기
+  }
+
+  Future<void> _loadMyInfo() async {
+    setState(() => meLoading = true);
+    await _controller.fetchUserInfo(context); // ✅ 컨트롤러는 수정 없이 사용
+    setState(() {
+      myNickname = _controller.nickname;
+      myProfileImage = _controller.profileImage; // 보통 S3 presigned
+      meLoading = false;
+    });
+
+    debugPrint('[UnboxRealtimeList] myNickname=$myNickname');
+    debugPrint('[UnboxRealtimeList] myProfileImage=$myProfileImage');
+  }
 
   // ──────────────────────────────────────────────────
   // ⏱ 상대 시간
@@ -26,7 +58,40 @@ class UnboxRealtimeList extends StatelessWidget {
   }
 
   // ──────────────────────────────────────────────────
-  // URL Sanitizer (절대 URL이 앞에 서버 주소가 붙은 경우 교정)
+  // (ProfileScreen과 동일 규칙) 프로필 이미지 URL 빌더
+  // ──────────────────────────────────────────────────
+  String _sanitizeAbsoluteProfile(String value) {
+    if (value.isEmpty) return value;
+    if (value.startsWith('http://') || value.startsWith('https://')) return value;
+    final httpsIdx = value.indexOf('https://');
+    if (httpsIdx > 0) return value.substring(httpsIdx);
+    final httpIdx = value.indexOf('http://');
+    if (httpIdx > 0) return value.substring(httpIdx);
+    return value;
+  }
+
+  String? _buildProfileImageUrl(dynamic raw) {
+    if (raw == null) return null;
+    final s0 = raw.toString().trim();
+    if (s0.isEmpty) return null;
+
+    String out;
+    if (s0.startsWith('http://') || s0.startsWith('https://')) {
+      out = _sanitizeAbsoluteProfile(s0);
+    } else if (s0.startsWith('/uploads/')) {
+      out = '${BaseUrl.value}:7778$s0';
+    } else {
+      out = '${BaseUrl.value}:7778/media/$s0';
+    }
+
+    // 디버그 로그(프로필 규칙 확인용)
+    debugPrint('[UnboxRealtimeList] raw profileImage: $s0');
+    debugPrint('[UnboxRealtimeList] resolved imageUrl: $out');
+    return out;
+  }
+
+  // ──────────────────────────────────────────────────
+  // URL Sanitizer (상품 등 다른 이미지용)
   // ──────────────────────────────────────────────────
   String _sanitizeAbsolute(String value) {
     final v = value.trim();
@@ -42,21 +107,10 @@ class UnboxRealtimeList extends StatelessWidget {
     return v;
   }
 
-  bool _isPresignedS3(Uri? u) {
-    if (u == null) return false;
-    final host = (u.host).toLowerCase();
-    final qp = u.queryParameters;
-    final hasS3 = host.contains('amazonaws.com');
-    final hasSig = qp.keys.any((k) => k.toLowerCase().startsWith('x-amz-')) ||
-        qp.containsKey('X-Amz-Algorithm') ||
-        qp.containsKey('X-Amz-Signature');
-    return hasS3 && hasSig;
-  }
-
   // 우리 서버 베이스
   String get _server => '${BaseUrl.value}:7778';
 
-  // 프로필/상품 이미지 공용 URL 빌더
+  // 상품/기타 이미지 공용 URL 빌더 (HEIC 프록시 등 포함)
   String? _buildImageUrl(dynamic raw, {bool isProfile = false}) {
     if (raw == null) return null;
     String s = raw.toString().trim();
@@ -72,10 +126,12 @@ class UnboxRealtimeList extends StatelessWidget {
       final uri = Uri.tryParse(s);
       final lower = s.toLowerCase();
 
-      if (isProfile && _isPresignedS3(uri)) return s;
+      // 프로필의 절대 URL은 그대로 사용
+      if (isProfile) return s;
 
+      // 상품 이미지가 HEIC면 프록시로
       final isHeic = lower.endsWith('.heic') || lower.contains('.heic?');
-      if (!isProfile && isHeic) {
+      if (isHeic) {
         final rawPath = uri?.path ?? '';
         final key = rawPath.startsWith('/') ? rawPath.substring(1) : rawPath;
         final encodedKey = key.split('/').map(Uri.encodeComponent).join('/');
@@ -198,8 +254,7 @@ class UnboxRealtimeList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 요청사항: 20,000원 이상 + 최신순 + 최대 30개
-    final visibleOrders = unboxedOrders
+    final visibleOrders = widget.unboxedOrders
         .where((o) => _priceOf(o) >= 20000)
         .toList()
       ..sort((a, b) => DateTime.parse(b['unboxedProduct']?['decidedAt'] ?? '')
@@ -214,18 +269,17 @@ class UnboxRealtimeList extends StatelessWidget {
       );
     }
 
-    // 카드 사이즈 축소(한 화면에 더 많은 카드 노출)
-    final double kImage = 96.r;          // 이미지 한 변
-    final double kCardHeight = kImage;   // 텍스트 영역도 같은 높이
-    final double kGap = 8.w;             // 좌우 간격 축소
-    final double kPad = 10.w;            // 카드 내부 패딩 축소
+    final double kImage = 96.r;
+    final double kCardHeight = kImage;
+    final double kGap = 8.w;
+    final double kPad = 10.w;
 
     return Container(
       color: Colors.white,
       child: ListView.separated(
         padding: EdgeInsets.fromLTRB(12.w, 6.h, 12.w, 12.h),
         itemCount: latestOrders.length,
-        separatorBuilder: (_, __) => SizedBox(height: 8.h), // 아이템 간 간격 축소
+        separatorBuilder: (_, __) => SizedBox(height: 8.h),
         itemBuilder: (context, index) {
           final order = latestOrders[index];
           final user = order['user'];
@@ -233,19 +287,33 @@ class UnboxRealtimeList extends StatelessWidget {
 
           final productId = (product?['_id'] ?? product?['id'] ?? product?['productId'] ?? '').toString();
           final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
-          final brand = (product?['brand'] ?? product?['brandName'])?.toString();
           final name = product?['name']?.toString() ?? '상품명 없음';
           final price = _priceOf(order);
 
           final productImgUrl = _buildImageUrl(
             product?['mainImageUrl'] ?? product?['mainImage'] ?? product?['image'],
           );
-          final profileImgUrl = _buildImageUrl(
-            user?['profileImageUrl'] ?? user?['profileImage'],
-            isProfile: true,
-          );
 
-          final timeText = decidedAt != null ? _timeAgo(decidedAt.toLocal()) : '';
+          // row의 기본 프로필(서버가 준 값)
+          final rawProfile =
+              user?['profileImage'] ??
+                  user?['profileImageUrl'] ??
+                  user?['profile_image'] ??
+                  user?['profile'];
+
+          // ✅ row의 닉네임이 내 닉네임과 같으면 → fetchUserInfo의 내 이미지 사용
+          final rowNickname = user?['nickname']?.toString() ?? '';
+          String? profileImgUrl;
+          if (myNickname.isNotEmpty &&
+              rowNickname.isNotEmpty &&
+              rowNickname == myNickname &&
+              (myProfileImage != null && myProfileImage!.trim().isNotEmpty)) {
+            profileImgUrl = _buildProfileImageUrl(myProfileImage); // S3 presigned 기대
+            debugPrint('[UnboxRealtimeList] USING MY presigned for $rowNickname');
+          } else {
+            profileImgUrl = _buildProfileImageUrl(rawProfile); // row 값 사용
+          }
+
           final decidedAtText = decidedAt != null
               ? DateFormat('yyyy-MM-dd HH:mm').format(decidedAt.toLocal())
               : '';
@@ -266,7 +334,7 @@ class UnboxRealtimeList extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 상품 이미지 (더 작게)
+                // 상품 이미지
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8.r),
                   child: GestureDetector(
@@ -298,34 +366,33 @@ class UnboxRealtimeList extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: kGap,),
-                // 텍스트 영역(폰트/줄간격 축소)
+                SizedBox(width: kGap),
+                // 텍스트 영역
                 Expanded(
                   child: SizedBox(
                     height: kCardHeight,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 프로필 + 닉네임 + 시간 (한 줄에 타이트하게)
+                        // 프로필 + 닉네임
                         Row(
                           children: [
                             _profileAvatar(profileImgUrl, 9.r),
                             SizedBox(width: 6.w),
                             Expanded(
                               child: Text(
-                                user?['nickname']?.toString() ?? '익명',
+                                rowNickname.isNotEmpty ? rowNickname : '익명',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(color: Colors.black54, fontSize: 12.sp),
                               ),
                             ),
-
                           ],
                         ),
 
                         SizedBox(height: 4.h),
 
-                        // 상품명 (조금 작게, bold 유지)
+                        // 상품명
                         Text(
                           name,
                           maxLines: 1,
@@ -345,7 +412,7 @@ class UnboxRealtimeList extends StatelessWidget {
 
                         const Spacer(),
 
-                        // 박스명 + 결정 시각 (오른쪽 정렬, 더 타이트)
+                        // 박스명 + 결정 시각
                         if (boxName.isNotEmpty || decidedAtText.isNotEmpty)
                           Align(
                             alignment: Alignment.bottomRight,
@@ -386,22 +453,31 @@ class UnboxRealtimeList extends StatelessWidget {
     );
   }
 
-  // 프로필 아바타 (에러/플레이스홀더 포함) — 더 작게
-  Widget _profileAvatar(String? url, double radius) {
+  // 프로필 아바타 (에러/플레이스홀더 포함)
+  Widget _profileAvatar(String? rawUrl, double radius) {
+    final profileUrl = _buildProfileImageUrl(rawUrl);
+
     return CircleAvatar(
       radius: radius,
       backgroundColor: Colors.grey[300],
       child: ClipOval(
-        child: (url != null && url.isNotEmpty)
+        child: (profileUrl != null && profileUrl.isNotEmpty)
             ? CachedNetworkImage(
-          imageUrl: url,
+          imageUrl: profileUrl,
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
+          memCacheWidth: (radius * 2).ceil() * 3,
+          memCacheHeight: (radius * 2).ceil() * 3,
           placeholder: (c, _) => Center(
-            child: SizedBox(width: radius, height: radius, child: const CircularProgressIndicator(strokeWidth: 2)),
+            child: SizedBox(
+              width: radius,
+              height: radius,
+              child: const CircularProgressIndicator(strokeWidth: 2),
+            ),
           ),
-          errorWidget: (c, _, __) => Icon(Icons.person, size: radius * 1.6, color: Colors.grey[600]),
+          errorWidget: (c, _, __) =>
+              Icon(Icons.person, size: radius * 1.6, color: Colors.grey[600]),
         )
             : Icon(Icons.person, size: radius * 1.6, color: Colors.grey[600]),
       ),
