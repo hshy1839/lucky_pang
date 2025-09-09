@@ -305,13 +305,14 @@ class _OrderScreenState extends State<OrderScreen> {
       final proceed = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text('일괄열기'),
           content: Text('선택된 ${validSelected.length}개 중\n'
               '최대 $_maxBatchOpen개만 일괄 열기가 가능합니다.\n'
               '진행 하시겠습니까?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('진행')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소', style: TextStyle(color: Colors.red),)),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('진행', style: TextStyle(color: Colors.blue))),
           ],
         ),
       );
@@ -729,15 +730,24 @@ class _OrderScreenState extends State<OrderScreen> {
                     itemCount: _boxPageItems.length,
                     itemBuilder: (context, index) {
                       final order = _boxPageItems[index];
+                      final box   = order['box'];
+
                       return BoxStorageCard(
-                        boxId: order['box']?['_id'] ?? '',
-                        orderId: order['_id'],
-                        boxName: order['box']['name'] ?? '알 수 없음',
-                        createdAt: order['createdAt'] ?? '',
+                        key: ValueKey(order['_id'] ?? index),
+                        boxId: box?['_id'] ?? '',
+                        orderId: order['_id'] ?? '',
+                        boxName: box?['name'] ?? '알 수 없음',
+                        createdAt: order['createdAt'] ?? DateTime.now().toIso8601String(),
                         paymentAmount: order['paymentAmount'] ?? 0,
                         paymentType: order['paymentType'] ?? 'point',
                         pointUsed: order['pointUsed'] ?? 0,
-                        boxPrice: order['box']['price'] ?? 0,
+                        boxPrice: box?['price'] ?? 0,
+                        status: (order['status'] ?? 'paid').toString(),
+
+                        isSelected: isBoxSelected(order['_id']),
+                        onSelectChanged: (val) => toggleBoxSelection(order['_id'], val ?? false),
+                        isDisabled: order['giftCode'] != null,
+
                         onOpenPressed: () async {
                           await Navigator.push(
                             context,
@@ -756,22 +766,24 @@ class _OrderScreenState extends State<OrderScreen> {
                             '/giftcode/create',
                             arguments: {
                               'type': 'box',
-                              'boxId': order['box']['_id'],
-                              'orderId': order['_id'],
+                              'boxId': box?['_id'] ?? '',
+                              'orderId': order['_id'] ?? '',
                             },
                           ).then((_) async {
                             await _fetchBoxPage(_pageBox);
                           });
                         },
-                        isSelected: isBoxSelected(order['_id']),
-                        onSelectChanged: (val) => toggleBoxSelection(order['_id'], val ?? false),
-                        isDisabled: order['giftCode'] != null,
+
+                        // ✅ 추가: 취소요청 성공 시 리스트 재조회
+                        onCancelled: () async {
+                          await _fetchBoxPage(_pageBox);
+                        },
                       );
                     },
                   ),
-                ),
+    ),
 
-                Padding(
+    Padding(
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: PaginationBar(
                     currentPage: _pageBox,

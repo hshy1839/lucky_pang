@@ -429,6 +429,12 @@ class OrderScreenController {
       return [];
     }
   }
+  static Future<bool> cancelPayment(String orderId) async {
+    // TODO: 실제 환불/결제취소 API 엔드포인트로 교체
+    // final res = await http.post(Uri.parse('$BASE/api/orders/$orderId/cancel'));
+    // return res.statusCode == 200;
+    return true;
+  }
   static Future<void> requestCardPayment({
     required BuildContext context,
     required String boxId,
@@ -608,12 +614,12 @@ class OrderScreenController {
     );
   }
 
-  static Future<void> updateOrderStatus({
+  static Future<bool> updateOrderStatus({
     required String orderId,
     required String status,
   }) async {
     final token = await _storage.read(key: 'token');
-    if (token == null) return;
+    if (token == null) return false;
 
     final response = await http.patch(
       _apiUri('/api/order/$orderId'),
@@ -625,9 +631,15 @@ class OrderScreenController {
     );
 
     if (response.statusCode != 200) {
-      debugPrint('❌ 주문 상태 업데이트 실패: ${response.statusCode}');
+      debugPrint('❌ 주문 상태 업데이트 실패: ${response.statusCode} ${response.body}');
+      return false;
     } else {
       debugPrint('✅ 주문 상태 업데이트 성공');
+      return true;
     }
   }
+
+
 }
+
+
