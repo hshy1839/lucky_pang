@@ -5,7 +5,12 @@ class PaginationBar extends StatelessWidget {
   final int totalItems;
   final int pageSize;
   final ValueChanged<int> onPageChanged;
-  final int maxButtons; // 노출 버튼 수 (가운데 정렬, 양끝 ... 처리)
+
+  /// 1페이지만 있어도 보일지
+  final bool showWhenSinglePage;
+
+  /// totalItems==0이어도 1페이지로 보일지
+  final bool showWhenEmpty;
 
   const PaginationBar({
     super.key,
@@ -13,43 +18,61 @@ class PaginationBar extends StatelessWidget {
     required this.totalItems,
     required this.pageSize,
     required this.onPageChanged,
-    this.maxButtons = 7,
+    this.showWhenSinglePage = true,
+    this.showWhenEmpty = false,
   });
 
-  int get totalPages =>
-      (totalItems <= 0) ? 1 : ((totalItems + pageSize - 1) ~/ pageSize);
-
-  List<int> _visiblePages() {
-    final tp = totalPages;
-    if (tp <= maxButtons) {
-      return List.generate(tp, (i) => i + 1);
-    }
-
-    final half = maxButtons ~/ 2; // 7 -> 3
-    int start = currentPage - half;
-    int end = currentPage + half;
-
-    if (start < 1) {
-      end += (1 - start);
-      start = 1;
-    }
-    if (end > tp) {
-      start -= (end - tp);
-      end = tp;
-    }
-    if (start < 1) start = 1;
-
-    return List.generate(end - start + 1, (i) => start + i);
+  int get totalPages {
+    if (totalItems <= 0) return showWhenEmpty ? 1 : 0;
+    return ((totalItems + pageSize - 1) ~/ pageSize);
   }
 
   @override
   Widget build(BuildContext context) {
     final tp = totalPages;
-    if (tp <= 1) return const SizedBox.shrink();
+    if (tp == 0) return const SizedBox.shrink();
+    if (tp == 1 && !showWhenSinglePage) return const SizedBox.shrink();
 
-    final pages = _visiblePages();
-    final showLeftEllipsis = pages.first > 1;
-    final showRightEllipsis = pages.last < tp;
+    // 페이지 목록 구성: 현재 페이지는 항상 노출
+    final List<Object> tokens = []; // int(페이지) 또는 String('...')
+
+    void addPage(int p) => tokens.add(p);
+    void addDots() {
+      if (tokens.isEmpty || tokens.last == '...') return;
+      tokens.add('...');
+    }
+
+    if (tp <= 7) {
+      // 페이지 수가 적으면 전부 표시
+      for (int i = 1; i <= tp; i++) addPage(i);
+    } else {
+      // 항상 첫 페이지
+      addPage(1);
+
+      if (currentPage <= 3) {
+        // 앞쪽에 있을 때: 1 2 3 4 … tp
+        addPage(2);
+        addPage(3);
+        addPage(4);
+        addDots();
+        addPage(tp);
+      } else if (currentPage >= tp - 2) {
+        // 뒤쪽에 있을 때: 1 … tp-3 tp-2 tp-1 tp
+        addDots();
+        addPage(tp - 3);
+        addPage(tp - 2);
+        addPage(tp - 1);
+        addPage(tp);
+      } else {
+        // 중간: 1 … cp-1 cp cp+1 … tp
+        addDots();
+        addPage(currentPage - 1);
+        addPage(currentPage);
+        addPage(currentPage + 1);
+        addDots();
+        addPage(tp);
+      }
+    }
 
     Widget numBtn(int p) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -57,16 +80,19 @@ class PaginationBar extends StatelessWidget {
         onPressed: p == currentPage ? null : () => onPageChanged(p),
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          minimumSize: const Size(40, 36),
           side: BorderSide(
             color: p == currentPage
                 ? Theme.of(context).primaryColor
                 : const Color(0xFFE5E7EB),
           ),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Text(
           '$p',
           style: TextStyle(
             fontWeight: FontWeight.w700,
+            fontSize: 14,
             color: p == currentPage
                 ? Theme.of(context).primaryColor
                 : const Color(0xFF6B7280),
@@ -77,24 +103,50 @@ class PaginationBar extends StatelessWidget {
 
     Widget dot() => const Padding(
       padding: EdgeInsets.symmetric(horizontal: 6),
-      child: Text('...', style: TextStyle(color: Color(0xFF9CA3AF))),
+      child: Text('…', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 0),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (showLeftEllipsis) numBtn(1),
-          if (showLeftEllipsis) dot(),
+    Widget iconBtn({
+      required IconData icon,
+      required bool enabled,
+      required VoidCallback onTap,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: IconButton(
+          onPressed: enabled ? onTap : null,
+          icon: Icon(icon, size: 20),
+          color: enabled ? Theme.of(context).primaryColor : const Color(0xFF9CA3AF),
+          splashRadius: 18,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          padding: EdgeInsets.zero,
+        ),
+      );
+    }
 
-          ...pages.map(numBtn),
+    final canPrev = currentPage > 1;
+    final canNext = currentPage < tp;
 
-          if (showRightEllipsis) dot(),
-          if (showRightEllipsis) numBtn(totalPages),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        iconBtn(
+          icon: Icons.chevron_left,
+          enabled: canPrev,
+          onTap: () => onPageChanged(currentPage - 1),
+        ),
+
+        ...tokens.map((t) {
+          if (t is String) return dot();
+          return numBtn(t as int);
+        }).toList(),
+
+        iconBtn(
+          icon: Icons.chevron_right,
+          enabled: canNext,
+          onTap: () => onPageChanged(currentPage + 1),
+        ),
+      ],
     );
   }
 }

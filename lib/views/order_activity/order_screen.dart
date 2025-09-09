@@ -9,7 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
 import '../../controllers/giftcode_controller.dart';
-import '../../controllers/order_screen_controller.dart'; // (있다면 유지)
+import '../../controllers/order_screen_controller.dart';
 import '../../routes/base_url.dart';
 import '../widget/box_storage_card.dart';
 import '../widget/pagination_bar.dart';
@@ -54,7 +54,7 @@ class _OrderScreenState extends State<OrderScreen> {
   Set<String> selectedBoxOrderIds = {};  // 박스 탭 선택 (현재 페이지 한정)
   Map<String, bool> lockedProductIds = {}; // orderId -> manual lock (페이지 내)
 
-  // URL 유틸 (네 프로젝트 규칙)
+  // URL 유틸
   String get _root => BaseUrl.value.trim().replaceAll(RegExp(r'/+$'), '');
   String get _base {
     final u = Uri.tryParse(_root);
@@ -110,8 +110,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
   // ─────────────────────────────────────────────────────────────
   // 서버사이드 페이지 API 호출부
-  // 🔧 TODO: 아래 3개의 엔드포인트를 실제 서버에 맞게 변경하세요.
-  // 응답 예: { "items": [...], "totalCount": 123 }
   // ─────────────────────────────────────────────────────────────
 
   Future<void> _fetchBoxPage(int page) async {
@@ -120,8 +118,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
     try {
       final uri = Uri.parse(
-        // 🔧 TODO: 박스(미개봉, paid 상태) 만 반환
-        // 예시: GET /api/orders/boxes?userId=...&status=paid&unboxed=false&page=&limit=
         '${_base}/api/orders/boxes'
             '?userId=$userId&status=paid&unboxed=false&page=$page&limit=$_pageSize',
       );
@@ -146,7 +142,7 @@ class _OrderScreenState extends State<OrderScreen> {
         _boxPageItems = items.cast<Map<String, dynamic>>();
         _totalBoxCount = (body['totalCount'] ?? _boxPageItems.length) as int;
         _pageBox = page;
-        selectedBoxOrderIds.clear(); // 페이지 전환 시 선택 초기화 (페이지 기준 UX)
+        selectedBoxOrderIds.clear(); // 페이지 전환 시 선택 초기화
       });
     } catch (e) {
       debugPrint('[_fetchBoxPage] $e');
@@ -168,8 +164,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
     try {
       final uri = Uri.parse(
-        // 🔧 TODO: 당첨상품(미배송, 미환급) 만 반환
-        // 예시: GET /api/orders/unboxed-products?userId=...&status=unshipped&refunded=false&page=&limit=
         '${_base}/api/orders/unboxed-products'
             '?userId=$userId&status=unshipped&refunded=false&page=$page&limit=$_pageSize',
       );
@@ -200,7 +194,7 @@ class _OrderScreenState extends State<OrderScreen> {
         _totalProductCount = (body['totalCount'] ?? _productPageItems.length) as int;
         _pageProduct = page;
         selectedOrderIds.clear();
-        lockedProductIds.clear(); // 페이지 전환 시 잠금 로컬 상태 리셋
+        lockedProductIds.clear();
       });
     } catch (e) {
       debugPrint('[_fetchProductPage] $e');
@@ -222,8 +216,6 @@ class _OrderScreenState extends State<OrderScreen> {
 
     try {
       final uri = Uri.parse(
-        // 🔧 TODO: 배송신청된 상품만 반환 (tracking 등 포함 가능)
-        // 예시: GET /api/orders/unboxed-products?userId=...&status=shipped&page=&limit=
         '${_base}/api/orders/unboxed-products'
             '?userId=$userId&status=shipped&page=$page&limit=$_pageSize',
       );
@@ -332,13 +324,11 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
 
-    // 현재 페이지 갱신 (서버 반영 후 다시 로드)
     await _fetchBoxPage(_pageBox);
     if (mounted) setState(() => selectedBoxOrderIds.clear());
   }
 
   Future<void> _handleBatchRefund() async {
-    // 현재 페이지에서 선택된 상품만
     final selectedOrders = _productPageItems
         .where((o) => selectedOrderIds.contains(o['_id']))
         .toList();
@@ -385,13 +375,11 @@ class _OrderScreenState extends State<OrderScreen> {
         if (refunded != null) successCnt++;
       }
 
-      // 현재 페이지에서 제거 & 선택 초기화
       setState(() {
         _productPageItems.removeWhere((o) => selectedOrderIds.contains(o['_id']));
         selectedOrderIds.clear();
       });
     } catch (_) {
-      // 필요 시 에러 처리
     } finally {
       if (mounted) _hideFullscreenLoader();
     }
@@ -408,7 +396,6 @@ class _OrderScreenState extends State<OrderScreen> {
       ),
     );
 
-    // 서버 totalCount 변동 가능 → 현재 페이지 재조회 권장
     await _fetchProductPage(_pageProduct);
   }
 
@@ -614,7 +601,6 @@ class _OrderScreenState extends State<OrderScreen> {
                                           ],
                                         ),
                                       );
-                                      // 재조회
                                       await _fetchProductPage(_pageProduct);
                                     } else if (dialogContext.mounted) {
                                       await showDialog(
@@ -672,12 +658,10 @@ class _OrderScreenState extends State<OrderScreen> {
                     currentPage: _pageProduct,
                     totalItems: _totalProductCount,
                     pageSize: _pageSize,
-                    onPageChanged: (p) async {
-                      setState(() => isLoading = true);
-                      await _fetchProductPage(p);
-                      if (mounted) setState(() => isLoading = false);
-                    },
-                  ),
+                    onPageChanged: (p) async { /* ... */ },
+                    showWhenSinglePage: true, // ✅ 단일 페이지여도 보이게
+                    showWhenEmpty: false,     // 비어있을 때는 숨김 (원하면 true로)
+                  )
                 ),
               ],
             ] else if (selectedTab == 'box') ...[
@@ -687,6 +671,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   subtitle: '다음 럭키박스 당첨의 주인공이 되어보세요!',
                 ),
               ] else ...[
+                // 상단 툴바
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                   child: Row(
@@ -725,6 +710,7 @@ class _OrderScreenState extends State<OrderScreen> {
                   ),
                 ),
 
+                // 리스트
                 Expanded(
                   child: ListView.builder(
                     itemCount: _boxPageItems.length,
@@ -774,16 +760,17 @@ class _OrderScreenState extends State<OrderScreen> {
                           });
                         },
 
-                        // ✅ 추가: 취소요청 성공 시 리스트 재조회
+                        // 취소요청 성공 시 리스트 재조회
                         onCancelled: () async {
                           await _fetchBoxPage(_pageBox);
                         },
                       );
                     },
                   ),
-    ),
+                ),
 
-    Padding(
+                // ✅ 하단 페이징 (리스트 아래 같은 Column 레벨)
+                Padding(
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: PaginationBar(
                     currentPage: _pageBox,
@@ -936,11 +923,13 @@ class _OrderScreenState extends State<OrderScreen> {
           children: [
             Image.asset('assets/images/BoxEmptyStateImage.png', width: 192.w, height: 192.w),
             SizedBox(height: 24.h),
-            Text(title,
+            Text(
+              title,
               style: TextStyle(fontSize: 23.sp, fontWeight: FontWeight.w700, color: Colors.black),
             ),
             const SizedBox(height: 10),
-            Text(subtitle,
+            Text(
+              subtitle,
               style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w400, color: const Color(0xFF465461)),
             ),
             SizedBox(height: 64.h),
@@ -954,7 +943,8 @@ class _OrderScreenState extends State<OrderScreen> {
                     backgroundColor: const Color(0xFFFF5C43),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.r)),
                   ),
-                  child: Text('럭키박스 구매하기',
+                  child: Text(
+                    '럭키박스 구매하기',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.sp),
                   ),
                 ),
@@ -968,7 +958,8 @@ class _OrderScreenState extends State<OrderScreen> {
                 child: OutlinedButton.icon(
                   onPressed: () => Navigator.pushNamed(context, '/giftCode'),
                   icon: const Icon(Icons.qr_code, color: Color(0xFFFF5C43)),
-                  label: Text('선물코드 입력하기',
+                  label: Text(
+                    '선물코드 입력하기',
                     style: TextStyle(color: const Color(0xFFFF5C43), fontWeight: FontWeight.bold, fontSize: 14.sp),
                   ),
                   style: OutlinedButton.styleFrom(
