@@ -54,14 +54,15 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
   @override
   void initState() {
     super.initState();
-    _checkGiftCode();
+    _checkGiftCode(force: true);
   }
 
-  Future<void> _checkGiftCode() async {
+  Future<void> _checkGiftCode({bool force = false}) async {
     final exists = await GiftCodeController.checkGiftCodeExists(
       type: 'product',
       orderId: widget.orderId,
       productId: widget.productId,
+      forceRefresh: force,
     );
 
     if (!mounted) return;
@@ -339,7 +340,7 @@ class _ProductStorageCardState extends State<ProductStorageCard> {
                         'productId': widget.productId,
                       },
                     );
-                    await _checkGiftCode(); // 복귀 후 다시 확인
+                    await _checkGiftCode(force: true);
                   },
                   enabled: !(_loading || widget.isLocked || widget.isManuallyLocked),
                 ),

@@ -93,56 +93,65 @@ class GiftCodeController {
     _stamp[k] = DateTime.now();
   }
 
+  // GiftCodeController.dart
+
   static Future<bool> checkGiftCodeExists({
     required String type,
     String? boxId,
     String? orderId,
     String? productId,
+    bool forceRefresh = false, // ✅ 추가
   }) async {
-    final k = _key(type: type, boxId: boxId, orderId: orderId, productId: productId);
+    try {
+      final token = await _storage.read(key: 'token');
+      final fromUser = await _storage.read(key: 'userId');
+      if (token == null || fromUser == null) return false;
 
-    // 1) 캐시 히트(신선)면 네트워크 스킵
-    if (_cache.containsKey(k) && _isFresh(k)) return _cache[k]!;
+      // ✅ 사용자 포함한 캐시 키
+      final baseKey = _key(type: type, boxId: boxId, orderId: orderId, productId: productId);
+      final k = 'u=$fromUser|$baseKey';
 
-    // 2) 같은 키 요청이 이미 진행 중이면 그 Future에 탑승
-    final live = _inflight[k];
-    if (live != null) return live;
+      // ✅ 강제 새로고침이 아니고 신선하면 캐시 사용
+      if (!forceRefresh && _cache.containsKey(k) && _isFresh(k)) return _cache[k]!;
 
-    // 3) 실제 네트워크 (네가 준 원본 로직 그대로 묶기)
-    final fut = () async {
-      try {
-        final token = await _storage.read(key: 'token');
-        final fromUser = await _storage.read(key: 'userId');
-        if (token == null || fromUser == null) return false;
+      final live = _inflight[k];
+      if (live != null && !forceRefresh) return live;
 
-        final queryParams = {
-          'type': type,
-          'fromUser': fromUser,
-          if (boxId != null) 'boxId': boxId,
-          if (orderId != null) 'orderId': orderId,
-          if (productId != null) 'productId': productId,
-        };
+      final fut = () async {
+        try {
+          final queryParams = {
+            'type': type,
+            'fromUser': fromUser,
+            if (boxId != null) 'boxId': boxId,
+            if (orderId != null) 'orderId': orderId,
+            if (productId != null) 'productId': productId,
+          };
 
-        final uri = Uri.parse('$_baseUrl/api/giftcode').replace(queryParameters: queryParams);
-        final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+          final uri = Uri.parse('$_baseUrl/api/giftcode').replace(queryParameters: queryParams);
+          final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
 
-        final data = json.decode(response.body);
-        final ok = response.statusCode == 200 && data['exists'] == true;
+          final data = json.decode(response.body);
+          final ok = response.statusCode == 200 && data['exists'] == true;
 
-        _cache[k] = ok;
-        _stamp[k] = DateTime.now();
-        return ok;
-      } catch (e) {
-        print('❌ 선물 코드 확인 오류: $e');
-        return false;
-      } finally {
-        _inflight.remove(k);
-      }
-    }();
+          _cache[k] = ok;
+          _stamp[k] = DateTime.now();
+          return ok;
+        } catch (e) {
+          print('❌ 선물 코드 확인 오류: $e');
+          return false;
+        } finally {
+          _inflight.remove(k);
+        }
+      }();
 
-    _inflight[k] = fut;
-    return fut;
+      _inflight[k] = fut;
+      return fut;
+    } catch (e) {
+      print('❌ 선물 코드 확인 오류(외부): $e');
+      return false;
+    }
   }
+
 
 
 

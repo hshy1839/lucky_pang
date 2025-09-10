@@ -14,7 +14,7 @@ class BoxStorageCard extends StatefulWidget {
   final String boxId;
   final int boxPrice;
   final String orderId;
-  final bool? initialGiftCodeExists;
+  final bool? initialGiftCodeExists; // 서버 힌트 (true/false 어떤 값이든 반영)
   /// 서버에서 내려주는 현재 주문 상태 ('paid' | 'cancel_requested' | 'cancelled' | 'refunded' | 'shipped' | 'pending')
   final String status;
 
@@ -22,10 +22,11 @@ class BoxStorageCard extends StatefulWidget {
   final bool isSelected;
   final ValueChanged<bool?> onSelectChanged;
 
-  /// 선택/체크박스/버튼 등 전체 비활성화 하고 싶을 때
+  /// 선택/체크박스/버튼 등 전체 비활성화 하고 싶을 때(전역 비활성)
   final bool isDisabled;
 
   /// 박스 열기/선물하기 외부 로직 (내부에서 취소요청은 자체 처리)
+  /// (현재 구현은 내부에서 선물 페이지로 push 후 복귀 체크 수행)
   final VoidCallback onOpenPressed;
   final VoidCallback onGiftPressed;
 
@@ -49,8 +50,7 @@ class BoxStorageCard extends StatefulWidget {
     required this.onOpenPressed,
     required this.onGiftPressed,
     this.initialGiftCodeExists,
-
-    this.onCancelled, // ← 선택 파라미터
+    this.onCancelled,
   });
 
   @override
@@ -58,14 +58,14 @@ class BoxStorageCard extends StatefulWidget {
 }
 
 class _BoxStorageCardState extends State<BoxStorageCard> {
-  bool _giftCodeExists = false;
+  bool _giftCodeExists = false; // 항상 실제값 반영(OR 승급 없음)
   bool _loading = true;
 
   late TapGestureRecognizer _cancelTap;
 
   // 로컬 상태 — 취소요청 성공 시 즉시 UI 반영/숨김
   late String _status;
-  bool _hidden = false; // ← 추가: 카드 숨김 플래그
+  bool _hidden = false; // 카드 숨김 플래그
 
   @override
   void initState() {
@@ -73,9 +73,36 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
     _status = widget.status;
     _cancelTap = TapGestureRecognizer();
 
-    // 이미 서버에서 알려준 값 쓰기
+    // 서버 힌트로 초기값 설정
     _giftCodeExists = widget.initialGiftCodeExists ?? false;
-    _loading = false;   // 네트워크 재조회 아예 생략
+
+    // 첫 프레임 직후 실제 상태 네트워크 확인 → 처음부터 정확히 반영
+    _loading = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkGiftCode());
+  }
+
+  /// 부모 props 변경 시: 힌트 값/상태를 그대로 반영(다운그레이드 허용)
+  @override
+  void didUpdateWidget(covariant BoxStorageCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    bool changed = false;
+
+    if (oldWidget.initialGiftCodeExists != widget.initialGiftCodeExists) {
+      _giftCodeExists = widget.initialGiftCodeExists ?? false; // ← true→false 다운그레이드 허용
+      changed = true;
+    }
+    if (oldWidget.status != widget.status) {
+      _status = widget.status;
+      changed = true;
+    }
+    // 리스트 재사용 시 숨김 해제
+    if (_hidden && (_status != 'cancel_requested')) {
+      _hidden = false;
+      changed = true;
+    }
+
+    if (changed && mounted) setState(() {});
   }
 
   @override
@@ -85,20 +112,29 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
   }
 
   Future<void> _checkGiftCode() async {
-    final exists = await GiftCodeController.checkGiftCodeExists(
-      type: 'box',
-      boxId: widget.boxId,
-      orderId: widget.orderId,
-    );
-    if (!mounted) return;
-    setState(() {
-      _giftCodeExists = exists;
-      _loading = false;
-    });
-    if (exists && widget.isSelected) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.onSelectChanged(false);
+    try {
+      final exists = await GiftCodeController.checkGiftCodeExists(
+        type: 'box',
+        boxId: widget.boxId,
+        orderId: widget.orderId,
+      );
+      if (!mounted) return;
+
+      // ✅ OR(승급) 제거 — 서버/네트워크 결과를 그대로 반영
+      setState(() {
+        _giftCodeExists = exists;
+        _loading = false;
       });
+
+      // 선물코드가 있으면 선택 해제(배치 액션 방지)
+      if (exists && widget.isSelected) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          widget.onSelectChanged(false);
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
   }
 
@@ -145,8 +181,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
 
   @override
   Widget build(BuildContext context) {
-    // 숨김 플래그면 즉시 렌더 제거
-    if (_hidden) return const SizedBox.shrink();
+    if (_hidden) return const SizedBox.shrink(); // 숨김이면 즉시 제거
 
     final createdAtDt = DateTime.parse(widget.createdAt);
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(createdAtDt);
@@ -159,9 +194,15 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
     final canCancel = !_loading && !_giftCodeExists && remainingDays > 0 && _status == 'paid';
     final cancelColor = remainingDays > 0 ? const Color(0xFF2EB520) : Colors.red;
 
-    // 버튼/체크박스 제어
-    final disabledByStatus = _status == 'cancel_requested' || _status == 'cancelled' || _status == 'refunded' || _status == 'shipped';
-    final disableActions = widget.isDisabled || _giftCodeExists || _loading || disabledByStatus;
+    // 상태 기반 비활성
+    final disabledByStatus = _status == 'cancel_requested' ||
+        _status == 'cancelled' ||
+        _status == 'refunded' ||
+        _status == 'shipped';
+
+    // 버튼별 비활성 로직 분리
+    final disableOpen = widget.isDisabled || _loading || disabledByStatus || _giftCodeExists;
+    final disableGift = widget.isDisabled || _loading || disabledByStatus; // 선물코드 있어도 확인 가능
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -174,23 +215,23 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
 
-            Align(
-              alignment: Alignment.topLeft,
-              child: AbsorbPointer(
-                absorbing: _giftCodeExists || disabledByStatus,
-                child: Checkbox(
-                  value: widget.isSelected,
-                  onChanged: (_giftCodeExists || disabledByStatus) ? null : widget.onSelectChanged,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                        (states) => states.contains(MaterialState.selected)
-                        ? Colors.black
-                        : Colors.white,
-                  ),
-                  checkColor: Colors.white,
+          Align(
+            alignment: Alignment.topLeft,
+            child: AbsorbPointer(
+              absorbing: _giftCodeExists || disabledByStatus, // 코드 있거나 상태상 불가면 선택 불가
+              child: Checkbox(
+                value: widget.isSelected,
+                onChanged: (_giftCodeExists || disabledByStatus) ? null : widget.onSelectChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                fillColor: MaterialStateProperty.resolveWith<Color>(
+                      (states) => states.contains(MaterialState.selected)
+                      ? Colors.black
+                      : Colors.white,
                 ),
+                checkColor: Colors.white,
               ),
             ),
+          ),
 
           // 이미지 + 정보
           Row(
@@ -304,9 +345,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                                     if (success) {
                                       setState(() {
                                         _status = 'cancel_requested';
-                                        _hidden = true; // ← 성공 즉시 카드 숨김
+                                        _hidden = true; // 성공 즉시 카드 숨김
                                       });
-                                      // 부모가 리스트를 다시 불러오길 원하면 콜백도 호출
                                       widget.onCancelled?.call();
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('결제 취소 요청이 접수되었습니다.')),
@@ -341,12 +381,12 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
           // 버튼 영역 (박스열기 / 선물하기)
           Row(
             children: [
-              // 박스열기
+              // 박스열기 — 선물코드가 있으면 비활성
               Expanded(
                 child: SizedBox(
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: disableActions ? null : widget.onOpenPressed,
+                    onPressed: disableOpen ? null : widget.onOpenPressed,
                     style: ButtonStyle(
                       backgroundColor: MaterialStateProperty.resolveWith<Color>(
                             (states) => states.contains(MaterialState.disabled)
@@ -367,13 +407,15 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
 
               const SizedBox(width: 12),
 
-              // 선물하기 / 선물코드 확인
+              // 선물하기 / 선물코드 확인 — 선물코드가 있어도 버튼은 활성(상태/로딩만 체크)
               Expanded(
                 child: SizedBox(
                   height: 45,
                   child: OutlinedButton(
-                    onPressed: () async {
-                      if (disableActions) return;
+                    onPressed: disableGift
+                        ? null
+                        : () async {
+                      // 내부에서 직접 라우팅하는 경우:
                       await Navigator.pushNamed(
                         context,
                         '/giftcode/create',
@@ -383,7 +425,8 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
                           'orderId': widget.orderId,
                         },
                       );
-                      await _checkGiftCode(); // 복귀 후 다시 체크
+                      // 복귀 후 다시 체크(상태 최신화)
+                      await _checkGiftCode();
                     },
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Theme.of(context).primaryColor),
@@ -423,7 +466,7 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
       case 'cancelled':
         label = '취소완료';
         border = Colors.grey;
-        text = Colors.grey[700]!;
+        text = Colors.grey;
         bg = Colors.grey.withOpacity(0.12);
         break;
       case 'refunded':
@@ -435,18 +478,18 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
       case 'shipped':
         label = '배송중';
         border = Colors.green;
-        text = Colors.green[700]!;
+        text = Colors.green;
         bg = Colors.green.withOpacity(0.08);
         break;
       case 'pending':
         label = '결제대기';
         border = Colors.orange;
-        text = Colors.orange[800]!;
+        text = Colors.orange;
         bg = Colors.orange.withOpacity(0.10);
         break;
       case 'paid':
       default:
-      // paid는 호출부에서 이미 숨김 처리
+      // paid는 상단에서 이미 숨김 처리하지만, 안전망
         label = '결제완료';
         border = const Color(0xFF8D969D);
         text = const Color(0xFF465461);

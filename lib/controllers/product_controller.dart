@@ -19,6 +19,7 @@ class ProductController {
     return '$_root:7778';
   }
 
+
   String _join(String a, String b) {
     final left = a.replaceAll(RegExp(r'/+$'), '');
     final right = b.replaceAll(RegExp(r'^/+'), '');
@@ -111,6 +112,44 @@ class ProductController {
       print('오류 발생: $e');
       return [];
     }
+  }
+  Future<List<Map<String, String>>> fetchProductsPaged({
+    required String category, // '5,000원 박스' | '10,000원 박스'
+    required int page,
+    required int limit,
+  }) async {
+    final uri = Uri.parse('${BaseUrl.value}:7778/api/products')
+        .replace(queryParameters: {
+      'category': category,
+      'page': '$page',
+      'limit': '$limit',
+    });
+
+    final res = await http.get(uri);
+    if (res.statusCode != 200) {
+      throw Exception('상품 로드 실패 (${res.statusCode})');
+    }
+
+    final data = jsonDecode(res.body);
+
+    // 서버 응답 형태에 맞춰 매핑
+    // - 배열 그대로 오면 data as List
+    // - { items: [...], total: 123 } 형태면 data['items']
+    final List list =
+    (data is Map && data['items'] != null) ? data['items'] : (data as List);
+
+    return list.map<Map<String, String>>((raw) {
+      final m = Map<String, dynamic>.from(raw as Map);
+      return {
+        'id':            '${m['_id'] ?? m['id'] ?? ''}',
+        'name':          '${m['name'] ?? ''}',
+        'brand':         '${m['brand'] ?? ''}',
+        'price':         '${m['price'] ?? '0'}',
+        'consumerPrice': '${m['consumerPrice'] ?? '0'}',
+        'mainImageUrl':  '${m['mainImageUrl'] ?? ''}',
+        'category':      '${m['category'] ?? ''}',
+      };
+    }).toList();
   }
 
   Future<List<Map<String, String>>> fetchProductsByCategory({required String category}) async {
