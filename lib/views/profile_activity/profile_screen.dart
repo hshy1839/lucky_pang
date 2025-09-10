@@ -4,13 +4,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../controllers/point_controller.dart';
 import '../../controllers/profile_screen_controller.dart';
 import '../../controllers/shipping_controller.dart';
 import '../../controllers/userinfo_screen_controller.dart';
-import 'package:image_picker/image_picker.dart';
-
 import '../../routes/base_url.dart';
+import '../widget/avatar_cache_manager.dart';
 import '../widget/endOfScreen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -34,13 +36,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int shippingCount = 0;
   bool hasShipping = false;
   bool isLoading = false;
+  String? _userId;
+
+  // ─────────────────────────────────────────────────────────────
+  // SWR 캐시 설정 (SharedPreferences)
+  // ─────────────────────────────────────────────────────────────
+  static const Duration _kPointsTTL = Duration(seconds: 45);
+
+  String _pointsCacheKey(String userId) => 'points:$userId';
+  String _pointsTimeKey(String userId) => 'points_ts:$userId';
+
+  Future<int?> _readCachedPoints(String userId) async {
+    final sp = await SharedPreferences.getInstance();
+    return sp.getInt(_pointsCacheKey(userId));
+    // 없으면 null
+  }
+
+  Future<DateTime?> _readCachedPointsTime(String userId) async {
+    final sp = await SharedPreferences.getInstance();
+    final ts = sp.getInt(_pointsTimeKey(userId));
+    return ts != null ? DateTime.fromMillisecondsSinceEpoch(ts) : null;
+  }
+
+  Future<void> _writeCachedPoints(String userId, int points) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setInt(_pointsCacheKey(userId), points);
+    await sp.setInt(_pointsTimeKey(userId), DateTime.now().millisecondsSinceEpoch);
+  }
+
+  // ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     loadUserInfo();
-    loadUserPoints();
+    loadUserPoints();   // SWR로 즉시 표시 + 백그라운드 갱신
     loadShippingInfo();
+  }
+
+  Future<void> _warmAvatarCache(String url) async {
+    try {
+      // 디스크 캐시 워밍
+      await AvatarCacheManager.instance.getSingleFile(url, key: _avatarCacheKey(url));
+      // 메모리 캐시 워밍 (다음 프레임에서 즉시 표시)
+      await precacheImage(
+        CachedNetworkImageProvider(
+          url,
+          cacheManager: AvatarCacheManager.instance,
+          cacheKey: _avatarCacheKey(url),
+        ),
+        context,
+      );
+    } catch (_) {}
+  }
+
+  String _avatarCacheKey(String url) {
+    // URL 변동과 무관하게 유저 기준으로 고정 키 → 재검증/재다운 최소화
+    return 'avatar_${_userId ?? 'me'}';
   }
 
   Future<void> loadShippingInfo() async {
@@ -72,17 +124,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ✅ SWR 적용: 캐시 먼저 뿌리고, TTL 지나면 백그라운드 갱신
   Future<void> loadUserPoints() async {
-    setState(() {
-      isLoading = true;
-    });
-    final userId = await _pointController.storage.read(key: 'userId'); // ✅ userId 가져오기
-    if (userId != null) {
-      final points = await _pointController.fetchUserTotalPoints(userId);
+    // 1) userId 확보
+    final userId = await _pointController.storage.read(key: 'userId');
+    _userId = userId; // 아바타 캐시키에도 사용
+    if (userId == null || userId.isEmpty) return;
+
+    // 2) 캐시 즉시 표시
+    final cached = await _readCachedPoints(userId);
+    if (cached != null && mounted) {
       setState(() {
-        totalPoints = points;
-        isLoading = false;
+        totalPoints = cached; // 체감: 즉시 표시
       });
+    }
+
+    // 3) TTL 검사하여 너무 자주 갱신하지 않기
+    final lastTs = await _readCachedPointsTime(userId);
+    final shouldRefresh = lastTs == null || DateTime.now().difference(lastTs) > _kPointsTTL;
+    if (!shouldRefresh) {
+      // 신선한 캐시면 네트워크 생략
+      return;
+    }
+
+    // 4) 백그라운드 갱신 (전역 로딩 스피너 쓰지 않음)
+    try {
+      final fresh = await _pointController.fetchUserTotalPoints(userId);
+      if (!mounted) return;
+      await _writeCachedPoints(userId, fresh);
+      setState(() {
+        totalPoints = fresh;
+      });
+    } catch (_) {
+      // 실패 시 캐시 그대로 유지
     }
   }
 
@@ -93,13 +167,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _profileController.uploadProfileImage(context, imageFile);
       _controller.clearCache();
       await loadUserInfo();
+
+      // 이미지 변경 직후 캐시 워밍
+      final url = _buildProfileImageUrl(profileImage);
+      if (url != null && url.isNotEmpty) {
+        _warmAvatarCache(url);
+      }
     }
   }
 
   Future<void> loadUserInfo() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
     await _controller.fetchUserInfo(context);
     setState(() {
       nickname = _controller.nickname;
@@ -108,6 +186,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       referralCode = _controller.referralCode;
       isLoading = false;
     });
+
+    // 프로필 이미지 캐시 워밍
+    final url = _buildProfileImageUrl(profileImage);
+    if (url != null && url.isNotEmpty) {
+      _warmAvatarCache(url);
+    }
   }
 
   // ================================
@@ -126,7 +210,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _buildProfileImageUrl(String? raw) {
     if (raw == null || raw.isEmpty) return null;
     final s = raw.trim();
-    print(s);
     if (s.startsWith('http://') || s.startsWith('https://')) {
       return _sanitizeAbsolute(s);
     }
@@ -190,9 +273,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Container(
                 width: 80,
                 height: 80,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
                       color: Color(0xFFFF5722),
                       offset: Offset(2, -2),
@@ -214,9 +297,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? ClipOval(
                     child: CachedNetworkImage(
                       imageUrl: imageUrl,
+                      cacheManager: AvatarCacheManager.instance, // 전용 캐시
+                      cacheKey: _avatarCacheKey(imageUrl),       // 고정 키
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
+                      fadeInDuration: Duration.zero,
                       placeholder: (context, url) => Center(
                         child: CircularProgressIndicator(
                           color: Theme.of(context).primaryColor,
@@ -244,27 +330,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               children: [
                 Expanded(
-                    child: _infoBox(
-                        title: '보유 포인트',
-                        value: NumberFormat('#,###').format(totalPoints),
-                        valueColor: const Color(0xFFFF5C43))),
+                  child: _infoBox(
+                    title: '보유 포인트',
+                    value: NumberFormat('#,###').format(totalPoints),
+                    valueColor: const Color(0xFFFF5C43),
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _infoBox(
-                        title: '친구 추천인 코드',
-                        value: referralCode.isNotEmpty ? referralCode : '-',
-                        valueColor: const Color(0xFFFF5C43))),
+                  child: _infoBox(
+                    title: '친구 추천인 코드',
+                    value: referralCode.isNotEmpty ? referralCode : '-',
+                    valueColor: const Color(0xFFFF5C43),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                    child: _infoBox(
-                        title: '',
-                        value: '본인인증 완료',
-                        valueColor: const Color(0xFF2EB520),
-                        border: true)),
+                  child: _infoBox(
+                    title: '',
+                    value: '본인인증 완료',
+                    valueColor: const Color(0xFF2EB520),
+                    border: true,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _infoBox(
@@ -316,14 +408,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (title.isNotEmpty)
-            Text(title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF8D969D))),
-          const SizedBox(height: 4),
-          Text(value,
+            Text(
+              title,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: valueColor)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF8D969D)),
+            ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: valueColor),
+          ),
         ],
       ),
     );

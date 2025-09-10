@@ -30,7 +30,7 @@ class _OrderScreenState extends State<OrderScreen> {
   String selectedTab = 'box'; // 'box', 'product', 'shipped'
   bool isLoading = true;
   final storage = const FlutterSecureStorage();
-
+  final _httpClient = http.Client();
   // 현재 페이지 데이터(서버사이드)
   static const int _pageSize = 30;
 
@@ -99,24 +99,169 @@ class _OrderScreenState extends State<OrderScreen> {
     });
   }
 
+
   Future<void> _loadInitialForTab(String tab) async {
     setState(() => isLoading = true);
     if (tab == 'box') {
       _pageBox = 1;
-      await _fetchBoxPage(_pageBox);
+      await _fetchPage('box', _pageBox);
     } else if (tab == 'product') {
       _pageProduct = 1;
-      await _fetchProductPage(_pageProduct);
+      await _fetchPage('product', _pageProduct);
     } else if (tab == 'shipped') {
       _pageShipped = 1;
-      await _fetchShippedPage(_pageShipped);
+      await _fetchPage('shipped', _pageShipped);
     }
     if (mounted) setState(() => isLoading = false);
   }
 
+
   // ─────────────────────────────────────────────────────────────
   // 서버사이드 페이지 API 호출부
   // ─────────────────────────────────────────────────────────────
+  Future<void> _fetchPage(String tab, int page) async {
+    final userId = await storage.read(key: 'userId');
+    if (userId == null) return;
+
+    try {
+      late Uri uri;
+
+      if (tab == 'box') {
+        uri = Uri.parse(
+          '${_base}/api/orders/boxes'
+              '?userId=$userId&status=paid&unboxed=false&page=$page&limit=$_pageSize',
+        );
+      } else if (tab == 'product') {
+        uri = Uri.parse(
+          '${_base}/api/orders/unboxed-products'
+              '?userId=$userId&status=unshipped&refunded=false&page=$page&limit=$_pageSize',
+        );
+      } else if (tab == 'shipped') {
+        uri = Uri.parse(
+          '${_base}/api/orders/unboxed-products'
+              '?userId=$userId&status=shipped&page=$page&limit=$_pageSize',
+        );
+      } else {
+        throw Exception('Unknown tab: $tab');
+      }
+
+      final res = await _httpClient.get(uri);
+      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
+      final body = json.decode(res.body) as Map<String, dynamic>;
+
+      if (tab == 'box') {
+        final items = List<Map<String, dynamic>>.from(body['items'] ?? const []);
+        // 서버 불일치 대비: giftCodeExists 최소 보정
+        for (final o in items) {
+          o['giftCodeExists'] =
+              (o['giftCode'] != null) || (o['giftCodeExists'] == true);
+        }
+        if (!mounted) return;
+        setState(() {
+          _boxPageItems = items;
+          _totalBoxCount = (body['totalCount'] as int?) ?? items.length;
+          _pageBox = page;
+          selectedBoxOrderIds.clear();
+        });
+      }
+
+      if (tab == 'product') {
+        final rawList = List.from(body['items'] ?? const []);
+
+        // 현재 동작 유지: product는 per-item giftcode 확인 (서버에서 보장되면 이 블록을 box처럼 단순화 가능)
+        final items = await Future.wait(rawList.map((raw) async {
+          final o = Map<String, dynamic>.from(raw as Map);
+          final productId = o['unboxedProduct']?['product']?['_id'];
+          if (productId != null) {
+            try {
+              final exists = await GiftCodeController.checkGiftCodeExists(
+                type: 'product',
+                orderId: o['_id'],
+                productId: productId,
+              );
+              o['giftCodeExists'] = exists;
+            } catch (_) {
+              o['giftCodeExists'] = (o['giftCodeExists'] == true);
+            }
+          } else {
+            o['giftCodeExists'] = false;
+          }
+          return o;
+        }));
+
+        if (!mounted) return;
+        setState(() {
+          _productPageItems = items.cast<Map<String, dynamic>>();
+          _totalProductCount = (body['totalCount'] as int?) ?? _productPageItems.length;
+          _pageProduct = page;
+          selectedOrderIds.clear();
+          lockedProductIds.clear();
+        });
+      }
+
+      if (tab == 'shipped') {
+        final list = List<Map<String, dynamic>>.from(body['items'] ?? const []);
+        if (!mounted) return;
+        setState(() {
+          _shippedPageItems = list;
+          _totalShippedCount = (body['totalCount'] as int?) ?? _shippedPageItems.length;
+          _pageShipped = page;
+        });
+      }
+    } catch (e) {
+      debugPrint('[_fetchPage][$tab] $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('목록을 불러오지 못했습니다. $e')),
+      );
+
+      setState(() {
+        if (tab == 'box') {
+          _boxPageItems = [];
+          _totalBoxCount = 0;
+        } else if (tab == 'product') {
+          _productPageItems = [];
+          _totalProductCount = 0;
+        } else if (tab == 'shipped') {
+          _shippedPageItems = [];
+          _totalShippedCount = 0;
+        }
+      });
+    }
+  }
+  Future<int?> _refundOne({
+    required String orderId,
+    required double refundRate,
+    required String description,
+  }) async {
+    try {
+      final token = await storage.read(key: 'token');
+      if (token == null) return null;
+
+      final uri = Uri.parse('$_base/api/orders/$orderId/refund');
+      final res = await _httpClient.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'refundRate': refundRate,
+          'description': description,
+        }),
+      );
+
+      if (res.statusCode != 200) return null;
+      final data = json.decode(res.body);
+      if (data['success'] == true && data['refundedAmount'] != null) {
+        return data['refundedAmount'] as int;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[_refundOne] $e');
+      return null;
+    }
+  }
 
   Future<void> _fetchBoxPage(int page) async {
     final userId = await storage.read(key: 'userId');
@@ -130,54 +275,36 @@ class _OrderScreenState extends State<OrderScreen> {
       final res = await http.get(uri);
       if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
       final body = json.decode(res.body) as Map<String, dynamic>;
-      final List list = (body['items'] ?? []) as List;
 
-      // 각 아이템 giftCodeExists 보정 (페이지 내 최대 30개)
-      final items = await Future.wait(list.map((raw) async {
-        final o = Map<String, dynamic>.from(raw as Map);
-        final orderId = o['_id'];
-        final boxId   = o['box']?['_id'];
+      final items = List<Map<String, dynamic>>.from(body['items'] ?? const []);
 
-        bool exists = false;
-        if (orderId != null && boxId != null) {
-          try {
-            exists = await GiftCodeController.checkGiftCodeExists(
-              type: 'box',
-              orderId: orderId,
-              boxId: boxId,
-            );
-          } catch (_) {
-            // 네트워크/서버 오류 시엔 서버 값이 true면 true로, 아니면 false로
-            exists = (o['giftCodeExists'] == true) || (o['giftCode'] != null);
-          }
-        } else {
-          // 박스/오더 정보가 없는 경우 서버 힌트 사용
-          exists = (o['giftCodeExists'] == true) || (o['giftCode'] != null);
-        }
+      for (final o in items) {
+        o['giftCodeExists'] =
+            (o['giftCode'] != null) || (o['giftCodeExists'] == true);
+      }
 
-        o['giftCodeExists'] = exists;
-        return o;
-      }));
 
+      if (!mounted) return;
       setState(() {
-        _boxPageItems = items.cast<Map<String, dynamic>>();
-        _totalBoxCount = (body['totalCount'] ?? _boxPageItems.length) as int;
+        _boxPageItems = items;
+        _totalBoxCount = (body['totalCount'] as int?) ?? items.length;
         _pageBox = page;
         selectedBoxOrderIds.clear();
       });
     } catch (e) {
       debugPrint('[_fetchBoxPage] $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('박스 목록을 불러오지 못했습니다. $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('박스 목록을 불러오지 못했습니다. $e')),
+      );
       setState(() {
         _boxPageItems = [];
         _totalBoxCount = 0;
       });
     }
   }
+
+
 
   Future<void> _fetchProductPage(int page) async {
     final userId = await storage.read(key: 'userId');
@@ -354,18 +481,20 @@ class _OrderScreenState extends State<OrderScreen> {
         .where((o) => selectedOrderIds.contains(o['_id']))
         .toList();
 
+    if (selectedOrders.isEmpty) return;
+
+    // 총 환급 예상 포인트(표시용)
     int totalRefundPoints = 0;
     for (final order in selectedOrders) {
       final product = order['unboxedProduct']?['product'] ?? {};
       final refundRateStr = product['refundProbability']?.toString() ?? '0';
       final refundRate = double.tryParse(refundRateStr) ?? 0.0;
       final purchasePrice = (order['paymentAmount'] ?? 0) + (order['pointUsed'] ?? 0);
-      final int refundAmount = (purchasePrice * refundRate / 100).floor();
-      totalRefundPoints += refundAmount;
+      totalRefundPoints += (purchasePrice * refundRate / 100).floor() as int;
     }
-
     final formattedTotal = NumberFormat('#,###').format(totalRefundPoints);
 
+    // 확인 다이얼로그
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -377,30 +506,83 @@ class _OrderScreenState extends State<OrderScreen> {
         ],
       ),
     );
-
     if (confirm != true) return;
 
+    // 개수에 따라 분기: 1개는 기존 UX 유지, 2개 이상은 동시 전송
+    if (selectedOrders.length == 1) {
+      final order = selectedOrders.first;
+      final product = order['unboxedProduct']?['product'] ?? {};
+      final refundRateStr = product['refundProbability']?.toString() ?? '0';
+      final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+      final orderId = (order['_id'] ?? '').toString();
+
+      final refunded = await _refundOne(
+        orderId: orderId,
+        refundRate: refundRate,
+        description: '[${product['brand'] ?? ''}] ${product['name'] ?? ''} 포인트 환급',
+      );
+
+      if (!mounted) return;
+      if (refunded != null) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('환급 완료'),
+            content: Text('$refunded원이 환급되었습니다!'),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인'))],
+          ),
+        );
+        setState(() {
+          _productPageItems.removeWhere((o) => (o['_id'] ?? '').toString() == orderId);
+          selectedOrderIds.remove(orderId);
+        });
+        await _fetchProductPage(_pageProduct);
+      } else {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('환급 실패'),
+            content: const Text('서버 오류로 환급이 처리되지 않았습니다.'),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인'))],
+          ),
+        );
+      }
+      return;
+    }
+
+    // ✅ 2개 이상: 동시 전송 (keep-alive, Future.wait)
     _showFullscreenLoader();
     int successCnt = 0;
     try {
-      for (final order in selectedOrders) {
-        final product = order['unboxedProduct']?['product'] ?? {};
-        final refundRateStr = product['refundProbability']?.toString() ?? '0';
-        final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+      final futures = <Future<void>>[];
 
-        final refunded = await OrderScreenController.refundOrder(
-          order['_id'],
-          refundRate,
-          description: '[${product['brand'] ?? ''}] ${product['name'] ?? ''} 포인트 환급',
-        );
-        if (refunded != null) successCnt++;
+      for (final order in selectedOrders) {
+        futures.add(() async {
+          final product = order['unboxedProduct']?['product'] ?? {};
+          final refundRateStr = product['refundProbability']?.toString() ?? '0';
+          final refundRate = double.tryParse(refundRateStr) ?? 0.0;
+          final orderId = (order['_id'] ?? '').toString();
+
+          final refunded = await _refundOne(
+            orderId: orderId,
+            refundRate: refundRate,
+            description: '[${product['brand'] ?? ''}] ${product['name'] ?? ''} 포인트 환급',
+          );
+
+          if (refunded != null) {
+            successCnt++;
+          }
+        }());
       }
 
-      setState(() {
-        _productPageItems.removeWhere((o) => selectedOrderIds.contains(o['_id']));
-        selectedOrderIds.clear();
-      });
-    } catch (_) {
+      await Future.wait(futures);
+
+      if (mounted) {
+        setState(() {
+          _productPageItems.removeWhere((o) => selectedOrderIds.contains((o['_id'] ?? '').toString()));
+          selectedOrderIds.clear();
+        });
+      }
     } finally {
       if (mounted) _hideFullscreenLoader();
     }
@@ -409,11 +591,9 @@ class _OrderScreenState extends State<OrderScreen> {
     await showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('환급 완료'),
-        content: Text('$successCnt개 환급이 처리되었습니다.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인')),
-        ],
+        title: const Text('환급 처리 결과'),
+        content: Text('$successCnt/${selectedOrders.length}개 환급이 처리되었습니다.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인'))],
       ),
     );
 
@@ -712,7 +892,7 @@ class _OrderScreenState extends State<OrderScreen> {
                       pageSize: _pageSize,
                       onPageChanged: (p) async {
                         setState(() => isLoading = true);
-                        await _fetchProductPage(p);
+                        await _fetchPage('product', p);
                         if (mounted) setState(() => isLoading = false);
                       },
                       showWhenSinglePage: true,
@@ -792,6 +972,9 @@ class _OrderScreenState extends State<OrderScreen> {
 
                         isSelected: isBoxSelected(orderId),
                         onSelectChanged: (val) => toggleBoxSelection(orderId, val ?? false),
+
+                        // ✅ 여기 정리
+                        initialGiftCodeExists: (order['giftCode'] != null) || (order['giftCodeExists'] == true),
                         isDisabled: (order['giftCode'] != null) || (order['giftCodeExists'] == true),
 
                         onOpenPressed: () async {
@@ -819,8 +1002,6 @@ class _OrderScreenState extends State<OrderScreen> {
                             await _fetchBoxPage(_pageBox);
                           });
                         },
-
-                        // 취소요청 성공 시 리스트 재조회
                         onCancelled: () async {
                           await _fetchBoxPage(_pageBox);
                         },
@@ -838,7 +1019,7 @@ class _OrderScreenState extends State<OrderScreen> {
                     pageSize: _pageSize,
                     onPageChanged: (p) async {
                       setState(() => isLoading = true);
-                      await _fetchBoxPage(p);
+                      await _fetchPage('box', p);
                       if (mounted) setState(() => isLoading = false);
                     },
                   ),
@@ -932,7 +1113,7 @@ class _OrderScreenState extends State<OrderScreen> {
                     pageSize: _pageSize,
                     onPageChanged: (p) async {
                       setState(() => isLoading = true);
-                      await _fetchShippedPage(p);
+                      await _fetchPage('shipped', p);
                       if (mounted) setState(() => isLoading = false);
                     },
                   ),

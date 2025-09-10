@@ -14,7 +14,7 @@ class BoxStorageCard extends StatefulWidget {
   final String boxId;
   final int boxPrice;
   final String orderId;
-
+  final bool? initialGiftCodeExists;
   /// 서버에서 내려주는 현재 주문 상태 ('paid' | 'cancel_requested' | 'cancelled' | 'refunded' | 'shipped' | 'pending')
   final String status;
 
@@ -48,6 +48,8 @@ class BoxStorageCard extends StatefulWidget {
     required this.isDisabled,
     required this.onOpenPressed,
     required this.onGiftPressed,
+    this.initialGiftCodeExists,
+
     this.onCancelled, // ← 선택 파라미터
   });
 
@@ -70,7 +72,10 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
     super.initState();
     _status = widget.status;
     _cancelTap = TapGestureRecognizer();
-    _checkGiftCode();
+
+    // 이미 서버에서 알려준 값 쓰기
+    _giftCodeExists = widget.initialGiftCodeExists ?? false;
+    _loading = false;   // 네트워크 재조회 아예 생략
   }
 
   @override
@@ -85,14 +90,11 @@ class _BoxStorageCardState extends State<BoxStorageCard> {
       boxId: widget.boxId,
       orderId: widget.orderId,
     );
-
     if (!mounted) return;
     setState(() {
       _giftCodeExists = exists;
       _loading = false;
     });
-
-    // 선물코드 생성되었고 현재 체크 상태면 선택 해제
     if (exists && widget.isSelected) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         widget.onSelectChanged(false);

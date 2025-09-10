@@ -7,8 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../routes/base_url.dart';
 import '../../product_activity/product_detail_screen.dart';
-// ✅ 내 정보 가져오기(컨트롤러는 수정하지 않음)
 import '../../../../controllers/userinfo_screen_controller.dart';
+import '../avatar_cache_manager.dart';
 
 class UnboxRealtimeList extends StatefulWidget {
   final List<Map<String, dynamic>> unboxedOrders;
@@ -25,6 +25,7 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
   String myNickname = '';
   String? myProfileImage = '';
   bool meLoading = false;
+  String? myUserId;
 
   @override
   void initState() {
@@ -32,17 +33,49 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
     _loadMyInfo(); // ProfileScreen처럼 가져오기
   }
 
+  // ──────────────────────────────────────────────────
+  // 아바타 캐시 키/워밍
+  // ──────────────────────────────────────────────────
+  String _avatarCacheKeyFor({String? userId, String? nickname}) {
+    // 같은 유저는 항상 같은 키 → 재검증 줄이기
+    final base = (userId != null && userId.trim().isNotEmpty)
+        ? userId.trim()
+        : (nickname ?? 'unknown');
+    return 'avatar_$base';
+  }
+
+  Future<void> _warmAvatarCache(String url, String key) async {
+    try {
+      // 디스크 캐시 워밍
+      await AvatarCacheManager.instance.getSingleFile(url, key: key);
+      // 메모리 캐시 워밍 (다음 빌드에서 즉시 표시)
+      await precacheImage(
+        CachedNetworkImageProvider(
+          url,
+          cacheManager: AvatarCacheManager.instance,
+          cacheKey: key,
+        ),
+        context,
+      );
+    } catch (_) {}
+  }
+
   Future<void> _loadMyInfo() async {
     setState(() => meLoading = true);
-    await _controller.fetchUserInfo(context); // ✅ 컨트롤러는 수정 없이 사용
+    await _controller.fetchUserInfo(context);
     setState(() {
       myNickname = _controller.nickname;
-      myProfileImage = _controller.profileImage; // 보통 S3 presigned
+      myProfileImage = _controller.profileImage;
+      // myUserId = _controller.userId; // 컨트롤러가 제공하면 사용 (없어도 OK)
       meLoading = false;
     });
 
-    debugPrint('[UnboxRealtimeList] myNickname=$myNickname');
-    debugPrint('[UnboxRealtimeList] myProfileImage=$myProfileImage');
+    // 내 프로필을 미리 캐싱 (있을 때만)
+    final url = _buildProfileImageUrl(myProfileImage);
+    if (url != null && url.isNotEmpty) {
+      final key = _avatarCacheKeyFor(userId: myUserId, nickname: myNickname);
+      _warmAvatarCache(url, key);
+    }
   }
 
   // ──────────────────────────────────────────────────
@@ -84,7 +117,6 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
       out = '${BaseUrl.value}:7778/media/$s0';
     }
 
-    // 디버그 로그(프로필 규칙 확인용)
     debugPrint('[UnboxRealtimeList] raw profileImage: $s0');
     debugPrint('[UnboxRealtimeList] resolved imageUrl: $out');
     return out;
@@ -285,6 +317,9 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
           final user = order['user'];
           final product = order['unboxedProduct']?['product'];
 
+          final rowUserId = user?['_id']?.toString(); // ← 가능하면 이걸 키로
+          final rowNickname = user?['nickname']?.toString() ?? '';
+
           final productId = (product?['_id'] ?? product?['id'] ?? product?['productId'] ?? '').toString();
           final decidedAt = DateTime.tryParse(order['unboxedProduct']?['decidedAt'] ?? '');
           final name = product?['name']?.toString() ?? '상품명 없음';
@@ -302,16 +337,14 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
                   user?['profile'];
 
           // ✅ row의 닉네임이 내 닉네임과 같으면 → fetchUserInfo의 내 이미지 사용
-          final rowNickname = user?['nickname']?.toString() ?? '';
           String? profileImgUrl;
           if (myNickname.isNotEmpty &&
               rowNickname.isNotEmpty &&
               rowNickname == myNickname &&
               (myProfileImage != null && myProfileImage!.trim().isNotEmpty)) {
-            profileImgUrl = _buildProfileImageUrl(myProfileImage); // S3 presigned 기대
-            debugPrint('[UnboxRealtimeList] USING MY presigned for $rowNickname');
+            profileImgUrl = _buildProfileImageUrl(myProfileImage);
           } else {
-            profileImgUrl = _buildProfileImageUrl(rawProfile); // row 값 사용
+            profileImgUrl = _buildProfileImageUrl(rawProfile);
           }
 
           final decidedAtText = decidedAt != null
@@ -359,7 +392,8 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
                           ? CachedNetworkImage(
                         imageUrl: productImgUrl,
                         fit: BoxFit.cover,
-                        placeholder: (c, _) => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        placeholder: (c, _) =>
+                        const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                         errorWidget: (c, _, __) => Container(color: Colors.grey[200]),
                       )
                           : Container(color: Colors.grey[200]),
@@ -377,7 +411,12 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
                         // 프로필 + 닉네임
                         Row(
                           children: [
-                            _profileAvatar(profileImgUrl, 9.r),
+                            _profileAvatar(
+                              profileImgUrl,
+                              9.r,
+                              rowUserId: rowUserId,
+                              rowNickname: rowNickname,
+                            ),
                             SizedBox(width: 6.w),
                             Expanded(
                               child: Text(
@@ -454,8 +493,19 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
   }
 
   // 프로필 아바타 (에러/플레이스홀더 포함)
-  Widget _profileAvatar(String? rawUrl, double radius) {
-    final profileUrl = _buildProfileImageUrl(rawUrl);
+  Widget _profileAvatar(
+      String? urlResolved,
+      double radius, {
+        String? rowUserId,
+        String? rowNickname,
+      }) {
+    // 이미 build에서 만든 최종 URL (null/empty 방어)
+    final profileUrl = urlResolved?.trim();
+    final hasIdentity =
+        (rowUserId != null && rowUserId.isNotEmpty) || (rowNickname != null && rowNickname.isNotEmpty);
+
+    // ★ 키가 있을 때만 지정 (없으면 URL 자체가 키가 됨 = 가장 안전)
+    final cacheKey = hasIdentity ? _avatarCacheKeyFor(userId: rowUserId, nickname: rowNickname) : null;
 
     return CircleAvatar(
       radius: radius,
@@ -464,17 +514,21 @@ class _UnboxRealtimeListState extends State<UnboxRealtimeList> {
         child: (profileUrl != null && profileUrl.isNotEmpty)
             ? CachedNetworkImage(
           imageUrl: profileUrl,
+          cacheManager: AvatarCacheManager.instance, // ← 전용 캐시
+          cacheKey: cacheKey,                        // ← 있을 때만
+          useOldImageOnUrlChange: true,
           width: radius * 2,
           height: radius * 2,
           fit: BoxFit.cover,
+          // 깜빡임 최소화
+          fadeInDuration: Duration.zero,
+          placeholderFadeInDuration: Duration.zero,
           memCacheWidth: (radius * 2).ceil() * 3,
           memCacheHeight: (radius * 2).ceil() * 3,
-          placeholder: (c, _) => Center(
-            child: SizedBox(
-              width: radius,
-              height: radius,
-              child: const CircularProgressIndicator(strokeWidth: 2),
-            ),
+          placeholder: (c, _) => SizedBox(
+            width: radius,
+            height: radius,
+            child: const Center(child: CircularProgressIndicator(strokeWidth: 1.5)),
           ),
           errorWidget: (c, _, __) =>
               Icon(Icons.person, size: radius * 1.6, color: Colors.grey[600]),

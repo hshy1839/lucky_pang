@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:bootpay/bootpay.dart';
 import 'package:bootpay/model/item.dart';
 import 'package:bootpay/model/payload.dart';
+import 'package:bootpay/model/user.dart' as bootpay;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -28,7 +29,26 @@ class OrderScreenController {
           (k, v) => MapEntry(k, v?.toString()),
     ));
   }
+  static Future<String> _readUserPhone() async {
+    final s1 = await _storage.read(key: 'phone');
+    final s2 = await _storage.read(key: 'phoneNumber');
+    final raw = (s1 ?? s2 ?? '').trim();
+    return raw;
+  }
 
+// 하이픈 포맷 (010-1234-5678 형태)
+  static String _formatPhone(String raw) {
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length == 11) {
+      return '${digits.substring(0,3)}-${digits.substring(3,7)}-${digits.substring(7)}';
+    }
+    if (digits.length == 10) {
+      // 02-1234-5678 등도 커버
+      return '${digits.substring(0,3)}-${digits.substring(3,6)}-${digits.substring(6)}';
+    }
+    // 길이 애매하면 있는 그대로라도 넘김
+    return raw;
+  }
   // ─────────────────────────────────────────────
   // 주문 생성 (포인트 결제 or 부트페이 이후 서버 검증)
   // ─────────────────────────────────────────────
@@ -39,6 +59,7 @@ class OrderScreenController {
     required int totalAmount,
     required int pointsUsed,
     required String paymentMethod,
+    String? buyerNickname,
   }) async {
     if (selectedBoxId == null) {
       showDialog(
@@ -83,22 +104,30 @@ class OrderScreenController {
     // 카드/계좌 결제
     if (totalAmount > 0 && (paymentMethod == '신용/체크카드' || paymentMethod == '계좌이체')) {
       final String orderId = DateTime.now().millisecondsSinceEpoch.toString();
+      final userId = await _storage.read(key: 'userId');
+
+      // ✅ 폰번호 읽기 + 하이픈 포맷
+      final String userPhone = _formatPhone(await _readUserPhone());
+
+      // ⛔ 비어있으면 결제창에서 “-”로 뜸 -> 미리 알림
+      if (userPhone.isEmpty) {
+        debugPrint('[Bootpay] userPhone empty. It will show "-" in modal.');
+      }
+
       await launchBootpayPayment(
         context: context,
         boxId: selectedBox['_id'],
         boxName: selectedBox['name'],
         amount: totalAmount,
         orderId: orderId,
-        userPhone: '', // 필요시
+        userPhone: userPhone, // ✅ 실제 값 전달
         payMethod: paymentMethod == '계좌이체' ? 'bank' : 'card',
         pointsUsed: pointsUsed,
         quantity: quantity,
-        onSuccess: () {
-          Navigator.pushNamed(context, '/luckyboxOrder');
-        },
-        onError: (errMsg) {
-          // 필요시 에러 처리
-        },
+        buyerId: userId,
+        buyerNickname: buyerNickname,
+        onSuccess: () => Navigator.pushNamed(context, '/luckyboxOrder'),
+        onError: (_) {},
       );
       return;
     }
@@ -566,6 +595,8 @@ class OrderScreenController {
     required String payMethod,
     required int pointsUsed,
     required int quantity,
+    String? buyerId,
+    String? buyerNickname,
     required Function() onSuccess,
     Function(String error)? onError,
   }) async {
@@ -587,6 +618,12 @@ class OrderScreenController {
         price: (amount / max(1, quantity)).toDouble(),
       ),
     ];
+    final user = bootpay.User();
+    if (buyerId != null && buyerId.isNotEmpty) user.id = buyerId;                      // 내부 식별자
+    user.username = (buyerNickname?.isNotEmpty ?? false) ? buyerNickname! : '사용자';    // 닉네임
+    if (userPhone.isNotEmpty) user.phone = userPhone;                                   // 전화번호(선택)
+    // 필요시 이메일/주소도 같은 방식으로 user.email, user.addr 설정
+    payload.user = user;
 
     Bootpay().requestPayment(
       context: context,

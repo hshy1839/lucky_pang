@@ -572,6 +572,9 @@ class _LuckyBoxPurchasePageState extends State<LuckyBoxPurchasePage> {
         totalAmount: totalAmount,
         pointsUsed: pointsUsed,
         paymentMethod: paymentMethod,
+        buyerNickname: (userInfoController.nickname.isNotEmpty)
+            ? userInfoController.nickname
+            : '사용자', // fallback
       );
       // submitOrder 내부에서 페이지 전환/알림을 처리한다고 가정
     } catch (e) {
