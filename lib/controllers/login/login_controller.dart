@@ -113,15 +113,20 @@ class LoginController {
         final exists = data['exists'] == true;
 
         if (loginSuccess || exists) {
-          // (선택) 토큰 저장: FlutterSecureStorage import 필요
-          // final storage = FlutterSecureStorage();
-          // if (data['token'] != null) await storage.write(key: 'token', value: data['token']);
-          // if (data['userId'] != null) await storage.write(key: 'userId', value: data['userId']);
+       final storage = FlutterSecureStorage();
+       // ✅ 서버가 내려준 token / userId 저장 (반드시 필요)
+       if (data['token'] != null) {
+         await storage.write(key: 'token', value: data['token']);
+       }
+       if (data['userId'] != null) {
+         await storage.write(key: 'userId', value: data['userId']);
+       }
+       await storage.write(key: 'isLoggedIn', value: 'true'); // (선택) 쓰고 있다면 유지
 
-          print('🟢 소셜 로그인 성공 → 메인 이동');
-          if (!context.mounted) return;
-          Navigator.pushReplacementNamed(context, '/main');
-        } else {
+       print('🟢 소셜 로그인 성공 → 메인 이동');
+       if (!context.mounted) return;
+       Navigator.pushReplacementNamed(context, '/main');
+     } else {
           print('🟡 신규 회원 → 약관동의 이동 (email=${email ?? "(null)"})');
           if (!context.mounted) return;
           Navigator.pushNamed(
@@ -195,7 +200,7 @@ class LoginController {
           final storage = FlutterSecureStorage();
           await storage.write(key: 'token', value: data['token']);
           await storage.write(key: 'userId', value: data['userId']);
-
+          await storage.write(key: 'isLoggedIn', value: 'true');
           Navigator.pushReplacementNamed(context, '/main');
         } else {
           Navigator.pushNamed(context, '/signupAgree', arguments: {

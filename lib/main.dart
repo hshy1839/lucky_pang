@@ -24,15 +24,7 @@ import 'views/order_activity/order_screen.dart';
 
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-const storage = FlutterSecureStorage(
-  aOptions: AndroidOptions(
-    encryptedSharedPreferences: true, // 안정적
-    resetOnError: true,               // BAD_DECRYPT 등 나면 자동 리셋
-  ),
-  iOptions: IOSOptions(
-    accessibility: KeychainAccessibility.first_unlock,
-  ),
-);
+const storage = FlutterSecureStorage();
 
 
 void main() async {
@@ -80,19 +72,18 @@ class _MyAppState extends State<MyApp> {
   Future<String?> safeRead(String key) async {
     try {
       return await storage.read(key: key);
-    } on PlatformException {
-      // 복호화 실패 시(=지금 겪는 케이스) 전체 리셋 후 null 반환
-      await storage.deleteAll();
-      return null;
-    } catch (_) {
+    } on PlatformException catch (e) {
+      debugPrint('[safeRead] $key read failed: $e');
+      return null; // ✅ 삭제 금지
+    } catch (e) {
+      debugPrint('[safeRead] $key unexpected: $e');
       return null;
     }
   }
-  Future<Widget> _checkLoginStatus() async {
-    final isLoggedIn = (await safeRead('isLoggedIn')) == 'true';
-    final token = await safeRead('token');
 
-    if (isLoggedIn && token != null && token.isNotEmpty) {
+  Future<Widget> _checkLoginStatus() async {
+    final token = await safeRead('token');
+    if (token != null && token.isNotEmpty) {
       return MainScreenWithFooter();
     }
     return LoginScreen();
